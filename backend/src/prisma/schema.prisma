@@ -1,0 +1,186 @@
+/**
+ * PostgreSQL Database Schema
+ * FreedomTalk Backend - Discord Clone
+ */
+
+generator client {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  username      String    @unique
+  password_hash String
+  avatar_url    String?
+  status        UserStatus @default(OFFLINE)
+  custom_status String?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+}
+
+model Server {
+  id            String    @id @default(uuid())
+  name          String
+  icon_url      String?
+  owner_id      String
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+}
+
+model ServerMember {
+  id              String      @id @default(uuid())
+  server_id       String
+  user_id         String
+  role_id         String
+  joined_at       DateTime    @default(now())
+
+  @@unique([server_id, user_id])
+}
+
+model Role {
+  id              String      @id @default(uuid())
+  server_id       String
+  name            String
+  color           String?
+  permissions     BigInt       @default(0)
+  position        Int
+
+  @@unique([server_id, name, position])
+}
+
+enum UserStatus {
+  ONLINE
+  IDLE
+  DND
+  OFFLINE
+}
+
+model Channel {
+  id              String      @id @default(uuid())
+  server_id       String
+  parent_id       String?
+  name            String
+  type            ChannelType
+  position        Int
+  permissions     BigInt       @default(0)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+}
+
+enum ChannelType {
+  TEXT
+  VOICE
+  CATEGORY
+  VIDEO
+}
+
+model Message {
+  id              String      @id @default(uuid())
+  channel_id      String
+  user_id         String
+  content         String
+  attachment_url  String?
+  reply_to_id    String?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  @@index([channel_id, created_at])
+  @@index([user_id, created_at])
+  @@index([reply_to_id])
+}
+
+model MessageReaction {
+  id              String      @id @default(uuid())
+  message_id      String
+  user_id         String
+  emoji           String
+  created_at       DateTime  @default(now())
+
+  @@unique([message_id, user_id, emoji])
+}
+
+model Conversation {
+  id              String      @id @default(uuid())
+  type            ConversationType
+  created_at       DateTime  @default(now())
+}
+
+enum ConversationType {
+  DM
+  GROUP
+}
+
+model ConversationParticipant {
+  id              String      @id @default(uuid())
+  conversation_id String
+  user_id         String
+  joined_at       DateTime  @default(now())
+
+  @@unique([conversation_id, user_id])
+}
+
+model ConversationMessage {
+  id              String      @id @default(uuid())
+  conversation_id String
+  user_id         String
+  content         String
+  attachment_url  String?
+  created_at       DateTime  @default(now())
+}
+
+model FriendRequest {
+  id              String      @id @default(uuid())
+  sender_id       String
+  receiver_id     String
+  status          RequestStatus
+  created_at       DateTime  @default(now())
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model Friend {
+  user_a_id      String
+  user_b_id      String
+  created_at      DateTime  @default(now())
+
+  @@unique([user_a_id, user_b_id])
+}
+
+model Invite {
+  code              String      @id @default(uuid())
+  server_id        String
+  creator_id       String
+  max_uses         Int?
+  uses             Int         @default(0)
+  expires_at       DateTime?
+  created_at       DateTime  @default(now())
+
+  @@unique([code])
+}
+
+model Ban {
+  id              String      @id @default(uuid())
+  server_id        String
+  user_id         String
+  banned_by_id     String
+  reason          String
+  expires_at       DateTime?
+  created_at       DateTime  @default(now())
+}
+
+model Session {
+  id              String      @id @default(uuid())
+  user_id         String
+  expires         DateTime
+}
