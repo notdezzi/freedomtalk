@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022"],
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "incremental": true,
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/types/*": ["./src/types/*"]
+    }
+  },
+  "exclude": ["node_modules", ".next", "out", "dist", "build"],
+  "include": ["next-env.d.ts"],
+  "extends": ["@types/node", "@types/react"],
+  "plugins": [
+    {
+      "name": "next"
+    }
+  ],
+  "rules": {
+    "semi": [true, "always"],
+    "quotes": ["error", "avoid"],
+    "jsx-runtime": "preserve",
+    "noUnusedLocals": "error",
+    "noUnusedParameters": "error",
+    "noImplicitReturns": "error"
+  }
+}

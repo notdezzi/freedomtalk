@@ -1,0 +1,50 @@
+{
+  "name": "freedomtalk-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Open-source Discord alternative backend",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "format": "prettier --write .",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": ["discord", "real-time", "chat", "webrtc", "voice", "video"],
+  "author": "Max Zenkel",
+  "license": "MIT",
+  "dependencies": {
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "socket.io": "^4.8.0",
+    "socket.io-client": "^4.8.0",
+    "@prisma/client": "^6.0.0",
+    "prisma": "^6.0.0",
+    "ioredis": "^5.4.0",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.0",
+    "next-auth": "next-auth@prerelease",
+    "zod": "^4.0.0",
+    "sharp": "^0.33.0",
+    "@aws-sdk/client-s3": "^3.500.0",
+    "mediasoup": "^4.0.0",
+    "uuid": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.0.0",
+    "@types/bcrypt": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.0",
+    "typescript": "^5.0.0"
+    "prettier": "^3.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.0.0",
+    "@types/uuid": "^11.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
