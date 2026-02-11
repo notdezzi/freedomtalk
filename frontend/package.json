@@ -1,0 +1,27 @@
+{
+  "name": "freedomtalk-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Open-source Discord alternative frontend",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "format": "prettier --write .",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": ["discord", "react", "next.js", "real-time", "webrtc", "voice", "video", "mediasoup", "websocket", "shadcn", "tailwind"],
+  "author": "Max Zenkel",
+  "license": "MIT",
+  "dependencies": {
+    "next": "15.1.0",
+    "react": "19.0.0",
+    "socket.io-client": "^4.8.0",
+    "@tanstack/react-query": "^5.0.0",
+    "zod": "^4.0.0",
+    "lucide-react": "^0.500.0",
+    "date-fns": "^4.0.0",
+    "class-variance-authority": "^0.7.0"
+  }
+}
