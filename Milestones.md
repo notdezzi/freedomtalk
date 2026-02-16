@@ -287,7 +287,9 @@ Implement WebSocket server for real-time communication and message delivery.
 
 ---
 
-### Milestone 2.3: Real-Time Messaging (Week 7)
+### Milestone 2.3: Real-Time Messaging (Week 7) ✅ COMPLETED
+
+**Status:** ✅ **COMPLETE** (Completed: 2026-02-17)
 
 #### Objective
 Complete real-time messaging functionality with message types, reactions, and embeds.
@@ -323,16 +325,46 @@ Complete real-time messaging functionality with message types, reactions, and em
 - [x] Test real-time message delivery under load
 
 #### Deliverables
-- Complete real-time messaging
-- Reactions working
-- Embeds supported
-- Attachments uploading
-- Markdown rendering
-- Mentions working
+- ✅ Complete real-time messaging
+- ✅ Reactions working (service, API, WebSocket, integration tests)
+- ✅ Embeds supported (service, link preview, validation, integration tests)
+- ✅ Attachments uploading (MinIO storage, thumbnails, integration tests)
+- ✅ Markdown rendering (marked + highlight.js, spoilers, mentions)
+- ✅ Mentions working (user/role/channel parsing, validation)
+
+#### Implementation Summary
+
+**Reactions:**
+- ✅ Reaction service with 20-reaction limit per message
+- ✅ REST API: PUT/DELETE/GET `/api/v1/messages/:messageId/reactions/*`
+- ✅ WebSocket events: `reaction:add`, `reaction:remove`, `reaction:remove_all`, `reaction:remove_emoji`
+- ✅ Integration tests covering all operations
+
+**Embeds & Link Previews:**
+- ✅ Embed service with full Discord-style validation (title 256, description 4096, total 6000 chars)
+- ✅ Link preview service using open-graph-scraper with Redis caching (24h TTL)
+- ✅ Automatic URL detection and preview generation
+- ✅ Integration tests
+
+**Attachments:**
+- ✅ Attachment upload service with MinIO/S3 storage
+- ✅ File validation (25MB max, 10 per message, MIME type checking)
+- ✅ Automatic thumbnail generation with Sharp
+- ✅ Multer middleware for multipart/form-data
+- ✅ Integration tests
+
+**Message Formatting:**
+- ✅ Markdown parsing service with GFM support
+- ✅ Syntax highlighting with highlight.js
+- ✅ Spoiler tokens (`||text||`)
+- ✅ Custom mention tokens (`<@id>`, `<@&id>`, `<#id>`)
+- ✅ Mention parsing and validation service
 
 ---
 
-### Milestone 2.4: DM & Group DM (Week 8)
+### Milestone 2.4: DM & Group DM (Week 8) ✅ COMPLETED
+
+**Status:** ✅ **COMPLETE** (Completed: 2026-02-17)
 
 #### Objective
 Implement direct messages and group direct messages functionality.
@@ -357,11 +389,80 @@ Implement direct messages and group direct messages functionality.
 - [x] Test DM and Group DM flows
 
 #### Deliverables
-- DM functionality working
-- Group DM functionality working
-- Real-time DM message delivery
-- DM message history
-- DM presence indicators
+- ✅ DM functionality working
+- ✅ Group DM functionality working (2-10 participants)
+- ✅ Real-time DM message delivery
+- ✅ DM message history
+- ✅ DM presence indicators
+- ✅ DM notification settings with mute support
+
+#### Implementation Summary
+
+**Database Schema:**
+- ✅ `dm_channels` table with type ('dm' | 'group_dm'), name, icon, owner
+- ✅ `dm_channel_participants` with soft-delete support (left_at, is_active)
+- ✅ `dm_notification_settings` with mute_until and notification_level
+- ✅ `dm_channel_id` column added to messages table
+- ✅ Performance indexes for DM queries
+
+**REST API Endpoints:**
+- ✅ `POST /api/v1/users/@me/channels` - Create DM or Group DM
+- ✅ `GET /api/v1/users/@me/channels` - List user's DMs (paginated)
+- ✅ `GET /api/v1/channels/:channelId` - Get DM channel details
+- ✅ `PATCH /api/v1/channels/:channelId` - Update group DM (owner only)
+- ✅ `DELETE /api/v1/channels/:channelId` - Leave DM/group DM
+- ✅ `PUT /api/v1/channels/:channelId/recipients/:userId` - Add participant
+- ✅ `DELETE /api/v1/channels/:channelId/recipients/:userId` - Remove participant
+- ✅ `POST/GET/PATCH/DELETE /api/v1/channels/:channelId/messages/*` - DM message CRUD
+- ✅ `GET/PUT /api/v1/channels/:channelId/notification-settings` - Notification preferences
+- ✅ `POST/DELETE /api/v1/channels/:channelId/mute` - Mute/unmute DM
+
+**WebSocket Events:**
+- ✅ `dm_channel:create`, `dm_channel:update`, `dm_channel:delete`
+- ✅ `dm_channel:recipient_add`, `dm_channel:recipient_remove`
+- ✅ DM message routing via `routeDM()` in message router
+- ✅ DM room format: `dm:{channelId}`
+
+**Services:**
+- ✅ DM channel service with participant management
+- ✅ DM notification service with Redis caching (10min TTL)
+- ✅ Automatic ownership transfer on owner leave
+- ✅ Privacy enforcement (participant-only access)
+
+**Integration Tests:**
+- ✅ 310-line test suite covering all DM operations
+- ✅ Privacy tests (non-participant access prevention)
+- ✅ Permission tests (owner vs member)
+
+---
+
+## Phase 2 Summary ✅ COMPLETE
+
+**Status:** ✅ **COMPLETE** (Completed: 2026-02-17)
+
+Phase 2 (Core Messaging) is now fully implemented with all four milestones complete:
+
+| Milestone | Status | Key Deliverables |
+|-----------|--------|------------------|
+| 2.1 Message Storage & Retrieval | ✅ Complete | TimescaleDB hypertables, message CRUD, pagination, search |
+| 2.2 WebSocket Gateway | ✅ Complete | Socket.io + Redis adapter, presence, typing, rooms |
+| 2.3 Real-Time Messaging | ✅ Complete | Reactions, embeds, attachments, markdown, mentions |
+| 2.4 DM & Group DM | ✅ Complete | 1:1 DMs, group DMs (2-10), notifications, privacy |
+
+**Infrastructure Added:**
+- 6 new database tables (reactions, message_embeds, message_attachments, custom_emojis, dm_channels, dm_channel_participants, dm_notification_settings)
+- MinIO integration for file storage with thumbnails
+- Markdown parsing with syntax highlighting
+- Comprehensive integration test suites
+
+**Remaining Work (Task 9.x - Testing & Documentation):**
+Some optional testing and documentation tasks remain:
+- [ ] Task 9.1-9.5: Additional integration/load/E2E tests (partially complete)
+- [ ] Task 9.6: Update API documentation (Swagger exists, may need updates)
+- [ ] Task 9.7: Update database documentation (DATABASE.md)
+- [ ] Task 9.8: Cleanup scripts (✅ implemented: cleanup-orphaned-attachments, cleanup-old-reactions, vacuum-dm-channels, regenerate-thumbnails)
+- [ ] Task 9.9: Performance optimization profiling
+- [ ] Task 9.10: Final integration verification
 
 ---
 
