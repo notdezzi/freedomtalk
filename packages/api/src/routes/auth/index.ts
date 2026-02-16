@@ -117,6 +117,7 @@ export default async function authRoutes(app: FastifyInstance) {
 
           // Insert user profile (atomic with user creation)
           await trx('user_profiles').insert({
+            id: snowflake.generate(),
             user_id: userId,
             display_name: username,
           });
@@ -427,6 +428,7 @@ export default async function authRoutes(app: FastifyInstance) {
             });
 
             await trx('user_profiles').insert({
+              id: snowflake.generate(),
               user_id: userId,
               display_name: profile.name || profile.email.split('@')[0],
               avatar_url: profile.avatar,
@@ -528,6 +530,7 @@ export default async function authRoutes(app: FastifyInstance) {
             });
 
             await trx('user_profiles').insert({
+              id: snowflake.generate(),
               user_id: userId,
               display_name: profile.name || profile.email.split('@')[0],
               avatar_url: profile.avatar,

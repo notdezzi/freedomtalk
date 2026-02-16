@@ -11,6 +11,7 @@ import { successResponse } from '../../utils/errors';
 import { NotFoundError } from '../../types/api.types';
 import { db } from '../../config/database';
 import { logger } from '../../config/logger';
+import { snowflake } from '../../utils/snowflake';
 
 export default async function userRoutes(app: FastifyInstance) {
   /**
@@ -226,6 +227,7 @@ export default async function userRoutes(app: FastifyInstance) {
           } else {
             // Create profile if it doesn't exist
             await trx('user_profiles').insert({
+              id: snowflake.generate(),
               user_id: userId,
               ...updates,
             });
