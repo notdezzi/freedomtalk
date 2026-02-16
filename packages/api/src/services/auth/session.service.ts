@@ -6,7 +6,7 @@
  */
 
 import crypto from 'crypto';
-import { redisClient } from '../../config/redis';
+import { getRedisClient } from '../../config/redis';
 import { logger } from '../../config/logger';
 import { snowflake } from '../../utils/snowflake';
 
@@ -91,6 +91,8 @@ class SessionService {
    * @returns Session ID
    */
   async createSession(userId: string, data: Partial<SessionData> = {}): Promise<string> {
+    console.log('[DEBUG] SessionService.createSession() called for userId:', userId);
+
     const sessionId = snowflake.generate();
     const now = Date.now();
 
@@ -102,12 +104,18 @@ class SessionService {
     };
 
     const encrypted = this.encryptData(JSON.stringify(sessionData));
-    
+
+    console.log('[DEBUG] About to call getRedisClient().setEx()');
+
     // Store session with idle timeout
-    await redisClient.setEx(`session:${sessionId}`, this.IDLE_TIMEOUT, encrypted);
-    
+    await (await getRedisClient()).setEx(`session:${sessionId}`, this.IDLE_TIMEOUT, encrypted);
+
+    console.log('[DEBUG] Successfully called setEx(), now calling sAdd()');
+
     // Add to user's session set for multi-device logout
-    await redisClient.sAdd(`user_sessions:${userId}`, sessionId);
+    await (await getRedisClient()).sAdd(`user_sessions:${userId}`, sessionId);
+
+    console.log('[DEBUG] Session created successfully');
 
     logger.info({ userId, sessionId }, 'Session created');
     return sessionId;
@@ -119,7 +127,7 @@ class SessionService {
    * @returns Session data or null if not found
    */
   async getSession(sessionId: string): Promise<SessionData | null> {
-    const encrypted = await redisClient.get(`session:${sessionId}`);
+    const encrypted = await (await getRedisClient()).get(`session:${sessionId}`);
     if (!encrypted) {
       return null;
     }
@@ -160,7 +168,7 @@ class SessionService {
     };
 
     const encrypted = this.encryptData(JSON.stringify(updated));
-    await redisClient.setEx(`session:${sessionId}`, this.IDLE_TIMEOUT, encrypted);
+    await (await getRedisClient()).setEx(`session:${sessionId}`, this.IDLE_TIMEOUT, encrypted);
   }
 
   /**
@@ -170,9 +178,9 @@ class SessionService {
   async deleteSession(sessionId: string): Promise<void> {
     const session = await this.getSession(sessionId);
     if (session) {
-      await redisClient.sRem(`user_sessions:${session.userId}`, sessionId);
+      await (await getRedisClient()).sRem(`user_sessions:${session.userId}`, sessionId);
     }
-    await redisClient.del(`session:${sessionId}`);
+    await (await getRedisClient()).del(`session:${sessionId}`);
     logger.info({ sessionId }, 'Session deleted');
   }
 
@@ -181,10 +189,10 @@ class SessionService {
    * @param userId - User ID
    */
   async deleteUserSessions(userId: string): Promise<void> {
-    const sessionIds = await redisClient.sMembers(`user_sessions:${userId}`);
+    const sessionIds = await (await getRedisClient()).sMembers(`user_sessions:${userId}`);
 
     if (sessionIds.length > 0) {
-      const pipeline = redisClient.multi();
+      const pipeline = (await getRedisClient()).multi();
       for (const sessionId of sessionIds) {
         pipeline.del(`session:${sessionId}`);
       }

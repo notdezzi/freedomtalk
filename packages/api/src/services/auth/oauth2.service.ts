@@ -6,7 +6,7 @@
  */
 
 import crypto from 'crypto';
-import { redisClient } from '../../config/redis';
+import { getRedisClient } from '../../config/redis';
 import { logger } from '../../config/logger';
 
 /**
@@ -61,7 +61,7 @@ export abstract class OAuth2BaseService {
    * @param state - State parameter to save
    */
   protected async saveState(state: string): Promise<void> {
-    await redisClient.setEx(`oauth_state:${state}`, 600, '1'); // 10 minutes
+    await (await getRedisClient()).setEx(`oauth_state:${state}`, 600, '1'); // 10 minutes
   }
 
   /**
@@ -70,10 +70,10 @@ export abstract class OAuth2BaseService {
    * @returns True if valid, false otherwise
    */
   protected async validateState(state: string): Promise<boolean> {
-    const exists = await redisClient.get(`oauth_state:${state}`);
+    const exists = await (await getRedisClient()).get(`oauth_state:${state}`);
     if (exists) {
       // Delete state after validation (single-use)
-      await redisClient.del(`oauth_state:${state}`);
+      await (await getRedisClient()).del(`oauth_state:${state}`);
       return true;
     }
     return false;

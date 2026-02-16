@@ -6,8 +6,10 @@
  */
 
 import jwt, { SignOptions } from 'jsonwebtoken';
-import { redisClient } from '../../config/redis';
+import { getRedisClient } from '../../config/redis';
 import { logger } from '../../config/logger';
+import { AuthenticationError, ApiErrorCode } from '../../types/api.types';
+import { generateSnowflakeId } from '../../utils/snowflake';
 
 /**
  * JWT payload interface
@@ -56,6 +58,7 @@ class JWTService {
     const payload: JWTPayload = {
       userId,
       type: 'access',
+      jti: generateSnowflakeId(), // Unique token ID for token rotation security
       ...additionalPayload,
     };
 
@@ -76,6 +79,7 @@ class JWTService {
       userId,
       sessionId,
       type: 'refresh',
+      jti: generateSnowflakeId(), // Unique token ID for token rotation security
     };
 
     return jwt.sign(payload, this.privateKey, {
@@ -88,14 +92,14 @@ class JWTService {
    * Verify and decode JWT token
    * @param token - JWT token to verify
    * @returns Decoded token payload
-   * @throws Error if token is invalid, expired, or blacklisted
+   * @throws AuthenticationError if token is invalid, expired, or blacklisted
    */
   async verifyToken(token: string): Promise<JWTPayload> {
     try {
       // Check if token is blacklisted
       const isBlacklisted = await this.isBlacklisted(token);
       if (isBlacklisted) {
-        throw new Error('Token has been revoked');
+        throw new AuthenticationError('Token has been revoked', ApiErrorCode.TOKEN_REVOKED);
       }
 
       // Verify token signature and expiration
@@ -107,9 +111,9 @@ class JWTService {
       return decoded;
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
-        throw new Error('Token has expired');
+        throw new AuthenticationError('Token has expired', ApiErrorCode.TOKEN_EXPIRED);
       } else if (error instanceof jwt.JsonWebTokenError) {
-        throw new Error('Invalid token');
+        throw new AuthenticationError('Invalid token', ApiErrorCode.TOKEN_INVALID);
       }
       throw error;
     }
@@ -144,7 +148,8 @@ class JWTService {
     const ttl = decoded.exp - now;
 
     if (ttl > 0) {
-      await redisClient.setEx(`blacklist:${token}`, ttl, '1');
+      const redis = await getRedisClient();
+      await redis.setEx(`blacklist:${token}`, ttl, '1');
       logger.info({ userId: decoded.userId }, 'Token blacklisted');
     }
   }
@@ -155,7 +160,8 @@ class JWTService {
    * @returns True if blacklisted, false otherwise
    */
   async isBlacklisted(token: string): Promise<boolean> {
-    const result = await redisClient.get(`blacklist:${token}`);
+    const redis = await getRedisClient();
+    const result = await redis.get(`blacklist:${token}`);
     return result !== null;
   }
 }

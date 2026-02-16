@@ -338,6 +338,15 @@ export default async function authRoutes(app: FastifyInstance) {
       const { refresh_token } = request.body || {};
 
       try {
+        // Extract and blacklist access token from Authorization header
+        const authHeader = request.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          const accessToken = authHeader.substring(7);
+          await jwtService.blacklistToken(accessToken);
+          logger.info('Access token blacklisted during logout');
+        }
+
+        // Handle refresh token
         if (refresh_token) {
           // Decode token to get session ID (don't verify as it might be expired)
           const payload = jwtService.decodeToken(refresh_token);
@@ -373,12 +382,12 @@ export default async function authRoutes(app: FastifyInstance) {
 
   /**
    * GET /api/v1/auth/google/authorize
-   * Redirect to Google OAuth2 authorization page
+   * Get Google OAuth2 authorization URL
    */
   app.get('/google/authorize', async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       const authUrl = await googleOAuth2Service.getAuthorizationUrl();
-      reply.redirect(authUrl);
+      reply.send(successResponse({ authorizationUrl: authUrl }));
     } catch (error) {
       logger.error({ error }, 'Error generating Google auth URL');
       throw new ApiError(ApiErrorCode.OAUTH2_ERROR, 'Failed to initiate Google authentication', 500);
@@ -475,12 +484,12 @@ export default async function authRoutes(app: FastifyInstance) {
 
   /**
    * GET /api/v1/auth/github/authorize
-   * Redirect to GitHub OAuth2 authorization page
+   * Get GitHub OAuth2 authorization URL
    */
   app.get('/github/authorize', async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       const authUrl = await githubOAuth2Service.getAuthorizationUrl();
-      reply.redirect(authUrl);
+      reply.send(successResponse({ authorizationUrl: authUrl }));
     } catch (error) {
       logger.error({ error }, 'Error generating GitHub auth URL');
       throw new ApiError(ApiErrorCode.OAUTH2_ERROR, 'Failed to initiate GitHub authentication', 500);

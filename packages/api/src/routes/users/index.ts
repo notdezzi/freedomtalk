@@ -84,7 +84,7 @@ export default async function userRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const userId = (request as any).user.userId;
+        const userId = (request as any).user.id;
 
         // Get user data
         const user = await db('users').where({ id: userId }).first();
@@ -195,7 +195,7 @@ export default async function userRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const userId = (request as any).user.userId;
+        const userId = (request as any).user.id;
         const updates = request.body as {
           display_name?: string;
           bio?: string;

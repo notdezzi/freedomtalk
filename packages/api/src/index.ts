@@ -210,11 +210,11 @@ async function start() {
     // Register plugins
     await registerPlugins();
 
-    // Register routes
-    await registerRoutes();
-
     // Initialize infrastructure
     await initializeInfrastructure();
+
+    // Register routes
+    await registerRoutes();
 
     // Start listening
     await app.listen({ port: PORT, host: HOST });
