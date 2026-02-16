@@ -1,0 +1,110 @@
+#!/usr/bin/env node
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import 'dotenv/config';
+const execAsync = promisify(exec);
+const BACKUP_DIR = process.env.BACKUP_DIR || path.join(process.cwd(), 'backups');
+const DATABASE_URL = process.env.DATABASE_URL;
+const DAILY_RETENTION = 7;
+const WEEKLY_RETENTION = 4;
+async function createBackup() {
+    if (!DATABASE_URL) {
+        throw new Error('DATABASE_URL environment variable is not set');
+    }
+    await fs.mkdir(BACKUP_DIR, { recursive: true });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const dayOfWeek = new Date().getDay();
+    const isWeekly = dayOfWeek === 0;
+    const prefix = isWeekly ? 'weekly' : 'daily';
+    const filename = `${prefix}_backup_${timestamp}.dump`;
+    const backupPath = path.join(BACKUP_DIR, filename);
+    console.log(`📦 Creating ${prefix} backup: ${filename}`);
+    const command = `pg_dump "${DATABASE_URL}" -Fc -f "${backupPath}"`;
+    try {
+        await execAsync(command);
+        console.log(`✅ Backup created successfully: ${backupPath}`);
+        const stats = await fs.stat(backupPath);
+        const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+        console.log(`   Size: ${sizeMB} MB`);
+        return backupPath;
+    }
+    catch (error) {
+        console.error('❌ Backup failed:', error);
+        throw error;
+    }
+}
+async function getBackupFiles() {
+    try {
+        const files = await fs.readdir(BACKUP_DIR);
+        const backupFiles = [];
+        for (const file of files) {
+            if (file.endsWith('.dump')) {
+                const filePath = path.join(BACKUP_DIR, file);
+                const stats = await fs.stat(filePath);
+                const isWeekly = file.startsWith('weekly_');
+                backupFiles.push({
+                    path: filePath,
+                    name: file,
+                    timestamp: stats.mtime,
+                    isWeekly,
+                });
+            }
+        }
+        return backupFiles.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    }
+    catch (error) {
+        console.error('Error reading backup directory:', error);
+        return [];
+    }
+}
+async function applyRetentionPolicy() {
+    console.log('🧹 Applying retention policy...');
+    const backupFiles = await getBackupFiles();
+    const dailyBackups = backupFiles.filter(f => !f.isWeekly);
+    const weeklyBackups = backupFiles.filter(f => f.isWeekly);
+    const dailyToDelete = dailyBackups.slice(DAILY_RETENTION);
+    for (const backup of dailyToDelete) {
+        console.log(`   Deleting old daily backup: ${backup.name}`);
+        await fs.unlink(backup.path);
+    }
+    const weeklyToDelete = weeklyBackups.slice(WEEKLY_RETENTION);
+    for (const backup of weeklyToDelete) {
+        console.log(`   Deleting old weekly backup: ${backup.name}`);
+        await fs.unlink(backup.path);
+    }
+    const deletedCount = dailyToDelete.length + weeklyToDelete.length;
+    if (deletedCount > 0) {
+        console.log(`✅ Deleted ${deletedCount} old backup(s)`);
+    }
+    else {
+        console.log('✅ No old backups to delete');
+    }
+    const remainingBackups = await getBackupFiles();
+    const remainingDaily = remainingBackups.filter(f => !f.isWeekly).length;
+    const remainingWeekly = remainingBackups.filter(f => f.isWeekly).length;
+    console.log(`📊 Current backups: ${remainingDaily} daily, ${remainingWeekly} weekly`);
+}
+async function main() {
+    console.log('🚀 Starting database backup...');
+    console.log(`   Backup directory: ${BACKUP_DIR}`);
+    console.log(`   Retention policy: ${DAILY_RETENTION} daily, ${WEEKLY_RETENTION} weekly`);
+    console.log('');
+    try {
+        await createBackup();
+        console.log('');
+        await applyRetentionPolicy();
+        console.log('');
+        console.log('✅ Backup process completed successfully');
+    }
+    catch (error) {
+        console.error('❌ Backup process failed:', error);
+        process.exit(1);
+    }
+}
+if (require.main === module) {
+    main();
+}
+export { createBackup, applyRetentionPolicy };
+//# sourceMappingURL=backup-database.js.map

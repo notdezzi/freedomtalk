@@ -24,7 +24,7 @@ export const createMessageSchema = z.object({
         .string()
         .min(1, 'Message cannot be empty')
         .max(VALIDATION.MESSAGE.MAX_LENGTH, `Message must be at most ${VALIDATION.MESSAGE.MAX_LENGTH} characters`),
-    channelId: z.string().uuid('Invalid channel ID'),
+    channelId: z.string().length(20, 'Invalid channel ID').optional(),
 });
 export const createServerSchema = z.object({
     name: z
@@ -40,5 +40,23 @@ export const createChannelSchema = z.object({
         .max(VALIDATION.CHANNEL_NAME.MAX_LENGTH, `Channel name must be at most ${VALIDATION.CHANNEL_NAME.MAX_LENGTH} characters`),
     type: z.enum(['text', 'voice']),
     serverId: z.string().uuid('Invalid server ID'),
+});
+export const updateProfileSchema = z.object({
+    display_name: z.string().min(1).max(100).optional(),
+    bio: z.string().max(500).optional(),
+    pronouns: z.string().max(50).optional(),
+    avatar_url: z.string().url('Invalid avatar URL').optional(),
+    banner_url: z.string().url('Invalid banner URL').optional(),
+    custom_status: z.string().max(200).optional(),
+});
+export const refreshTokenSchema = z.object({
+    refresh_token: z.string().min(1, 'Refresh token is required'),
+});
+export const mfaVerifySchema = z.object({
+    code: z.string().length(6, 'MFA code must be 6 digits').regex(/^\d{6}$/, 'MFA code must be numeric'),
+});
+export const oauth2CallbackSchema = z.object({
+    code: z.string().min(1, 'Authorization code is required'),
+    state: z.string().min(1, 'State parameter is required'),
 });
 //# sourceMappingURL=index.js.map

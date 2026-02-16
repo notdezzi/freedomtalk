@@ -3,13 +3,14 @@ version: '3.8'
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:16-alpine
+    image: timescale/timescaledb:latest-pg16
     container_name: freedomtalk-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: freedomtalk
+    command: postgres -c shared_preload_libraries=timescaledb
     ports:
       - '5432:5432'
     volumes:

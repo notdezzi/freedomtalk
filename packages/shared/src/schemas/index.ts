@@ -32,7 +32,8 @@ export const createMessageSchema = z.object({
     .string()
     .min(1, 'Message cannot be empty')
     .max(VALIDATION.MESSAGE.MAX_LENGTH, `Message must be at most ${VALIDATION.MESSAGE.MAX_LENGTH} characters`),
-  channelId: z.string().uuid('Invalid channel ID'),
+  // Snowflake ID format (20 characters). Optional to support DM messages (Milestone 2.4) which don't require channels
+  channelId: z.string().length(20, 'Invalid channel ID').optional(),
 });
 
 // Server schemas
