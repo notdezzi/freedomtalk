@@ -78,3 +78,8 @@ docker-compose.override.yml
 *.sqlite
 *.sqlite3
 
+# Database backups
+backups/
+*.dump
+*.sql.gz
+
