@@ -1,7 +1,8 @@
+import 'dotenv/config';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
-import { logger, testConnection, closePool, connectRedis, disconnectRedis } from './config';
+import { testConnection, closePool, connectRedis, disconnectRedis } from './config';
 
 /**
  * Main application entry point
@@ -10,10 +11,23 @@ import { logger, testConnection, closePool, connectRedis, disconnectRedis } from
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || '0.0.0.0';
+const isDevelopment = process.env.NODE_ENV !== 'production';
 
 // Create Fastify instance with logger
 const app = Fastify({
-  logger,
+  logger: {
+    level: process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info'),
+    transport: isDevelopment
+      ? {
+          target: 'pino-pretty',
+          options: {
+            colorize: true,
+            translateTime: 'HH:MM:ss Z',
+            ignore: 'pid,hostname',
+          },
+        }
+      : undefined,
+  },
   requestIdLogLabel: 'reqId',
   disableRequestLogging: false,
   requestIdHeader: 'x-request-id',
@@ -68,13 +82,13 @@ async function initializeInfrastructure() {
     if (!dbConnected) {
       throw new Error('Failed to connect to database');
     }
-    logger.info('Database connection established');
+    app.log.info('Database connection established');
 
     // Connect to Redis
     await connectRedis();
-    logger.info('Redis connection established');
+    app.log.info('Redis connection established');
   } catch (error) {
-    logger.error({ err: error }, 'Failed to initialize infrastructure');
+    app.log.error({ err: error }, 'Failed to initialize infrastructure');
     throw error;
   }
 }
@@ -83,24 +97,24 @@ async function initializeInfrastructure() {
  * Graceful shutdown handler
  */
 async function gracefulShutdown(signal: string) {
-  logger.info(`Received ${signal}, starting graceful shutdown...`);
+  app.log.info(`Received ${signal}, starting graceful shutdown...`);
 
   try {
     // Close Fastify server
     await app.close();
-    logger.info('Fastify server closed');
+    app.log.info('Fastify server closed');
 
     // Close database pool
     await closePool();
-    logger.info('Database pool closed');
+    app.log.info('Database pool closed');
 
     // Disconnect Redis
     await disconnectRedis();
-    logger.info('Redis disconnected');
+    app.log.info('Redis disconnected');
 
     process.exit(0);
   } catch (error) {
-    logger.error({ err: error }, 'Error during graceful shutdown');
+    app.log.error({ err: error }, 'Error during graceful shutdown');
     process.exit(1);
   }
 }
@@ -122,9 +136,9 @@ async function start() {
     // Start listening
     await app.listen({ port: PORT, host: HOST });
 
-    logger.info(`Server listening on ${HOST}:${PORT}`);
+    app.log.info(`Server listening on ${HOST}:${PORT}`);
   } catch (error) {
-    logger.error({ err: error }, 'Failed to start server');
+    app.log.error({ err: error }, 'Failed to start server');
     process.exit(1);
   }
 }
@@ -135,12 +149,12 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Handle uncaught errors
 process.on('uncaughtException', (error) => {
-  logger.error({ err: error }, 'Uncaught exception');
+  app.log.error({ err: error }, 'Uncaught exception');
   gracefulShutdown('uncaughtException');
 });
 
 process.on('unhandledRejection', (reason) => {
-  logger.error({ err: reason }, 'Unhandled rejection');
+  app.log.error({ err: reason }, 'Unhandled rejection');
   gracefulShutdown('unhandledRejection');
 });
 
