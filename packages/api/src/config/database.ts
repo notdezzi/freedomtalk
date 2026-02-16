@@ -1,4 +1,5 @@
 import { Pool, PoolConfig } from 'pg';
+import knex, { Knex } from 'knex';
 
 /**
  * PostgreSQL connection pool configuration
@@ -14,6 +15,19 @@ const poolConfig: PoolConfig = {
 
 // Create the connection pool
 export const pool = new Pool(poolConfig);
+
+/**
+ * Knex instance for query building
+ * Uses the same configuration as the connection pool
+ */
+export const db: Knex = knex({
+  client: 'postgresql',
+  connection: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/freedomtalk',
+  pool: {
+    min: parseInt(process.env.DB_POOL_MIN || '2', 10),
+    max: parseInt(process.env.DB_POOL_MAX || '10', 10),
+  },
+});
 
 // Handle pool errors
 pool.on('error', (err) => {
