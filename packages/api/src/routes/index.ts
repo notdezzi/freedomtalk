@@ -7,6 +7,8 @@ import { FastifyInstance } from 'fastify';
 import authRoutes from './auth';
 import userRoutes from './users';
 import messageRoutes from './messages';
+import websocketRoutes from './websocket';
+import reactionRoutes from './reactions.routes';
 
 export default async function routes(app: FastifyInstance) {
   // API v1 routes
@@ -19,6 +21,12 @@ export default async function routes(app: FastifyInstance) {
 
     // Message routes: /api/v1/messages/*
     await v1.register(messageRoutes, { prefix: '/messages' });
+
+    // Reaction routes: /api/v1/messages/* (nested under messages)
+    await v1.register(reactionRoutes, { prefix: '/messages' });
+
+    // WebSocket routes: /api/v1/websocket/*
+    await v1.register(websocketRoutes, { prefix: '/websocket' });
   }, { prefix: '/api/v1' });
 }
 

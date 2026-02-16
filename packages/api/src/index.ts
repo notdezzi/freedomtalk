@@ -9,6 +9,8 @@ import swaggerUi from '@fastify/swagger-ui';
 import { testConnection, closePool, connectRedis, disconnectRedis } from './config';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import routes from './routes/index.js';
+import { wsServer } from './services/websocket/websocket.server';
+import { registerHandlers } from './services/websocket/handlers';
 
 /**
  * Main application entry point
@@ -177,12 +179,42 @@ async function initializeInfrastructure() {
 }
 
 /**
+ * Initialize WebSocket server
+ */
+async function initializeWebSocket() {
+  try {
+    // Initialize WebSocket server with Fastify HTTP server
+    await wsServer.initialize(app.server);
+    app.log.info('WebSocket server initialized');
+
+    // Register all event handlers
+    registerHandlers(wsServer.getIO());
+    app.log.info('WebSocket event handlers registered');
+  } catch (error) {
+    app.log.error({ err: error }, 'Failed to initialize WebSocket server');
+    throw error;
+  }
+}
+
+/**
  * Graceful shutdown handler
  */
 async function gracefulShutdown(signal: string) {
   app.log.info(`Received ${signal}, starting graceful shutdown...`);
 
   try {
+    // Close WebSocket server first (with 30s timeout)
+    const wsClosePromise = wsServer.close();
+    const wsTimeout = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        app.log.warn('WebSocket shutdown timeout, forcing close');
+        resolve();
+      }, 30000); // 30 second timeout
+    });
+
+    await Promise.race([wsClosePromise, wsTimeout]);
+    app.log.info('WebSocket server closed');
+
     // Close Fastify server
     await app.close();
     app.log.info('Fastify server closed');
@@ -220,6 +252,9 @@ async function start() {
     await app.listen({ port: PORT, host: HOST });
 
     app.log.info(`Server listening on ${HOST}:${PORT}`);
+
+    // Initialize WebSocket server after Fastify starts
+    await initializeWebSocket();
   } catch (error) {
     app.log.error({ err: error }, 'Failed to start server');
     process.exit(1);

@@ -1,6 +1,6 @@
 import type { Knex } from 'knex';
 import * as bcrypt from 'bcrypt';
-import { generateSnowflakeId } from '../dist/utils/snowflake.js';
+import { generateSnowflakeId } from '../src/utils/snowflake.js';
 
 /**
  * Seed test users for development

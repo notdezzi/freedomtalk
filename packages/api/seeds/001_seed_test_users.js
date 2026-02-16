@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcrypt';
-import { generateSnowflakeId } from '../dist/utils/snowflake.js';
+import { generateSnowflakeId } from '../src/utils/snowflake.js';
 export async function seed(knex) {
     const env = process.env.NODE_ENV || 'development';
     if (env === 'production') {

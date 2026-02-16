@@ -13,6 +13,8 @@ import { NotFoundError, ConflictError } from '../../../types/api.types';
 describe('MessageService', () => {
   let testUserId: string;
   let testUserId2: string;
+  let testServerId: string;
+  let testChannelId: string;
 
   beforeAll(async () => {
     // Create test users
@@ -37,11 +39,35 @@ describe('MessageService', () => {
         updated_at: new Date(),
       },
     ]);
+
+    // Create test server
+    testServerId = generateSnowflakeId();
+    await db('servers').insert({
+      id: testServerId,
+      name: 'Test Server',
+      owner_id: testUserId,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+
+    // Create test channel
+    testChannelId = generateSnowflakeId();
+    await db('channels').insert({
+      id: testChannelId,
+      server_id: testServerId,
+      name: 'test-channel',
+      type: 'text',
+      position: 0,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
   });
 
   afterAll(async () => {
     // Clean up test data
     await db('messages').where({ author_id: testUserId }).orWhere({ author_id: testUserId2 }).del();
+    await db('channels').where({ id: testChannelId }).del();
+    await db('servers').where({ id: testServerId }).del();
     await db('users').whereIn('id', [testUserId, testUserId2]).del();
   });
 
@@ -68,14 +94,13 @@ describe('MessageService', () => {
     });
 
     it('should create a message with channel ID', async () => {
-      const channelId = generateSnowflakeId();
       const message = await messageService.createMessage({
         content: 'Channel message',
         authorId: testUserId,
-        channelId,
+        channelId: testChannelId,
       });
 
-      expect(message.channel_id).toBe(channelId);
+      expect(message.channel_id).toBe(testChannelId);
     });
 
     it('should throw NotFoundError for non-existent author', async () => {
