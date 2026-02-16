@@ -1,0 +1,16 @@
+{
+  "name": "@freedomtalk/desktop",
+  "version": "0.1.0",
+  "description": "FreedomTalk Desktop - Electron desktop application",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "echo 'Desktop package not yet implemented'",
+    "build": "echo 'Desktop package not yet implemented'",
+    "start": "echo 'Desktop package not yet implemented'"
+  },
+  "keywords": ["electron", "desktop"],
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
+
