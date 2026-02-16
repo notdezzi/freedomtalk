@@ -73,17 +73,44 @@ src/
 
 ## API Endpoints
 
+### Documentation
+- **Swagger UI:** `http://localhost:3000/docs` - Interactive API documentation
+- **API Usage Guide:** See [docs/API_USAGE.md](./docs/API_USAGE.md) for detailed examples
+
 ### Health Check
 - `GET /health` - Server health status
 
-### API Info
-- `GET /api/v1` - API information
+### Authentication (`/api/v1/auth`)
+- `POST /register` - Register a new user
+- `POST /login` - Authenticate and receive tokens
+- `POST /refresh` - Refresh access token
+- `POST /logout` - Logout and invalidate session
+- `GET /google/authorize` - Initiate Google OAuth2 flow
+- `GET /google/callback` - Handle Google OAuth2 callback
+- `GET /github/authorize` - Initiate GitHub OAuth2 flow
+- `GET /github/callback` - Handle GitHub OAuth2 callback
+- `GET /session` - Get current session information
 
-Additional endpoints will be added as features are implemented.
+### Users (`/api/v1/users`)
+- `GET /@me` - Get current user profile (requires auth)
+- `PUT /@me` - Update current user profile (requires auth)
+
+For detailed request/response examples, see the [API Usage Guide](./docs/API_USAGE.md).
 
 ## Environment Variables
 
 See `.env.example` for all available configuration options.
+
+### Key Configuration
+
+- **JWT_PRIVATE_KEY / JWT_PUBLIC_KEY** - RS256 key pair for JWT signing
+- **SESSION_ENCRYPTION_KEY** - AES-256-GCM key for session encryption
+- **COOKIE_SECRET** - Secret for cookie signing
+- **RATE_LIMIT_MAX** - Maximum requests per time window (default: 100)
+- **RATE_LIMIT_WINDOW** - Rate limit time window (default: 1 minute)
+- **SWAGGER_ENABLED** - Enable/disable Swagger UI (default: true in development)
+- **GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET** - Google OAuth2 credentials
+- **GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET** - GitHub OAuth2 credentials
 
 ## Database
 
@@ -96,6 +123,29 @@ Structured logging is provided by Pino:
 - JSON logs in production
 - Configurable log levels via `LOG_LEVEL` environment variable
 
+## Features
+
+### Authentication & Security
+- **JWT Authentication** - RS256 algorithm with access/refresh tokens
+- **OAuth2 Integration** - Google and GitHub authentication
+- **Token Rotation** - Automatic refresh token rotation for enhanced security
+- **Session Management** - AES-256-GCM encrypted sessions in Redis
+- **Password Hashing** - bcrypt with configurable salt rounds
+- **Rate Limiting** - Redis-backed rate limiting per endpoint
+- **Redirect URI Validation** - Protection against open redirect attacks
+
+### API Infrastructure
+- **Swagger Documentation** - Auto-generated OpenAPI documentation
+- **Standardized Responses** - Consistent API response format
+- **Global Error Handling** - Centralized error handling with proper status codes
+- **Request Validation** - Zod schema validation for all inputs
+- **Transaction Support** - Atomic database operations using Knex transactions
+
+### Data Integrity
+- **Atomic User Creation** - User and profile created in single transaction
+- **Conflict Detection** - Duplicate email/username checking
+- **Profile Management** - Transaction-based profile updates
+
 ## Error Handling
 
 The server includes:
@@ -103,4 +153,6 @@ The server includes:
 - Uncaught exception handling
 - Unhandled rejection handling
 - Automatic infrastructure cleanup on shutdown
+- Standardized error responses with error codes
+- Detailed validation error messages
 

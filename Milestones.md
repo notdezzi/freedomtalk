@@ -90,28 +90,28 @@ Design and implement the complete database schema for users, authentication, and
 Implement comprehensive authentication system with OAuth2 and JWT support.
 
 **Tasks:**
-- [ ] Implement secure password hashing (bcrypt/Argon2)
-- [ ] Implement JWT token generation and validation
-- [ ] Implement access token and refresh token rotation
-- [ ] Implement session management in Redis
-- [ ] Implement session expiration and cleanup
-- [ ] Implement session invalidation
-- [ ] Implement OAuth2 authorization code flow
-- [ ] Implement OAuth2 implicit grant flow
-- [ ] Implement Google OAuth2 social login
-- [ ] Implement GitHub OAuth2 social login
-- [ ] Implement password reset flow
-  - [ ] Generate reset tokens
-  - [ ] Email reset instructions
-  - [ ] Token expiration
-- [ ] Implement email verification flow
-  - [ ] Generate verification tokens
-  - [ ] Email verification
-- [ ] Implement MFA setup and verification
-- [ ] Implement MFA backup codes
-- [ ] Implement secure session storage (encrypted in Redis)
-- [ ] Implement CSRF protection with state parameter
-- [ ] Implement secure cookie handling
+- [x] Implement secure password hashing (bcrypt/Argon2)
+- [x] Implement JWT token generation and validation
+- [x] Implement access token and refresh token rotation
+- [x] Implement session management in Redis
+- [x] Implement session expiration and cleanup
+- [x] Implement session invalidation
+- [x] Implement OAuth2 authorization code flow
+- [x] Implement OAuth2 implicit grant flow
+- [x] Implement Google OAuth2 social login
+- [x] Implement GitHub OAuth2 social login
+- [x] Implement password reset flow
+  - [x] Generate reset tokens
+  - [x] Email reset instructions
+  - [x] Token expiration
+- [x] Implement email verification flow
+  - [x] Generate verification tokens
+  - [x] Email verification
+- [x] Implement MFA setup and verification
+- [x] Implement MFA backup codes
+- [x] Implement secure session storage (encrypted in Redis)
+- [x] Implement CSRF protection with state parameter
+- [x] Implement secure cookie handling
 
 #### Deliverables
 - Complete authentication system
@@ -465,87 +465,7 @@ Implement comprehensive permission system with hierarchy and overwrites.
 
 ---
 
-## Phase 4: Threads (Weeks 13-14)
-
-### Objective
-Implement thread functionality, forum channels, and thread management.
-
-### Estimated Time: 2 weeks
-
----
-
-### Milestone 4.1: Thread Management (Week 13)
-
-#### Objective
-Implement thread creation, management, and operations.
-
-**Tasks:**
-- [ ] Create thread database schema
-- [ ] Create thread member database schema
-- [ ] Implement create public thread endpoint
-- [ ] Implement create private thread endpoint
-- [ ] Implement thread creation from message
-- [ ] Implement thread editing endpoint
-- [ ] Implement thread deletion endpoint
-- [ ] Implement thread lock/unlock endpoint
-- [ ] Implement thread archive/unarchive endpoint
-- [ ] Implement thread auto-archive duration update
-- [ ] Implement thread name update
-- [ ] Implement thread topic update
-- [ ] Implement thread message retrieval
-- [ ] Implement thread message pagination
-- [ ] Implement thread member list retrieval
-- [ ] Implement thread member add
-- [ ] Implement thread member remove
-- [ ] Implement thread member join timestamp tracking
-- [ ] Implement thread member flags (notification settings)
-- [ ] Implement thread membership display
-- [ ] Test thread operations
-
-#### Deliverables
-- Complete thread functionality
-- Thread creation and management
-- Thread membership tracking
-- Thread locking and archiving
-
----
-
-### Milestone 4.2: Forum Channels (Week 14)
-
-#### Objective
-Implement forum channel functionality with tags and post management.
-
-**Tasks:**
-- [ ] Create forum tag database schema
-- [ ] Create forum post database schema
-- [ ] Implement forum channel creation
-- [ ] Implement forum channel editing
-- [ ] Implement forum channel deletion
-- [ ] Implement forum tag creation
-- [ ] Implement forum tag editing
-- [ ] Implement forum tag deletion
-- [ ] Implement forum tag assignment to post
-- [ ] Implement forum tag requirement enforcement
-- [ ] Implement forum post creation
-- [ ] Implement forum post update
-- [ ] Implement forum post deletion
-- [ ] Implement forum post tagging
-- [ ] Implement forum post sorting (by activity, creation)
-- [ ] Implement forum post layout (list, gallery)
-- [ ] Implement forum post pinning
-- [ ] Implement forum post preview
-- [ ] Implement forum post search
-- [ ] Test forum functionality
-
-#### Deliverables
-- Forum channels working
-- Forum tags
-- Forum post management
-- Forum layouts and sorting
-
----
-
-## Phase 5: Voice & Video (Weeks 15-20)
+## Phase 4: Voice & Video (Weeks 15-20)
 
 ### Objective
 Implement voice channels, WebRTC, video calling, and media server.
@@ -554,7 +474,7 @@ Implement voice channels, WebRTC, video calling, and media server.
 
 ---
 
-### Milestone 5.1: Voice Channels & Connection (Weeks 15-16)
+### Milestone 4.1: Voice Channels & Connection (Weeks 15-16)
 
 #### Objective
 Implement voice channel management and connection handling.
@@ -585,7 +505,7 @@ Implement voice channel management and connection handling.
 
 ---
 
-### Milestone 5.2: Voice Administration (Week 17)
+### Milestone 4.2: Voice Administration (Week 17)
 
 #### Objective
 Implement voice channel administration features.
@@ -612,7 +532,7 @@ Implement voice channel administration features.
 
 ---
 
-### Milestone 5.3: Stage Channels (Week 18)
+### Milestone 4.3: Stage Channels (Week 18)
 
 #### Objective
 Implement stage channel functionality and stage instances.
@@ -639,7 +559,7 @@ Implement stage channel functionality and stage instances.
 
 ---
 
-### Milestone 5.4: Media Server Setup (Week 19)
+### Milestone 4.4: Media Server Setup (Week 19)
 
 #### Objective
 Set up media processing infrastructure and FFmpeg integration.
@@ -676,7 +596,7 @@ Set up media processing infrastructure and FFmpeg integration.
 
 ---
 
-### Milestone 5.5: WebRTC & Video Calling (Week 20)
+### Milestone 4.5: WebRTC & Video Calling (Week 20)
 
 #### Objective
 Implement WebRTC signaling and video calling functionality.
@@ -706,7 +626,7 @@ Implement WebRTC signaling and video calling functionality.
 
 ---
 
-## Phase 6: Search & Discovery (Weeks 21-22)
+## Phase 5: Search & Discovery (Weeks 21-22)
 
 ### Objective
 Implement full-text search, user search, server search, and server discovery.
@@ -715,7 +635,7 @@ Implement full-text search, user search, server search, and server discovery.
 
 ---
 
-### Milestone 6.1: Search Infrastructure (Week 21)
+### Milestone 5.1: Search Infrastructure (Week 21)
 
 #### Objective
 Set up search infrastructure with Elasticsearch.
@@ -747,7 +667,7 @@ Set up search infrastructure with Elasticsearch.
 
 ---
 
-### Milestone 6.2: Server Discovery (Week 22)
+### Milestone 5.2: Server Discovery (Week 22)
 
 #### Objective
 Implement server discovery directory and search features.
@@ -777,7 +697,7 @@ Implement server discovery directory and search features.
 
 ---
 
-## Phase 7: Advanced Features (Weeks 23-26)
+## Phase 6: Advanced Features (Weeks 23-26)
 
 ### Objective
 Implement advanced features including stickers, emojis, auto-moderation, scheduled events, and rich presence.
@@ -786,7 +706,7 @@ Implement advanced features including stickers, emojis, auto-moderation, schedul
 
 ---
 
-### Milestone 7.1: Emojis & Stickers (Week 23)
+### Milestone 6.1: Emojis & Stickers (Week 23)
 
 #### Objective
 Implement custom emojis and server stickers.
@@ -834,7 +754,7 @@ Implement custom emojis and server stickers.
 
 ---
 
-### Milestone 7.2: Auto Moderation (Week 24)
+### Milestone 6.2: Auto Moderation (Week 24)
 
 #### Objective
 Implement auto-moderation system with keyword filtering and rule management.
@@ -880,7 +800,7 @@ Implement auto-moderation system with keyword filtering and rule management.
 
 ---
 
-### Milestone 7.3: Scheduled Events (Week 25)
+### Milestone 6.3: Scheduled Events (Week 25)
 
 #### Objective
 Implement scheduled events with RSVP and management.
@@ -924,7 +844,7 @@ Implement scheduled events with RSVP and management.
 
 ---
 
-### Milestone 7.4: Rich Presence & Other Advanced Features (Week 26)
+### Milestone 6.4: Rich Presence & Other Advanced Features (Week 26)
 
 #### Objective
 Implement rich presence, embeds, and other advanced features.
@@ -979,7 +899,7 @@ Implement rich presence, embeds, and other advanced features.
 
 ---
 
-## Phase 8: Production (Weeks 27-30)
+## Phase 7: Production (Weeks 27-30)
 
 ### Objective
 Security hardening, performance optimization, monitoring setup, CI/CD optimization, and production deployment.
@@ -988,7 +908,7 @@ Security hardening, performance optimization, monitoring setup, CI/CD optimizati
 
 ---
 
-### Milestone 8.1: Security Hardening (Week 27)
+### Milestone 7.1: Security Hardening (Week 27)
 
 #### Objective
 Implement comprehensive security measures.
@@ -1031,7 +951,7 @@ Implement comprehensive security measures.
 
 ---
 
-### Milestone 8.2: Performance Optimization (Week 28)
+### Milestone 7.2: Performance Optimization (Week 28)
 
 #### Objective
 Optimize application performance and scalability.
@@ -1065,7 +985,7 @@ Optimize application performance and scalability.
 
 ---
 
-### Milestone 8.3: Monitoring & Observability (Week 29)
+### Milestone 7.3: Monitoring & Observability (Week 29)
 
 #### Objective
 Set up comprehensive monitoring and observability infrastructure.
@@ -1118,7 +1038,7 @@ Set up comprehensive monitoring and observability infrastructure.
 
 ---
 
-### Milestone 8.4: CI/CD & Production Deployment (Week 30)
+### Milestone 7.4: CI/CD & Production Deployment (Week 30)
 
 #### Objective
 Optimize CI/CD pipeline and deploy to production.
@@ -1172,11 +1092,10 @@ Optimize CI/CD pipeline and deploy to production.
 | Phase 1: Foundation & Auth | Weeks 1-4 | Infrastructure, Auth, Database |
 | Phase 2: Core Messaging | Weeks 5-8 | Messages, WebSocket, DMs |
 | Phase 3: Servers & Channels | Weeks 9-12 | Servers, Channels, Roles, Permissions |
-| Phase 4: Threads | Weeks 13-14 | Threads, Forum |
-| Phase 5: Voice & Video | Weeks 15-20 | Voice, Video, Media Server |
-| Phase 6: Search & Discovery | Weeks 21-22 | Search, Discovery |
-| Phase 7: Advanced Features | Weeks 23-26 | Emojis, Stickers, Auto-mod, Events, Presence |
-| Phase 8: Production | Weeks 27-30 | Security, Performance, Monitoring, Deployment |
+| Phase 4: Voice & Video | Weeks 15-20 | Voice, Video, Media Server |
+| Phase 5: Search & Discovery | Weeks 21-22 | Search, Discovery |
+| Phase 6: Advanced Features | Weeks 23-26 | Emojis, Stickers, Auto-mod, Events, Presence |
+| Phase 7: Production | Weeks 27-30 | Security, Performance, Monitoring, Deployment |
 
 ### Key Principles
 

@@ -2,7 +2,13 @@ import 'dotenv/config';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import cookie from '@fastify/cookie';
+import rateLimit from '@fastify/rate-limit';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import { testConnection, closePool, connectRedis, disconnectRedis } from './config';
+import { errorHandler, notFoundHandler } from './middleware/error.middleware';
+import routes from './routes/index.js';
 
 /**
  * Main application entry point
@@ -47,6 +53,89 @@ async function registerPlugins() {
     origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
     credentials: true,
   });
+
+  // Cookie support
+  await app.register(cookie, {
+    secret: process.env.COOKIE_SECRET || 'freedomtalk-cookie-secret-change-in-production',
+    parseOptions: {
+      httpOnly: true,
+      secure: !isDevelopment,
+      sameSite: 'lax',
+    },
+  });
+
+  // Swagger documentation (register before routes)
+  if (process.env.SWAGGER_ENABLED !== 'false') {
+    await app.register(swagger, {
+      openapi: {
+        info: {
+          title: 'FreedomTalk API',
+          description: 'Discord clone backend API - Real-time communication platform',
+          version: '0.1.0',
+          contact: {
+            name: 'FreedomTalk Team',
+            url: 'https://github.com/freedomtalk',
+          },
+          license: {
+            name: 'MIT',
+            url: 'https://opensource.org/licenses/MIT',
+          },
+        },
+        servers: [
+          {
+            url: `http://localhost:${PORT}`,
+            description: 'Development server',
+          },
+        ],
+        tags: [
+          { name: 'auth', description: 'Authentication endpoints' },
+          { name: 'users', description: 'User management endpoints' },
+          { name: 'health', description: 'Health check endpoints' },
+        ],
+        components: {
+          securitySchemes: {
+            bearerAuth: {
+              type: 'http',
+              scheme: 'bearer',
+              bearerFormat: 'JWT',
+              description: 'JWT access token',
+            },
+            cookieAuth: {
+              type: 'apiKey',
+              in: 'cookie',
+              name: 'session',
+              description: 'Session cookie',
+            },
+          },
+        },
+      },
+    });
+
+    await app.register(swaggerUi, {
+      routePrefix: '/docs',
+      uiConfig: {
+        docExpansion: 'list',
+        deepLinking: true,
+      },
+      staticCSP: true,
+      transformStaticCSP: (header) => header,
+    });
+  }
+
+  // Rate limiting (in-memory store)
+  // Note: Using in-memory store for now. For distributed rate limiting across
+  // multiple instances, consider using ioredis client in future milestone.
+  await app.register(rateLimit, {
+    global: true,
+    max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+    timeWindow: process.env.RATE_LIMIT_WINDOW || '1 minute',
+    cache: 10000, // Cache size for in-memory store
+    skipOnError: true,
+  });
+
+  // Error handlers
+  app.setErrorHandler(errorHandler);
+  app.setNotFoundHandler(notFoundHandler);
 }
 
 /**
@@ -62,14 +151,8 @@ async function registerRoutes() {
     };
   });
 
-  // API info endpoint
-  app.get('/api/v1', async () => {
-    return {
-      name: 'FreedomTalk API',
-      version: '0.1.0',
-      description: 'Discord clone backend API',
-    };
-  });
+  // Register API routes
+  await app.register(routes);
 }
 
 /**

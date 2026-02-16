@@ -54,10 +54,55 @@ export const createChannelSchema = z.object({
   serverId: z.string().uuid('Invalid server ID'),
 });
 
+// User profile schemas
+export const updateProfileSchema = z.object({
+  display_name: z.string().min(1).max(100).optional(),
+  bio: z.string().max(500).optional(),
+  pronouns: z.string().max(50).optional(),
+  avatar_url: z.string().url('Invalid avatar URL').optional(),
+  banner_url: z.string().url('Invalid banner URL').optional(),
+  custom_status: z.string().max(200).optional(),
+});
+
+// Token schemas
+export const refreshTokenSchema = z.object({
+  refresh_token: z.string().min(1, 'Refresh token is required'),
+});
+
+// MFA schemas
+export const mfaVerifySchema = z.object({
+  code: z.string().length(6, 'MFA code must be 6 digits').regex(/^\d{6}$/, 'MFA code must be numeric'),
+});
+
+// OAuth2 schemas
+export const oauth2CallbackSchema = z.object({
+  code: z.string().min(1, 'Authorization code is required'),
+  state: z.string().min(1, 'State parameter is required'),
+});
+
+// API Response wrapper type
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: any;
+  };
+  meta?: {
+    timestamp: string;
+    requestId?: string;
+  };
+}
+
 // Export types inferred from schemas
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 export type CreateServerInput = z.infer<typeof createServerSchema>;
 export type CreateChannelInput = z.infer<typeof createChannelSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
+export type MfaVerifyInput = z.infer<typeof mfaVerifySchema>;
+export type OAuth2CallbackInput = z.infer<typeof oauth2CallbackSchema>;
 
