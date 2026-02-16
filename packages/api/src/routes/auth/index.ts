@@ -11,6 +11,7 @@ import { AuthenticationError, ConflictError, ApiError, ApiErrorCode } from '../.
 import { jwtService } from '../../services/auth/jwt.service';
 import { sessionService } from '../../services/auth/session.service';
 import { passwordService } from '../../services/auth/password.service';
+import { mfaService } from '../../services/auth/mfa.service';
 import { googleOAuth2Service } from '../../services/auth/google-oauth.service';
 import { githubOAuth2Service } from '../../services/auth/github-oauth.service';
 import { db } from '../../config/database';
@@ -81,64 +82,60 @@ export default async function authRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: { username: string; email: string; password: string } }>, reply: FastifyReply) => {
       const { username, email, password } = request.body;
 
-      try {
-        // SECURITY FIX: Use Knex transaction for atomic user+profile creation
-        const result = await db.transaction(async (trx) => {
-          // Check if email already exists
-          const existingEmail = await trx('users').where({ email }).first();
-          if (existingEmail) {
-            throw new ConflictError('Email already registered');
-          }
+      // SECURITY FIX: Use Knex transaction for atomic user+profile creation
+      const result = await db.transaction(async (trx) => {
+        // Check if email already exists
+        const existingEmail = await trx('users').where({ email }).first();
+        if (existingEmail) {
+          throw new ConflictError('Email already registered');
+        }
 
-          // Check if username already exists
-          const existingUsername = await trx('users').where({ username }).first();
-          if (existingUsername) {
-            throw new ConflictError('Username already taken');
-          }
+        // Check if username already exists
+        const existingUsername = await trx('users').where({ username }).first();
+        if (existingUsername) {
+          throw new ConflictError('Username already taken');
+        }
 
-          // Hash password
-          const passwordHash = await passwordService.hashPassword(password);
+        // Hash password
+        const passwordHash = await passwordService.hashPassword(password);
 
-          // Generate user ID
-          const userId = snowflake.generate();
+        // Generate user ID
+        const userId = snowflake.generate();
 
-          // Insert user
-          await trx('users').insert({
-            id: userId,
-            email,
-            username,
-            password_hash: passwordHash,
-            email_verified: false,
-            mfa_enabled: false,
-            account_status: 'active',
-            created_at: new Date(),
-            updated_at: new Date(),
-          });
-
-          // Insert user profile (atomic with user creation)
-          await trx('user_profiles').insert({
-            id: snowflake.generate(),
-            user_id: userId,
-            display_name: username,
-          });
-
-          return { userId, username, email };
+        // Insert user
+        await trx('users').insert({
+          id: userId,
+          email,
+          username,
+          password_hash: passwordHash,
+          email_verified: false,
+          mfa_enabled: false,
+          account_status: 'active',
+          created_at: new Date(),
+          updated_at: new Date(),
         });
 
-        logger.info({ userId: result.userId, email: result.email }, 'User registered successfully');
+        // Insert user profile (atomic with user creation)
+        await trx('user_profiles').insert({
+          id: snowflake.generate(),
+          user_id: userId,
+          display_name: username,
+        });
 
-        // Return standardized response
-        reply.status(201).send(
-          successResponse({
-            userId: result.userId,
-            username: result.username,
-            email: result.email,
-            message: 'Registration successful. Please verify your email.',
-          })
-        );
-      } catch (error) {
-        throw error;
-      }
+        return { userId, username, email };
+      });
+
+      logger.info({ userId: result.userId, email: result.email }, 'User registered successfully');
+
+      // Return standardized response
+      reply.status(201).send(
+        successResponse({
+          userId: result.userId,
+          username: result.username,
+          email: result.email,
+          message: 'Registration successful. Please verify your email.',
+        })
+      );
     }
   );
 
@@ -211,38 +208,126 @@ export default async function authRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: { email: string; password: string } }>, reply: FastifyReply) => {
       const { email, password } = request.body;
 
+      // Find user by email
+      const user = await db('users').where({ email }).first();
+      if (!user) {
+        throw new AuthenticationError('Invalid credentials');
+      }
+
+      // Verify password
+      const isValid = await passwordService.verifyPassword(password, user.password_hash);
+      if (!isValid) {
+        logger.warn({ email, ip: request.ip }, 'Failed login attempt');
+        throw new AuthenticationError('Invalid credentials');
+      }
+
+      // Check account status
+      if (user.account_status !== 'active') {
+        throw new AuthenticationError('Account is not active');
+      }
+
+      // Create session
+      const sessionId = await sessionService.createSession(user.id, {
+        ipAddress: request.ip,
+        userAgent: request.headers['user-agent'],
+        mfaVerified: false, // Initially not verified
+      });
+
+      // Check if MFA is enabled for this user
+      if (user.mfa_enabled) {
+        logger.info({ userId: user.id, sessionId }, 'MFA verification required');
+
+        // Return MFA challenge - no tokens yet
+        return reply.send(
+          successResponse({
+            mfaRequired: true,
+            sessionId,
+            message: 'MFA verification required',
+          })
+        );
+      }
+
+      // No MFA required - generate tokens immediately
+      const accessToken = jwtService.generateAccessToken(user.id);
+      const refreshToken = jwtService.generateRefreshToken(user.id, sessionId);
+
+      logger.info({ userId: user.id, sessionId }, 'User logged in successfully');
+
+      // Return standardized response
+      reply.send(
+        successResponse({
+          accessToken,
+          refreshToken,
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            emailVerified: user.email_verified,
+          },
+        })
+      );
+    }
+  );
+
+  /**
+   * POST /api/v1/auth/mfa/verify
+   * Verify MFA code and complete login
+   */
+  app.post(
+    '/mfa/verify',
+    {
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: '5 minutes',
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Body: { sessionId: string; code: string } }>, reply: FastifyReply) => {
+      const { sessionId, code } = request.body;
+
+      if (!sessionId || !code) {
+        throw new AuthenticationError('Session ID and code are required');
+      }
+
       try {
-        // Find user by email
-        const user = await db('users').where({ email }).first();
-        if (!user) {
-          throw new AuthenticationError('Invalid credentials');
+        // Get session
+        const session = await sessionService.getSession(sessionId);
+        if (!session) {
+          throw new AuthenticationError('Invalid or expired session');
         }
 
-        // Verify password
-        const isValid = await passwordService.verifyPassword(password, user.password_hash);
-        if (!isValid) {
-          logger.warn({ email, ip: request.ip }, 'Failed login attempt');
-          throw new AuthenticationError('Invalid credentials');
+        // Get user
+        const user = await db('users').where({ id: session.userId }).first();
+        if (!user || !user.mfa_enabled) {
+          throw new AuthenticationError('MFA not enabled for this user');
         }
 
-        // Check account status
-        if (user.account_status !== 'active') {
-          throw new AuthenticationError('Account is not active');
+        // Verify TOTP code or backup code
+        let verified = await mfaService.verifyTOTP(user.id, code);
+
+        if (!verified) {
+          // Try backup code if TOTP failed
+          verified = await mfaService.verifyBackupCode(user.id, code);
         }
 
-        // Create session
-        const sessionId = await sessionService.createSession(user.id, {
-          ipAddress: request.ip,
-          userAgent: request.headers['user-agent'],
+        if (!verified) {
+          logger.warn({ userId: user.id, sessionId }, 'Invalid MFA code');
+          throw new AuthenticationError('Invalid MFA code');
+        }
+
+        // Update session to mark MFA as verified
+        await sessionService.updateSession(sessionId, {
+          mfaVerified: true,
         });
 
-        // Generate tokens
-        const accessToken = jwtService.generateAccessToken(user.id);
+        // Generate tokens with sessionId included in access token
+        const accessToken = jwtService.generateAccessToken(user.id, { sessionId });
         const refreshToken = jwtService.generateRefreshToken(user.id, sessionId);
 
-        logger.info({ userId: user.id, sessionId }, 'User logged in successfully');
+        logger.info({ userId: user.id, sessionId }, 'MFA verified successfully');
 
-        // Return standardized response
+        // Return tokens
         reply.send(
           successResponse({
             accessToken,
@@ -293,11 +378,19 @@ export default async function authRoutes(app: FastifyInstance) {
           throw new AuthenticationError('Session expired');
         }
 
+        // Get user to check MFA status
+        const user = await db('users').where({ id: payload.userId }).first();
+        if (!user) {
+          throw new AuthenticationError('User not found');
+        }
+
         // SECURITY: Token rotation - blacklist old refresh token
         await jwtService.blacklistToken(refresh_token);
 
-        // Generate new tokens
-        const newAccessToken = jwtService.generateAccessToken(payload.userId);
+        // Generate new tokens - include sessionId in access token if MFA is enabled
+        const newAccessToken = user.mfa_enabled
+          ? jwtService.generateAccessToken(payload.userId, { sessionId: payload.sessionId })
+          : jwtService.generateAccessToken(payload.userId);
         const newRefreshToken = jwtService.generateRefreshToken(payload.userId, payload.sessionId);
 
         // Update session activity
@@ -454,9 +547,24 @@ export default async function authRoutes(app: FastifyInstance) {
         const sessionId = await sessionService.createSession(user.id, {
           ipAddress: request.ip,
           userAgent: request.headers['user-agent'],
+          mfaVerified: false,
         });
 
-        // Generate tokens
+        // Check if MFA is enabled for this user
+        if (user.mfa_enabled) {
+          logger.info({ userId: user.id, sessionId }, 'MFA verification required for OAuth login');
+
+          // Return MFA challenge - no tokens yet
+          return reply.send(
+            successResponse({
+              mfaRequired: true,
+              sessionId,
+              message: 'MFA verification required',
+            })
+          );
+        }
+
+        // No MFA required - generate tokens immediately
         const accessToken = jwtService.generateAccessToken(user.id);
         const refreshToken = jwtService.generateRefreshToken(user.id, sessionId);
 
@@ -556,9 +664,24 @@ export default async function authRoutes(app: FastifyInstance) {
         const sessionId = await sessionService.createSession(user.id, {
           ipAddress: request.ip,
           userAgent: request.headers['user-agent'],
+          mfaVerified: false,
         });
 
-        // Generate tokens
+        // Check if MFA is enabled for this user
+        if (user.mfa_enabled) {
+          logger.info({ userId: user.id, sessionId }, 'MFA verification required for OAuth login');
+
+          // Return MFA challenge - no tokens yet
+          return reply.send(
+            successResponse({
+              mfaRequired: true,
+              sessionId,
+              message: 'MFA verification required',
+            })
+          );
+        }
+
+        // No MFA required - generate tokens immediately
         const accessToken = jwtService.generateAccessToken(user.id);
         const refreshToken = jwtService.generateRefreshToken(user.id, sessionId);
 

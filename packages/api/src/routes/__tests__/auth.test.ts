@@ -6,12 +6,10 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { build } from '../../app';
 import { FastifyInstance } from 'fastify';
 import { db } from '../../config/database';
-import { redisClient } from '../../config/redis';
 
 describe('Authentication Routes', () => {
   let app: FastifyInstance;
   let testUserId: string;
-  let accessToken: string;
   let refreshToken: string;
 
   beforeAll(async () => {
@@ -29,8 +27,15 @@ describe('Authentication Routes', () => {
   });
 
   beforeEach(async () => {
-    // Clear any existing test user
-    await db('users').where({ email: 'test@example.com' }).del();
+    // Clear any existing test user (delete profiles first due to foreign key)
+    const existingUsers = await db('users')
+      .where({ email: 'test@example.com' })
+      .orWhere({ username: 'testuser' })
+      .select('id');
+    if (existingUsers.length > 0) {
+      await db('user_profiles').whereIn('user_id', existingUsers.map(u => u.id)).del();
+    }
+    await db('users').where({ email: 'test@example.com' }).orWhere({ username: 'testuser' }).del();
   });
 
   describe('POST /api/v1/auth/register', () => {
@@ -120,6 +125,12 @@ describe('Authentication Routes', () => {
           password: 'SecurePass123!',
         },
       });
+
+      // Ensure registration succeeded before extracting userId
+      if (response.statusCode !== 201) {
+        throw new Error(`Registration failed with status ${response.statusCode}: ${response.body}`);
+      }
+
       testUserId = JSON.parse(response.body).data.userId;
     });
 
@@ -140,7 +151,6 @@ describe('Authentication Routes', () => {
       expect(body.data.refreshToken).toBeDefined();
       expect(body.data.user.email).toBe('test@example.com');
 
-      accessToken = body.data.accessToken;
       refreshToken = body.data.refreshToken;
     });
 
@@ -164,7 +174,7 @@ describe('Authentication Routes', () => {
   describe('POST /api/v1/auth/refresh', () => {
     beforeEach(async () => {
       // Create and login test user
-      await app.inject({
+      const registerResponse = await app.inject({
         method: 'POST',
         url: '/api/v1/auth/register',
         payload: {
@@ -174,6 +184,10 @@ describe('Authentication Routes', () => {
         },
       });
 
+      if (registerResponse.statusCode !== 201) {
+        throw new Error(`Registration failed with status ${registerResponse.statusCode}: ${registerResponse.body}`);
+      }
+
       const loginResponse = await app.inject({
         method: 'POST',
         url: '/api/v1/auth/login',
@@ -182,6 +196,10 @@ describe('Authentication Routes', () => {
           password: 'SecurePass123!',
         },
       });
+
+      if (loginResponse.statusCode !== 200) {
+        throw new Error(`Login failed with status ${loginResponse.statusCode}: ${loginResponse.body}`);
+      }
 
       const loginBody = JSON.parse(loginResponse.body);
       testUserId = loginBody.data.user.id;
@@ -233,7 +251,7 @@ describe('Authentication Routes', () => {
   describe('POST /api/v1/auth/logout', () => {
     beforeEach(async () => {
       // Create and login test user
-      await app.inject({
+      const registerResponse = await app.inject({
         method: 'POST',
         url: '/api/v1/auth/register',
         payload: {
@@ -243,6 +261,10 @@ describe('Authentication Routes', () => {
         },
       });
 
+      if (registerResponse.statusCode !== 201) {
+        throw new Error(`Registration failed with status ${registerResponse.statusCode}: ${registerResponse.body}`);
+      }
+
       const loginResponse = await app.inject({
         method: 'POST',
         url: '/api/v1/auth/login',
@@ -251,6 +273,10 @@ describe('Authentication Routes', () => {
           password: 'SecurePass123!',
         },
       });
+
+      if (loginResponse.statusCode !== 200) {
+        throw new Error(`Login failed with status ${loginResponse.statusCode}: ${loginResponse.body}`);
+      }
 
       const loginBody = JSON.parse(loginResponse.body);
       testUserId = loginBody.data.user.id;

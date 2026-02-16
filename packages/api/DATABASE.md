@@ -21,6 +21,8 @@ erDiagram
     users ||--o{ sessions : "has many"
     users ||--o{ refresh_tokens : "has many"
     users ||--o{ password_resets : "has many"
+    users ||--o{ messages : "authors"
+    messages ||--o{ message_history : "has edit history"
     
     users {
         string id PK "Snowflake ID"
@@ -93,6 +95,29 @@ erDiagram
         timestamp used_at
         timestamp expires_at
         string ip_address
+        timestamp created_at
+    }
+
+    messages {
+        string id PK "Snowflake ID"
+        text content "Message content"
+        string author_id FK "Message author"
+        string channel_id "Channel ID (nullable)"
+        boolean is_edited
+        timestamp edited_at
+        boolean is_deleted
+        timestamp deleted_at
+        boolean is_pinned
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    message_history {
+        string id "Snowflake ID (no PK)"
+        string message_id FK "Original message"
+        text content "Previous content"
+        string edited_by FK "Editor user ID"
+        timestamp edited_at "Edit timestamp (partition key)"
         timestamp created_at
     }
 ```
@@ -597,6 +622,141 @@ All recommended indexes are already created by migrations:
 5. **Encryption**: Consider encrypting sensitive columns (e.g., mfa_secret)
 6. **Audit logging**: Log all authentication and authorization events
 7. **Rate limiting**: Implement rate limiting for authentication endpoints
+
+### `messages` Table
+
+Stores all messages sent in channels and direct messages.
+
+**Schema:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `VARCHAR(20)` | PRIMARY KEY | Snowflake ID |
+| `content` | `TEXT` | NOT NULL | Message content (max 2000 chars) |
+| `author_id` | `VARCHAR(20)` | NOT NULL, FK → users(id) CASCADE | Message author |
+| `channel_id` | `VARCHAR(20)` | NULLABLE | Channel ID (null for DMs) |
+| `is_edited` | `BOOLEAN` | DEFAULT false | Whether message was edited |
+| `edited_at` | `TIMESTAMPTZ` | NULLABLE | Last edit timestamp |
+| `is_deleted` | `BOOLEAN` | DEFAULT false | Soft delete flag |
+| `deleted_at` | `TIMESTAMPTZ` | NULLABLE | Deletion timestamp |
+| `is_pinned` | `BOOLEAN` | DEFAULT false | Pin status |
+| `created_at` | `TIMESTAMPTZ` | DEFAULT NOW() | Creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | DEFAULT NOW() | Last update timestamp |
+
+**Indexes:**
+- `idx_messages_author_id` on `author_id`
+- `idx_messages_channel_id` on `channel_id`
+- `idx_messages_created_at` on `created_at`
+- `idx_messages_channel_created` on `(channel_id, created_at)` (composite for pagination)
+- `idx_messages_is_deleted` on `is_deleted`
+
+**Foreign Keys:**
+- `author_id` → `users(id)` ON DELETE CASCADE
+
+**Example Queries:**
+
+```sql
+-- Get recent messages in a channel
+SELECT m.*, u.username, u.avatar_url
+FROM messages m
+JOIN users u ON m.author_id = u.id
+WHERE m.channel_id = '1234567890123456789'
+  AND m.is_deleted = false
+ORDER BY m.created_at DESC
+LIMIT 50;
+
+-- Get messages with cursor-based pagination
+SELECT m.*, u.username
+FROM messages m
+JOIN users u ON m.author_id = u.id
+WHERE m.channel_id = '1234567890123456789'
+  AND m.is_deleted = false
+  AND m.id < '1234567890123456789'  -- cursor
+ORDER BY m.created_at DESC
+LIMIT 50;
+
+-- Search messages by content
+SELECT m.*, u.username
+FROM messages m
+JOIN users u ON m.author_id = u.id
+WHERE m.channel_id = '1234567890123456789'
+  AND m.is_deleted = false
+  AND m.content ILIKE '%search term%'
+ORDER BY m.created_at DESC;
+
+-- Get pinned messages
+SELECT m.*, u.username
+FROM messages m
+JOIN users u ON m.author_id = u.id
+WHERE m.channel_id = '1234567890123456789'
+  AND m.is_pinned = true
+  AND m.is_deleted = false
+ORDER BY m.created_at DESC;
+```
+
+---
+
+### `message_history` Table (TimescaleDB Hypertable)
+
+Stores edit history for messages using TimescaleDB for efficient time-series storage and automatic partitioning.
+
+**Schema:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `VARCHAR(20)` | NOT NULL | Snowflake ID (no PK due to hypertable) |
+| `message_id` | `VARCHAR(20)` | NOT NULL, FK → messages(id) CASCADE | Original message ID |
+| `content` | `TEXT` | NOT NULL | Previous message content |
+| `edited_by` | `VARCHAR(20)` | NOT NULL, FK → users(id) CASCADE | User who made the edit |
+| `edited_at` | `TIMESTAMPTZ` | NOT NULL | Edit timestamp (partitioning column) |
+| `created_at` | `TIMESTAMPTZ` | DEFAULT NOW() | Record creation timestamp |
+
+**Indexes:**
+- `idx_message_history_id` on `id`
+- `idx_message_history_message_id` on `message_id`
+- `idx_message_history_edited_at` on `edited_at`
+
+**TimescaleDB Configuration:**
+- Hypertable partitioned by `edited_at`
+- Automatic time-based partitioning
+- Optimized for time-series queries
+
+**Foreign Keys:**
+- `message_id` → `messages(id)` ON DELETE CASCADE
+- `edited_by` → `users(id)` ON DELETE CASCADE
+
+**Important Notes:**
+- This table uses TimescaleDB's hypertable feature for automatic partitioning
+- The `id` field does NOT have a PRIMARY KEY constraint because TimescaleDB requires all unique indexes to include the partitioning column (`edited_at`)
+- History records are append-only and should never be updated or deleted manually
+
+**Example Queries:**
+
+```sql
+-- Get edit history for a message
+SELECT h.*, u.username as editor_username
+FROM message_history h
+JOIN users u ON h.edited_by = u.id
+WHERE h.message_id = '1234567890123456789'
+ORDER BY h.edited_at DESC;
+
+-- Get all edits in a time range
+SELECT h.*, m.content as current_content, u.username
+FROM message_history h
+JOIN messages m ON h.message_id = m.id
+JOIN users u ON h.edited_by = u.id
+WHERE h.edited_at BETWEEN '2026-01-01' AND '2026-01-31'
+ORDER BY h.edited_at DESC;
+
+-- Count edits per message
+SELECT message_id, COUNT(*) as edit_count
+FROM message_history
+GROUP BY message_id
+ORDER BY edit_count DESC
+LIMIT 10;
+```
+
+---
 
 ## Troubleshooting
 

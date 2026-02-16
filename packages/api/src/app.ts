@@ -109,6 +109,10 @@ export async function build(options: { skipRateLimit?: boolean } = {}): Promise<
     });
   }
 
+  // Error handlers (must be registered BEFORE routes)
+  app.setErrorHandler(errorHandler);
+  app.setNotFoundHandler(notFoundHandler);
+
   // Health check endpoint
   app.get('/health', async () => {
     return {
@@ -120,10 +124,6 @@ export async function build(options: { skipRateLimit?: boolean } = {}): Promise<
 
   // Register routes
   await app.register(routes);
-
-  // Error handlers
-  app.setErrorHandler(errorHandler);
-  app.setNotFoundHandler(notFoundHandler);
 
   return app;
 }

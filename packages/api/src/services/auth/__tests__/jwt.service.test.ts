@@ -7,7 +7,7 @@
  * Run tests with proper environment configuration.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { jwtService } from '../jwt.service';
 import { redisClient } from '../../../config/redis';
 

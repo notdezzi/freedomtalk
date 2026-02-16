@@ -4,7 +4,7 @@
  * Tests for password hashing, verification, and strength validation.
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { passwordService } from '../password.service';
 
 describe('PasswordService', () => {

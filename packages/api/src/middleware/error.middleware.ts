@@ -39,7 +39,7 @@ export async function errorHandler(
       field: err.path.join('.'),
       message: err.message,
     }));
-    
+
     reply.status(400).send(validationErrorResponse(formattedErrors, requestId));
     return;
   }
@@ -53,15 +53,20 @@ export async function errorHandler(
   // Handle Fastify errors
   if ('statusCode' in error && error.statusCode) {
     const fastifyError = error as FastifyError;
-    
+
     // Map Fastify error codes to ApiErrorCode
     let apiErrorCode = ApiErrorCode.INTERNAL_SERVER_ERROR;
-    if (fastifyError.statusCode === 400) apiErrorCode = ApiErrorCode.INVALID_INPUT;
+    // Check if it's a validation error (Fastify schema validation)
+    if (fastifyError.statusCode === 400 && (fastifyError.code === 'FST_ERR_VALIDATION' || fastifyError.validation)) {
+      apiErrorCode = ApiErrorCode.VALIDATION_ERROR;
+    } else if (fastifyError.statusCode === 400) {
+      apiErrorCode = ApiErrorCode.INVALID_INPUT;
+    }
     if (fastifyError.statusCode === 401) apiErrorCode = ApiErrorCode.UNAUTHORIZED;
     if (fastifyError.statusCode === 403) apiErrorCode = ApiErrorCode.FORBIDDEN;
     if (fastifyError.statusCode === 404) apiErrorCode = ApiErrorCode.NOT_FOUND;
     if (fastifyError.statusCode === 429) apiErrorCode = ApiErrorCode.RATE_LIMIT_EXCEEDED;
-    
+
     reply.status(fastifyError.statusCode || 500).send(
       genericErrorResponse(fastifyError.message, apiErrorCode, requestId)
     );

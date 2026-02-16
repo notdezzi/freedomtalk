@@ -27,11 +27,18 @@ describe('User Routes', () => {
   });
 
   beforeEach(async () => {
-    // Clear any existing test user
-    await db('users').where({ email: 'test@example.com' }).del();
+    // Clear any existing test user (delete profiles first due to foreign key)
+    const existingUsers = await db('users')
+      .where({ email: 'test@example.com' })
+      .orWhere({ username: 'testuser' })
+      .select('id');
+    if (existingUsers.length > 0) {
+      await db('user_profiles').whereIn('user_id', existingUsers.map(u => u.id)).del();
+    }
+    await db('users').where({ email: 'test@example.com' }).orWhere({ username: 'testuser' }).del();
 
     // Create and login test user
-    await app.inject({
+    const registerResponse = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/register',
       payload: {
@@ -41,6 +48,10 @@ describe('User Routes', () => {
       },
     });
 
+    if (registerResponse.statusCode !== 201) {
+      throw new Error(`Registration failed with status ${registerResponse.statusCode}: ${registerResponse.body}`);
+    }
+
     const loginResponse = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
@@ -49,6 +60,10 @@ describe('User Routes', () => {
         password: 'SecurePass123!',
       },
     });
+
+    if (loginResponse.statusCode !== 200) {
+      throw new Error(`Login failed with status ${loginResponse.statusCode}: ${loginResponse.body}`);
+    }
 
     const loginBody = JSON.parse(loginResponse.body);
     testUserId = loginBody.data.user.id;

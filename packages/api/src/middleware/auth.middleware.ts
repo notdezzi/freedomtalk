@@ -11,6 +11,8 @@ import { jwtService } from '../services/auth/jwt.service';
 import { sessionService } from '../services/auth/session.service';
 import { db } from '../config/database';
 import { logger } from '../config/logger';
+import { ApiErrorCode } from '../types/api.types';
+import { genericErrorResponse } from '../utils/errors';
 
 /**
  * User object attached to request
@@ -94,10 +96,9 @@ export async function requireAuth(
     // Extract token
     const token = extractToken(request);
     if (!token) {
-      return reply.status(401).send({
-        error: 'unauthorized',
-        message: 'Authentication required',
-      });
+      return reply.status(401).send(
+        genericErrorResponse('Authentication required', ApiErrorCode.UNAUTHORIZED, request.id)
+      );
     }
 
     // Verify token
@@ -106,42 +107,45 @@ export async function requireAuth(
       payload = await jwtService.verifyToken(token);
     } catch (error) {
       logger.warn({ error }, 'Invalid or expired token');
-      return reply.status(401).send({
-        error: 'unauthorized',
-        message: 'Invalid or expired token',
-      });
+      return reply.status(401).send(
+        genericErrorResponse('Invalid or expired token', ApiErrorCode.UNAUTHORIZED, request.id)
+      );
     }
 
     // Load user
     const user = await loadUser(payload.userId);
     if (!user) {
-      return reply.status(401).send({
-        error: 'unauthorized',
-        message: 'User not found',
-      });
+      return reply.status(401).send(
+        genericErrorResponse('User not found', ApiErrorCode.UNAUTHORIZED, request.id)
+      );
     }
 
     // Check account status
     if (user.accountStatus !== 'active') {
-      return reply.status(401).send({
-        error: 'account_inactive',
-        message: 'Account is not active',
-      });
+      return reply.status(401).send(
+        genericErrorResponse('Account is not active', ApiErrorCode.UNAUTHORIZED, request.id)
+      );
     }
 
     // Attach user to request
     request.user = user;
 
     // MFA INTEGRATION: Check if MFA is required
-    if (user.mfaEnabled && payload.sessionId) {
+    if (user.mfaEnabled) {
+      // If MFA is enabled, sessionId MUST be present in the token
+      if (!payload.sessionId) {
+        return reply.status(401).send(
+          genericErrorResponse('MFA verification required', ApiErrorCode.UNAUTHORIZED, request.id)
+        );
+      }
+
       // Get session to check MFA verification status
       const session = await sessionService.getSession(payload.sessionId);
-      
+
       if (!session || !session.mfaVerified) {
-        return reply.status(401).send({
-          error: 'mfa_required',
-          message: 'MFA verification required',
-        });
+        return reply.status(401).send(
+          genericErrorResponse('MFA verification required', ApiErrorCode.UNAUTHORIZED, request.id)
+        );
       }
 
       // Attach session ID to request
