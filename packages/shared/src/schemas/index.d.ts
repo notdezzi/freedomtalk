@@ -3,24 +3,24 @@ export declare const loginSchema: z.ZodObject<{
     email: z.ZodString;
     password: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    password: string;
     email: string;
+    password: string;
 }, {
-    password: string;
     email: string;
+    password: string;
 }>;
 export declare const registerSchema: z.ZodObject<{
     username: z.ZodString;
     email: z.ZodString;
     password: z.ZodString;
 }, "strip", z.ZodTypeAny, {
+    email: string;
     username: string;
     password: string;
-    email: string;
 }, {
+    email: string;
     username: string;
     password: string;
-    email: string;
 }>;
 export declare const createMessageSchema: z.ZodObject<{
     content: z.ZodString;
@@ -63,18 +63,18 @@ export declare const updateProfileSchema: z.ZodObject<{
     banner_url: z.ZodOptional<z.ZodString>;
     custom_status: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    banner_url?: string | undefined;
     display_name?: string | undefined;
     bio?: string | undefined;
     pronouns?: string | undefined;
     avatar_url?: string | undefined;
+    banner_url?: string | undefined;
     custom_status?: string | undefined;
 }, {
-    banner_url?: string | undefined;
     display_name?: string | undefined;
     bio?: string | undefined;
     pronouns?: string | undefined;
     avatar_url?: string | undefined;
+    banner_url?: string | undefined;
     custom_status?: string | undefined;
 }>;
 export declare const refreshTokenSchema: z.ZodObject<{

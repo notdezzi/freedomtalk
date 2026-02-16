@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import { logger } from '../../../config/logger';
-import { WS_EVENTS } from '@freedomtalk/shared';
+import { WS_EVENTS, VALIDATION } from '@freedomtalk/shared';
 import { messageService } from '../../message/message.service';
 import { messageRouter } from '../message.router';
 const messageCreateSchema = z.object({
     content: z.string().min(1).max(2000),
     channelId: z.string().min(1),
+    embeds: z.array(z.any()).max(VALIDATION.EMBED.MAX_PER_MESSAGE).optional(),
 });
 const messageUpdateSchema = z.object({
     messageId: z.string().min(1),
@@ -33,11 +34,12 @@ export async function handleMessageCreate(socket, data) {
             });
             return;
         }
-        const { content, channelId } = validation.data;
+        const { content, channelId, embeds } = validation.data;
         const message = await messageService.createMessage({
             content,
             authorId: user.id,
             channelId,
+            embeds,
         });
         const wsMessage = {
             id: message.id,
@@ -48,6 +50,10 @@ export async function handleMessageCreate(socket, data) {
             updatedAt: message.updated_at.toISOString(),
             isEdited: message.is_edited,
             isDeleted: message.is_deleted,
+            embeds: message.embeds?.map(embed => ({
+                ...embed,
+                timestamp: embed.timestamp instanceof Date ? embed.timestamp.toISOString() : embed.timestamp,
+            })),
         };
         await messageRouter.routeMessage(wsMessage);
         socket.emit('message:ack', {

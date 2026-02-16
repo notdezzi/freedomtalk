@@ -181,6 +181,15 @@ class MinIOService {
       throw new StorageError(`Failed to generate URL for file: ${objectName}`);
     }
   }
+
+  /**
+   * Get the underlying MinIO client for advanced operations
+   * Use with caution - prefer using the service methods when possible
+   * @returns MinIO client instance
+   */
+  getClient(): Minio.Client {
+    return this.client;
+  }
 }
 
 /**

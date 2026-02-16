@@ -6,6 +6,7 @@ import { handleRoomJoin, handleRoomLeave, handleSubscriptionSync, } from './room
 import { handlePresenceUpdate, handleStatusChange, handleTypingStart, handleTypingStop, } from './presence.handler';
 import { handleMessageCreate, handleMessageUpdate, handleMessageDelete, } from './message.handler';
 import { handleReactionAdd, handleReactionRemove, handleReactionRemoveAll, handleReactionRemoveEmoji, } from './reaction.handler';
+import { registerDMChannelHandlers } from './dm.handler';
 export function registerHandlers(io) {
     io.use(authenticateSocket);
     io.on(WS_EVENTS.CONNECT, (socket) => {
@@ -27,6 +28,7 @@ export function registerHandlers(io) {
         socket.on(WS_EVENTS.REACTION_REMOVE, (data) => handleReactionRemove(socket, data));
         socket.on(WS_EVENTS.REACTION_REMOVE_ALL, (data) => handleReactionRemoveAll(socket, data));
         socket.on(WS_EVENTS.REACTION_REMOVE_EMOJI, (data) => handleReactionRemoveEmoji(socket, data));
+        registerDMChannelHandlers(socket);
     });
     logger.info('WebSocket event handlers registered');
 }

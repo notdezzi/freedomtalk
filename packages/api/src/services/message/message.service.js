@@ -2,6 +2,9 @@ import { db } from '../../config/database';
 import { generateSnowflakeId } from '../../utils/snowflake';
 import { NotFoundError, ConflictError, ApiError, ApiErrorCode } from '../../types/api.types';
 import { logger } from '../../config/logger';
+import { embedService } from '../embed/embed.service';
+import { linkPreviewService } from '../embed/link-preview.service';
+import { mentionService } from '../formatting/mention.service';
 class MessageService {
     async createMessage(data) {
         try {
@@ -9,24 +12,64 @@ class MessageService {
             if (!author) {
                 throw new NotFoundError('Author not found');
             }
+            const parsedMentions = mentionService.parseMentions(data.content);
+            const mentionCounts = mentionService.countMentions(data.content);
+            if (parsedMentions.length > 0 && (data.channelId || data.serverId)) {
+                const validation = await mentionService.validateMentions(parsedMentions, data.channelId, data.serverId);
+                if (!validation.valid) {
+                    logger.warn({ invalidMentions: validation.invalidMentions, errors: validation.errors }, 'Invalid mentions in message');
+                }
+            }
+            const mentionedUserIds = await mentionService.getMentionedUsers(data.content, data.channelId, data.serverId);
             const messageId = generateSnowflakeId();
             const now = new Date();
-            const message = {
-                id: messageId,
-                content: data.content,
-                author_id: data.authorId,
-                channel_id: data.channelId || null,
-                is_edited: false,
-                edited_at: null,
-                is_deleted: false,
-                deleted_at: null,
-                is_pinned: false,
-                created_at: now,
-                updated_at: now,
+            const message = await db.transaction(async (trx) => {
+                const messageRecord = {
+                    id: messageId,
+                    content: data.content,
+                    author_id: data.authorId,
+                    channel_id: data.channelId || null,
+                    is_edited: false,
+                    edited_at: null,
+                    is_deleted: false,
+                    deleted_at: null,
+                    is_pinned: false,
+                    created_at: now,
+                    updated_at: now,
+                };
+                await trx('messages').insert(messageRecord);
+                let createdEmbeds = [];
+                if (data.embeds && data.embeds.length > 0) {
+                    const embeds = await embedService.createEmbeds(messageId, data.embeds);
+                    createdEmbeds = embeds.map((e) => ({
+                        type: e.type,
+                        title: e.title || undefined,
+                        description: e.description || undefined,
+                        url: e.url || undefined,
+                        timestamp: e.timestamp || undefined,
+                        color: e.color || undefined,
+                        footer_text: e.footer_text || undefined,
+                        footer_icon_url: e.footer_icon_url || undefined,
+                        image_url: e.image_url || undefined,
+                        thumbnail_url: e.thumbnail_url || undefined,
+                        author_name: e.author_name || undefined,
+                        author_url: e.author_url || undefined,
+                        author_icon_url: e.author_icon_url || undefined,
+                        fields: e.fields || undefined,
+                    }));
+                }
+                return { message: messageRecord, embeds: createdEmbeds };
+            });
+            logger.info(`Message created: ${messageId} by user ${data.authorId}, embeds: ${message.embeds?.length || 0}, mentions: ${parsedMentions.length}`);
+            if ((!data.embeds || data.embeds.length === 0) && data.content) {
+                this.generateLinkPreviewsAsync(messageId, data.content);
+            }
+            const mentionData = {
+                mentions: parsedMentions,
+                mentionCounts,
+                mentionedUserIds,
             };
-            await db('messages').insert(message);
-            logger.info(`Message created: ${messageId} by user ${data.authorId}`);
-            return message;
+            return { ...message.message, embeds: message.embeds, mentions: mentionData };
         }
         catch (error) {
             if (error instanceof NotFoundError) {
@@ -35,6 +78,44 @@ class MessageService {
             logger.error({ error }, 'Error creating message');
             throw new ApiError(ApiErrorCode.DATABASE_ERROR, 'Failed to create message', 500);
         }
+    }
+    async generateLinkPreviewsAsync(messageId, content) {
+        setImmediate(async () => {
+            try {
+                const urls = linkPreviewService.extractUrls(content);
+                if (urls.length === 0) {
+                    return;
+                }
+                logger.debug({ messageId, urlCount: urls.length }, 'Generating link previews');
+                const embed = await linkPreviewService.generatePreview(urls[0]);
+                if (embed) {
+                    await embedService.createEmbed(messageId, embed);
+                    logger.info({ messageId, url: urls[0] }, 'Link preview added to message');
+                    const { messageBroadcaster } = await import('../websocket/message.broadcaster');
+                    const existingMessage = await this.getMessage(messageId);
+                    const wsMessage = {
+                        id: existingMessage.id,
+                        content: existingMessage.content,
+                        authorId: existingMessage.author_id,
+                        channelId: existingMessage.channel_id,
+                        createdAt: existingMessage.created_at.toISOString(),
+                        updatedAt: existingMessage.updated_at.toISOString(),
+                        isEdited: existingMessage.is_edited,
+                        isDeleted: existingMessage.is_deleted,
+                        embeds: [{
+                                ...embed,
+                                timestamp: embed.timestamp instanceof Date ? embed.timestamp.toISOString() : embed.timestamp,
+                            }],
+                    };
+                    if (existingMessage.channel_id) {
+                        await messageBroadcaster.broadcastMessageUpdate(wsMessage);
+                    }
+                }
+            }
+            catch (error) {
+                logger.error({ error, messageId }, 'Error generating link previews');
+            }
+        });
     }
     async getMessage(id, includeDeleted = false) {
         try {
@@ -112,12 +193,15 @@ class MessageService {
             throw new ApiError(ApiErrorCode.DATABASE_ERROR, 'Failed to fetch messages', 500);
         }
     }
-    async updateMessage(id, content, editorId) {
+    async updateMessage(id, content, editorId, serverId) {
         try {
             const existingMessage = await this.getMessage(id, true);
             if (existingMessage.is_deleted) {
                 throw new ConflictError('Cannot edit deleted message');
             }
+            const parsedMentions = mentionService.parseMentions(content);
+            const mentionCounts = mentionService.countMentions(content);
+            const mentionedUserIds = await mentionService.getMentionedUsers(content, existingMessage.channel_id || undefined, serverId);
             const historyId = generateSnowflakeId();
             const now = new Date();
             const historyRecord = {
@@ -137,8 +221,14 @@ class MessageService {
                 edited_at: now,
                 updated_at: now,
             });
-            logger.info(`Message updated: ${id} by user ${editorId}`);
-            return this.getMessage(id, false);
+            logger.info(`Message updated: ${id} by user ${editorId}, mentions: ${parsedMentions.length}`);
+            const mentionData = {
+                mentions: parsedMentions,
+                mentionCounts,
+                mentionedUserIds,
+            };
+            const updatedMessage = await this.getMessage(id, false);
+            return { ...updatedMessage, mentions: mentionData };
         }
         catch (error) {
             if (error instanceof NotFoundError || error instanceof ConflictError) {

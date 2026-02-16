@@ -1,3 +1,4 @@
+import * as Minio from 'minio';
 import { Readable } from 'stream';
 import { ApiError } from '../../types/api.types';
 export interface UploadResult {
@@ -21,6 +22,7 @@ declare class MinIOService {
     downloadFile(bucketName: string, objectName: string): Promise<Readable>;
     deleteFile(bucketName: string, objectName: string): Promise<void>;
     getFileUrl(bucketName: string, objectName: string, expiry?: number): Promise<string>;
+    getClient(): Minio.Client;
 }
 export declare const minioService: MinIOService;
 export {};

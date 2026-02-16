@@ -4,11 +4,21 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { createMessageSchema } from '@freedomtalk/shared';
+import { z } from 'zod';
 import { validateBody } from '../../middleware/validation.middleware';
 import { requireAuth } from '../../middleware/auth.middleware';
 import { successResponse } from '../../utils/errors';
 import { messageService } from '../../services/message/message.service';
+import { VALIDATION } from '@freedomtalk/shared';
+
+/**
+ * Message create with embeds schema
+ */
+const createMessageWithEmbedsSchema = z.object({
+  content: z.string().min(1).max(2000),
+  channelId: z.string().min(20).max(20).optional(),
+  embeds: z.array(z.any()).max(VALIDATION.EMBED.MAX_PER_MESSAGE).optional(),
+});
 
 interface GetMessagesQuerystring {
   before?: string;
@@ -34,7 +44,7 @@ export default async function messageRoutes(app: FastifyInstance) {
     '/',
     {
       schema: {
-        description: 'Create a new message',
+        description: 'Create a new message with optional embeds',
         tags: ['Messages'],
         security: [{ bearerAuth: [] }],
         body: {
@@ -43,6 +53,40 @@ export default async function messageRoutes(app: FastifyInstance) {
           properties: {
             content: { type: 'string', minLength: 1, maxLength: 2000 },
             channelId: { type: 'string', minLength: 20, maxLength: 20 },
+            embeds: {
+              type: 'array',
+              maxItems: VALIDATION.EMBED.MAX_PER_MESSAGE,
+              items: {
+                type: 'object',
+                properties: {
+                  type: { type: 'string', enum: ['rich', 'image', 'video', 'link', 'article'] },
+                  title: { type: 'string', maxLength: VALIDATION.EMBED.MAX_TITLE_LENGTH },
+                  description: { type: 'string', maxLength: VALIDATION.EMBED.MAX_DESCRIPTION_LENGTH },
+                  url: { type: 'string', maxLength: 2048 },
+                  timestamp: { type: 'string', format: 'date-time' },
+                  color: { type: 'integer', minimum: 0, maximum: 16777215 },
+                  footer_text: { type: 'string', maxLength: VALIDATION.EMBED.MAX_FOOTER_LENGTH },
+                  footer_icon_url: { type: 'string', maxLength: 500 },
+                  image_url: { type: 'string', maxLength: 500 },
+                  thumbnail_url: { type: 'string', maxLength: 500 },
+                  author_name: { type: 'string', maxLength: VALIDATION.EMBED.MAX_AUTHOR_NAME_LENGTH },
+                  author_url: { type: 'string', maxLength: 500 },
+                  author_icon_url: { type: 'string', maxLength: 500 },
+                  fields: {
+                    type: 'array',
+                    maxItems: VALIDATION.EMBED.MAX_FIELDS,
+                    items: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string', maxLength: VALIDATION.EMBED.MAX_FIELD_NAME_LENGTH },
+                        value: { type: 'string', maxLength: VALIDATION.EMBED.MAX_FIELD_VALUE_LENGTH },
+                        inline: { type: 'boolean' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
         response: {
@@ -65,22 +109,27 @@ export default async function messageRoutes(app: FastifyInstance) {
                   is_pinned: { type: 'boolean' },
                   created_at: { type: 'string' },
                   updated_at: { type: 'string' },
+                  embeds: {
+                    type: 'array',
+                    items: { type: 'object' },
+                  },
                 },
               },
             },
           },
         },
       },
-      preHandler: validateBody(createMessageSchema),
+      preHandler: validateBody(createMessageWithEmbedsSchema),
     },
-    async (request: FastifyRequest<{ Body: { content: string; channelId?: string } }>, reply: FastifyReply) => {
-      const { content, channelId } = request.body;
+    async (request: FastifyRequest<{ Body: { content: string; channelId?: string; embeds?: any[] } }>, reply: FastifyReply) => {
+      const { content, channelId, embeds } = request.body;
       const userId = (request as any).user.userId;
 
       const message = await messageService.createMessage({
         content,
         authorId: userId,
         channelId,
+        embeds,
       });
 
       return reply.code(201).send(successResponse(message));

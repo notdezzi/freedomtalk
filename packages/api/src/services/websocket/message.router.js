@@ -2,6 +2,7 @@ import { logger } from '../../config/logger';
 import { db } from '../../config/database';
 import { messageBroadcaster } from './message.broadcaster';
 import { subscriptionManager } from './subscription.manager';
+import { dmChannelService } from '../dm/dm-channel.service';
 class MessageRouter {
     async routeMessage(message) {
         try {
@@ -75,8 +76,27 @@ class MessageRouter {
     }
     async routeDM(message) {
         try {
-            logger.debug({ messageId: message.id, authorId: message.authorId }, 'DM routing - broadcasting to author only (DM tables not yet implemented)');
-            await messageBroadcaster.broadcastToUser(message.authorId, 'message:created', message);
+            if (!message.channelId) {
+                logger.warn({ messageId: message.id }, 'DM message has no channelId');
+                return;
+            }
+            const participantIds = await dmChannelService.getParticipantUserIds(message.channelId);
+            if (participantIds.length === 0) {
+                logger.warn({ messageId: message.id, dmChannelId: message.channelId }, 'No active participants found for DM');
+                return;
+            }
+            logger.info({
+                messageId: message.id,
+                dmChannelId: message.channelId,
+                participantCount: participantIds.length,
+            }, 'Routing DM message to participants');
+            const broadcastPromises = participantIds.map((userId) => messageBroadcaster.broadcastToUser(userId, 'message:created', message));
+            await Promise.all(broadcastPromises);
+            logger.debug({
+                messageId: message.id,
+                dmChannelId: message.channelId,
+                participants: participantIds,
+            }, 'DM message routed successfully');
         }
         catch (error) {
             logger.error({ error, messageId: message.id }, 'Error routing DM');

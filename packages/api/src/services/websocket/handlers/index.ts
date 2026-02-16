@@ -30,6 +30,7 @@ import {
   handleReactionRemoveAll,
   handleReactionRemoveEmoji,
 } from './reaction.handler';
+import { registerDMChannelHandlers } from './dm.handler';
 
 /**
  * Register all WebSocket event handlers
@@ -70,6 +71,9 @@ export function registerHandlers(io: SocketIOServer): void {
     socket.on(WS_EVENTS.REACTION_REMOVE, (data) => handleReactionRemove(socket, data));
     socket.on(WS_EVENTS.REACTION_REMOVE_ALL, (data) => handleReactionRemoveAll(socket, data));
     socket.on(WS_EVENTS.REACTION_REMOVE_EMOJI, (data) => handleReactionRemoveEmoji(socket, data));
+
+    // DM Channel events
+    registerDMChannelHandlers(socket);
   });
 
   logger.info('WebSocket event handlers registered');

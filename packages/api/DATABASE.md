@@ -802,5 +802,381 @@ SELECT * FROM pg_stat_statements ORDER BY mean_time DESC LIMIT 10;
 - [Snowflake ID Specification](https://github.com/twitter-archive/snowflake)
 - [Database Backup Guide](../../scripts/BACKUP.md)
 
+---
+
+## Messaging Feature Tables
+
+### `reactions` Table
+
+Stores emoji reactions on messages.
+
+**Schema:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `VARCHAR(20)` | PRIMARY KEY | Snowflake ID |
+| `message_id` | `VARCHAR(20)` | NOT NULL, FK → messages(id) CASCADE | Reacted message |
+| `user_id` | `VARCHAR(20)` | NOT NULL, FK → users(id) CASCADE | User who reacted |
+| `emoji_type` | `VARCHAR(10)` | NOT NULL, CHECK IN ('unicode','custom') | Type of emoji |
+| `emoji_id` | `VARCHAR(20)` | NULLABLE | Custom emoji ID (if custom) |
+| `emoji_unicode` | `VARCHAR(20)` | NULLABLE | Unicode character (if unicode) |
+| `created_at` | `TIMESTAMPTZ` | DEFAULT NOW() | Reaction timestamp |
+
+**Indexes:**
+- `idx_reactions_message_id` on `message_id`
+- `idx_reactions_user_id` on `user_id`
+- Unique index on `(message_id, user_id, emoji_type, COALESCE(emoji_id, emoji_unicode))`
+
+**Constraints:**
+- `chk_emoji_type`: emoji_type IN ('unicode', 'custom')
+- XOR constraint: exactly one of emoji_id or emoji_unicode must be set
+
+**Example Queries:**
+
+```sql
+-- Get all reactions for a message
+SELECT r.*, u.username
+FROM reactions r
+JOIN users u ON r.user_id = u.id
+WHERE r.message_id = '1234567890123456789'
+ORDER BY r.created_at;
+
+-- Get reaction counts grouped by emoji
+SELECT emoji_unicode, COUNT(*) as count
+FROM reactions
+WHERE message_id = '1234567890123456789'
+GROUP BY emoji_unicode;
+```
+
+---
+
+### `message_embeds` Table
+
+Stores rich embeds attached to messages (link previews, custom embeds).
+
+**Schema:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `VARCHAR(20)` | PRIMARY KEY | Snowflake ID |
+| `message_id` | `VARCHAR(20)` | NOT NULL, FK → messages(id) CASCADE | Parent message |
+| `type` | `VARCHAR(20)` | DEFAULT 'rich' | Embed type |
+| `title` | `VARCHAR(256)` | NULLABLE | Embed title |
+| `description` | `TEXT` | NULLABLE | Embed description |
+| `url` | `VARCHAR(2048)` | NULLABLE | URL for link embeds |
+| `timestamp` | `TIMESTAMPTZ` | NULLABLE | Timestamp for article embeds |
+| `color` | `INTEGER` | NULLABLE | Hex color code |
+| `footer_text` | `VARCHAR(2048)` | NULLABLE | Footer text |
+| `footer_icon_url` | `VARCHAR(500)` | NULLABLE | Footer icon URL |
+| `image_url` | `VARCHAR(500)` | NULLABLE | Main image URL |
+| `thumbnail_url` | `VARCHAR(500)` | NULLABLE | Thumbnail URL |
+| `author_name` | `VARCHAR(256)` | NULLABLE | Author name |
+| `author_url` | `VARCHAR(500)` | NULLABLE | Author URL |
+| `author_icon_url` | `VARCHAR(500)` | NULLABLE | Author icon URL |
+| `fields` | `JSONB` | NULLABLE | Array of field objects |
+| `created_at` | `TIMESTAMPTZ` | DEFAULT NOW() | Creation timestamp |
+
+**Indexes:**
+- `idx_message_embeds_message_id` on `message_id`
+- `idx_message_embeds_type` on `type`
+
+**Constraints:**
+- `chk_embed_type`: type IN ('rich', 'image', 'video', 'link', 'article')
+- `chk_title_length`: char_length(title) <= 256
+- `chk_footer_length`: char_length(footer_text) <= 2048
+- `chk_author_name_length`: char_length(author_name) <= 256
+
+---
+
+### `message_attachments` Table
+
+Stores file attachments for messages.
+
+**Schema:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `VARCHAR(20)` | PRIMARY KEY | Snowflake ID |
+| `message_id` | `VARCHAR(20)` | NOT NULL, FK → messages(id) CASCADE | Parent message |
+| `filename` | `VARCHAR(255)` | NOT NULL | Original filename |
+| `size` | `BIGINT` | NOT NULL, CHECK > 0 | File size in bytes |
+| `mime_type` | `VARCHAR(100)` | NOT NULL | MIME type |
+| `object_path` | `VARCHAR(500)` | NOT NULL | MinIO object path |
+| `width` | `INTEGER` | NULLABLE | Image/video width |
+| `height` | `INTEGER` | NULLABLE | Image/video height |
+| `thumbnail_path` | `VARCHAR(500)` | NULLABLE | Thumbnail object path |
+| `uploaded_by` | `VARCHAR(20)` | FK → users(id) SET NULL | Uploader user ID |
+| `created_at` | `TIMESTAMPTZ` | DEFAULT NOW() | Upload timestamp |
+
+**Indexes:**
+- `idx_message_attachments_message_id` on `message_id`
+- `idx_message_attachments_uploaded_by` on `uploaded_by`
+- `idx_message_attachments_mime_type` on `mime_type`
+
+**Constraints:**
+- `chk_size_positive`: size > 0
+- `chk_dimensions`: (width IS NULL OR width > 0) AND (height IS NULL OR height > 0)
+
+---
+
+### `custom_emojis` Table
+
+Stores custom emojis for servers.
+
+**Schema:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `VARCHAR(20)` | PRIMARY KEY | Snowflake ID |
+| `server_id` | `VARCHAR(20)` | NOT NULL, FK → servers(id) CASCADE | Owning server |
+| `name` | `VARCHAR(32)` | NOT NULL | Emoji name |
+| `image_url` | `VARCHAR(500)` | NOT NULL | Emoji image URL |
+| `animated` | `BOOLEAN` | DEFAULT false | Animated flag |
+| `created_by` | `VARCHAR(20)` | FK → users(id) SET NULL | Creator user ID |
+| `created_at` | `TIMESTAMPTZ` | DEFAULT NOW() | Creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | DEFAULT NOW() | Last update timestamp |
+
+**Indexes:**
+- `idx_custom_emojis_server_id` on `server_id`
+- `idx_custom_emojis_name` on `name`
+- Unique index on `(server_id, name)`
+
+**Constraints:**
+- `chk_emoji_name_format`: name ~ '^[a-zA-Z0-9_]+$'
+- `chk_emoji_name_length`: char_length(name) >= 2 AND char_length(name) <= 32
+
+---
+
+### `dm_channels` Table
+
+Stores direct message channels (1:1 and group DMs).
+
+**Schema:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `VARCHAR(20)` | PRIMARY KEY | Snowflake ID |
+| `type` | `VARCHAR(10)` | NOT NULL, CHECK IN ('dm','group_dm') | Channel type |
+| `name` | `VARCHAR(100)` | NULLABLE | Group DM name (null for 1:1) |
+| `icon_url` | `VARCHAR(500)` | NULLABLE | Group DM icon URL |
+| `owner_id` | `VARCHAR(20)` | FK → users(id) SET NULL | Group DM owner |
+| `created_at` | `TIMESTAMPTZ` | DEFAULT NOW() | Creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | DEFAULT NOW() | Last update timestamp |
+
+**Indexes:**
+- `idx_dm_channels_type` on `type`
+- `idx_dm_channels_owner_id` on `owner_id`
+- `idx_dm_channels_created_at` on `created_at`
+
+**Constraints:**
+- `chk_dm_type`: type IN ('dm', 'group_dm')
+- `chk_dm_name_null`: (type = 'dm' AND name IS NULL) OR (type = 'group_dm')
+- `chk_dm_name_length`: name IS NULL OR (char_length(name) >= 1 AND char_length(name) <= 100)
+
+**Example Queries:**
+
+```sql
+-- Get all DM channels for a user
+SELECT dc.*
+FROM dm_channels dc
+JOIN dm_channel_participants dcp ON dc.id = dcp.dm_channel_id
+WHERE dcp.user_id = '1234567890123456789'
+  AND dcp.is_active = true
+ORDER BY dc.updated_at DESC;
+
+-- Get existing DM between two users
+SELECT dc.*
+FROM dm_channels dc
+WHERE dc.type = 'dm'
+  AND EXISTS (
+    SELECT 1 FROM dm_channel_participants
+    WHERE dm_channel_id = dc.id AND user_id = 'user1' AND is_active = true
+  )
+  AND EXISTS (
+    SELECT 1 FROM dm_channel_participants
+    WHERE dm_channel_id = dc.id AND user_id = 'user2' AND is_active = true
+  );
+```
+
+---
+
+### `dm_channel_participants` Table
+
+Stores participants in DM channels.
+
+**Schema:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `VARCHAR(20)` | PRIMARY KEY | Snowflake ID |
+| `dm_channel_id` | `VARCHAR(20)` | NOT NULL, FK → dm_channels(id) CASCADE | DM channel |
+| `user_id` | `VARCHAR(20)` | NOT NULL, FK → users(id) CASCADE | Participant user |
+| `joined_at` | `TIMESTAMPTZ` | DEFAULT NOW() | Join timestamp |
+| `left_at` | `TIMESTAMPTZ` | NULLABLE | Leave timestamp |
+| `is_active` | `BOOLEAN` | DEFAULT true | Active participation flag |
+
+**Indexes:**
+- `idx_dm_participants_dm_channel_id` on `dm_channel_id`
+- `idx_dm_participants_user_id` on `user_id`
+- `idx_dm_participants_dm_channel_user` on `(dm_channel_id, user_id)`
+- `idx_dm_participants_is_active` on `is_active`
+- Unique partial index: `(dm_channel_id, user_id) WHERE is_active = true`
+
+**Example Queries:**
+
+```sql
+-- Get all participants in a DM
+SELECT dcp.*, u.username, up.display_name, up.avatar_url
+FROM dm_channel_participants dcp
+JOIN users u ON dcp.user_id = u.id
+LEFT JOIN user_profiles up ON u.id = up.user_id
+WHERE dcp.dm_channel_id = '1234567890123456789'
+  AND dcp.is_active = true
+ORDER BY dcp.joined_at;
+
+-- Get all DMs for a user with participant count
+SELECT dc.*, COUNT(dcp2.id) as participant_count
+FROM dm_channels dc
+JOIN dm_channel_participants dcp ON dc.id = dcp.dm_channel_id
+JOIN dm_channel_participants dcp2 ON dc.id = dcp2.dm_channel_id AND dcp2.is_active = true
+WHERE dcp.user_id = '1234567890123456789'
+  AND dcp.is_active = true
+GROUP BY dc.id
+ORDER BY dc.updated_at DESC;
+```
+
+---
+
+### `dm_notification_settings` Table
+
+Stores notification preferences for DM channels.
+
+**Schema:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `VARCHAR(20)` | PRIMARY KEY | Snowflake ID |
+| `user_id` | `VARCHAR(20)` | NOT NULL, FK → users(id) CASCADE | User ID |
+| `dm_channel_id` | `VARCHAR(20)` | NOT NULL, FK → dm_channels(id) CASCADE | DM channel |
+| `is_muted` | `BOOLEAN` | DEFAULT false | Mute status |
+| `mute_until` | `TIMESTAMPTZ` | NULLABLE | Temporary mute expiry |
+| `notification_level` | `VARCHAR(20)` | DEFAULT 'all' | Notification level |
+| `created_at` | `TIMESTAMPTZ` | DEFAULT NOW() | Creation timestamp |
+| `updated_at` | `TIMESTAMPTZ` | DEFAULT NOW() | Last update timestamp |
+
+**Indexes:**
+- `idx_dm_notification_settings_user_id` on `user_id`
+- `idx_dm_notification_settings_dm_channel_id` on `dm_channel_id`
+- Unique index on `(user_id, dm_channel_id)`
+
+**Constraints:**
+- `chk_notification_level`: notification_level IN ('all', 'mentions', 'none')
+
+**Notification Levels:**
+- `all`: Notify for all messages
+- `mentions`: Notify only for mentions
+- `none`: No notifications
+
+**Example Queries:**
+
+```sql
+-- Get notification settings for a DM
+SELECT * FROM dm_notification_settings
+WHERE user_id = '1234567890123456789'
+  AND dm_channel_id = '0987654321098765432';
+
+-- Check if user should be notified
+SELECT
+  CASE
+    WHEN is_muted AND (mute_until IS NULL OR mute_until > NOW()) THEN false
+    WHEN notification_level = 'none' THEN false
+    WHEN notification_level = 'mentions' THEN false  -- Check if mentioned
+    ELSE true
+  END as should_notify
+FROM dm_notification_settings
+WHERE user_id = '1234567890123456789'
+  AND dm_channel_id = '0987654321098765432';
+```
+
+---
+
+## Entity Relationship Diagram (Extended)
+
+```mermaid
+erDiagram
+    users ||--o{ messages : "authors"
+    users ||--o{ reactions : "reacts to"
+    users ||--o{ message_attachments : "uploads"
+    users ||--o{ dm_channels : "owns"
+    users ||--o{ dm_channel_participants : "participates"
+    users ||--o{ dm_notification_settings : "has settings"
+
+    messages ||--o{ message_embeds : "has embeds"
+    messages ||--o{ message_attachments : "has attachments"
+    messages ||--o{ reactions : "has reactions"
+    messages ||--o{ message_history : "has history"
+
+    dm_channels ||--o{ dm_channel_participants : "has participants"
+    dm_channels ||--o{ dm_notification_settings : "has settings"
+
+    servers ||--o{ custom_emojis : "has emojis"
+
+    reactions {
+        string id PK
+        string message_id FK
+        string user_id FK
+        string emoji_type
+        string emoji_id
+        string emoji_unicode
+        timestamp created_at
+    }
+
+    message_embeds {
+        string id PK
+        string message_id FK
+        string type
+        string title
+        text description
+        jsonb fields
+        timestamp created_at
+    }
+
+    message_attachments {
+        string id PK
+        string message_id FK
+        string filename
+        bigint size
+        string mime_type
+        string object_path
+        string thumbnail_path
+        timestamp created_at
+    }
+
+    dm_channels {
+        string id PK
+        string type
+        string name
+        string owner_id FK
+        timestamp created_at
+    }
+
+    dm_channel_participants {
+        string id PK
+        string dm_channel_id FK
+        string user_id FK
+        timestamp joined_at
+        timestamp left_at
+        boolean is_active
+    }
+
+    dm_notification_settings {
+        string id PK
+        string user_id FK
+        string dm_channel_id FK
+        boolean is_muted
+        timestamp mute_until
+        string notification_level
+    }
+```
 
 

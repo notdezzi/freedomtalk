@@ -2,6 +2,7 @@ import { logger } from '../../config/logger';
 import { db } from '../../config/database';
 import { messageBroadcaster } from './message.broadcaster';
 import { subscriptionManager } from './subscription.manager';
+import { dmChannelService } from '../dm/dm-channel.service';
 
 /**
  * Message interface
@@ -15,6 +16,22 @@ interface Message {
   updatedAt: string;
   isEdited: boolean;
   isDeleted: boolean;
+  embeds?: Array<{
+    type?: 'rich' | 'image' | 'video' | 'link' | 'article';
+    title?: string;
+    description?: string;
+    url?: string;
+    timestamp?: string;
+    color?: number;
+    footer_text?: string;
+    footer_icon_url?: string;
+    image_url?: string;
+    thumbnail_url?: string;
+    author_name?: string;
+    author_url?: string;
+    author_icon_url?: string;
+    fields?: Array<{ name: string; value: string; inline?: boolean }>;
+  }>;
 }
 
 /**
@@ -125,22 +142,45 @@ class MessageRouter {
 
   /**
    * Route direct message to participants
-   * Note: DM functionality requires a DM/conversation table to be implemented
-   * For now, this broadcasts to the author only
+   * Queries dm_channel_participants to get all active participants
+   * and broadcasts to each participant's sockets
    * @param message - Message object
    */
   async routeDM(message: Message): Promise<void> {
     try {
-      // TODO: Implement proper DM routing when DM/conversation tables are added
-      // DM routing will require:
-      // 1. A conversations/dm_channels table to track DM participants
-      // 2. Query to get all participants in the DM
-      // 3. Broadcast to all participants
+      // For DM messages, channelId contains the DM channel ID
+      // We need to query the dm_channel_participants table to find all recipients
+      if (!message.channelId) {
+        logger.warn({ messageId: message.id }, 'DM message has no channelId');
+        return;
+      }
 
-      logger.debug({ messageId: message.id, authorId: message.authorId }, 'DM routing - broadcasting to author only (DM tables not yet implemented)');
+      // Get all active participants in the DM channel
+      const participantIds = await dmChannelService.getParticipantUserIds(message.channelId);
 
-      // Placeholder: Broadcast to author only until DM tables are implemented
-      await messageBroadcaster.broadcastToUser(message.authorId, 'message:created', message);
+      if (participantIds.length === 0) {
+        logger.warn({ messageId: message.id, dmChannelId: message.channelId }, 'No active participants found for DM');
+        return;
+      }
+
+      logger.info({
+        messageId: message.id,
+        dmChannelId: message.channelId,
+        participantCount: participantIds.length,
+      }, 'Routing DM message to participants');
+
+      // Broadcast to each participant
+      const broadcastPromises = participantIds.map((userId) =>
+        messageBroadcaster.broadcastToUser(userId, 'message:created', message)
+      );
+
+      await Promise.all(broadcastPromises);
+
+      logger.debug({
+        messageId: message.id,
+        dmChannelId: message.channelId,
+        participants: participantIds,
+      }, 'DM message routed successfully');
     } catch (error) {
       logger.error({ error, messageId: message.id }, 'Error routing DM');
       throw error;

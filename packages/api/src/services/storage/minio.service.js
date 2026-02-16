@@ -92,6 +92,9 @@ class MinIOService {
             throw new StorageError(`Failed to generate URL for file: ${objectName}`);
         }
     }
+    getClient() {
+        return this.client;
+    }
 }
 export const minioService = new MinIOService();
 //# sourceMappingURL=minio.service.js.map

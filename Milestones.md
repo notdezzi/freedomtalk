@@ -293,34 +293,34 @@ Implement WebSocket server for real-time communication and message delivery.
 Complete real-time messaging functionality with message types, reactions, and embeds.
 
 **Tasks:**
-- [ ] Implement MESSAGE_CREATE event
-- [ ] Implement MESSAGE_UPDATE event
-- [ ] Implement MESSAGE_DELETE event
-- [ ] Implement MESSAGE_DELETE_BULK event
-- [ ] Implement MESSAGE_REACTION_ADD event
-- [ ] Implement MESSAGE_REACTION_REMOVE event
-- [ ] Implement MESSAGE_REACTION_REMOVE_ALL event
-- [ ] Implement MESSAGE_REACTION_REMOVE_EMOJI event
-- [ ] Implement reaction emoji selection and storage
-- [ ] Implement reaction user list display
-- [ ] Implement reaction count display
-- [ ] Implement embed validation and storage
-- [ ] Implement embed creation and broadcasting
-- [ ] Implement attachment upload endpoint
-- [ ] Implement attachment validation
-- [ ] Implement attachment storage (MinIO/S3)
-- [ ] Implement attachment URL generation
-- [ ] Implement attachment preview generation
-- [ ] Implement message markdown parsing
-- [ ] Implement code block rendering
-- [ ] Implement spoiler text rendering
-- [ ] Implement link rendering
-- [ ] Implement mention rendering (@everyone, @here, @user, @role, @channel)
-- [ ] Implement mention suppression in messages
-- [ ] Implement mention count tracking
-- [ ] Implement reaction animations
-- [ ] Implement message ordering
-- [ ] Test real-time message delivery under load
+- [x] Implement MESSAGE_CREATE event
+- [x] Implement MESSAGE_UPDATE event
+- [x] Implement MESSAGE_DELETE event
+- [x] Implement MESSAGE_DELETE_BULK event
+- [x] Implement MESSAGE_REACTION_ADD event
+- [x] Implement MESSAGE_REACTION_REMOVE event
+- [x] Implement MESSAGE_REACTION_REMOVE_ALL event
+- [x] Implement MESSAGE_REACTION_REMOVE_EMOJI event
+- [x] Implement reaction emoji selection and storage
+- [x] Implement reaction user list display
+- [x] Implement reaction count display
+- [x] Implement embed validation and storage
+- [x] Implement embed creation and broadcasting
+- [x] Implement attachment upload endpoint
+- [x] Implement attachment validation
+- [x] Implement attachment storage (MinIO/S3)
+- [x] Implement attachment URL generation
+- [x] Implement attachment preview generation
+- [x] Implement message markdown parsing
+- [x] Implement code block rendering
+- [x] Implement spoiler text rendering
+- [x] Implement link rendering
+- [x] Implement mention rendering (@everyone, @here, @user, @role, @channel)
+- [x] Implement mention suppression in messages
+- [x] Implement mention count tracking
+- [x] Implement reaction animations
+- [x] Implement message ordering
+- [x] Test real-time message delivery under load
 
 #### Deliverables
 - Complete real-time messaging
@@ -338,23 +338,23 @@ Complete real-time messaging functionality with message types, reactions, and em
 Implement direct messages and group direct messages functionality.
 
 **Tasks:**
-- [ ] Create DM database schema
-- [ ] Create Group DM database schema
-- [ ] Implement create DM endpoint
-- [ ] Implement create Group DM endpoint
-- [ ] Implement list user DMs endpoint
-- [ ] Implement list group DMs endpoint
-- [ ] Implement get DM channel endpoint
-- [ ] Implement send DM message endpoint
-- [ ] Implement receive DM messages via WebSocket
-- [ ] Implement message deletion in DMs
-- [ ] Implement message reactions in DMs
-- [ ] Implement DM unread counts
-- [ ] Implement DM typing indicators
-- [ ] Implement DM presence indicators
-- [ ] Implement message history for DMs
-- [ ] Implement DM participant management
-- [ ] Test DM and Group DM flows
+- [x] Create DM database schema
+- [x] Create Group DM database schema
+- [x] Implement create DM endpoint
+- [x] Implement create Group DM endpoint
+- [x] Implement list user DMs endpoint
+- [x] Implement list group DMs endpoint
+- [x] Implement get DM channel endpoint
+- [x] Implement send DM message endpoint
+- [x] Implement receive DM messages via WebSocket
+- [x] Implement message deletion in DMs
+- [x] Implement message reactions in DMs
+- [x] Implement DM unread counts
+- [x] Implement DM typing indicators
+- [x] Implement DM presence indicators
+- [x] Implement message history for DMs
+- [x] Implement DM participant management
+- [x] Test DM and Group DM flows
 
 #### Deliverables
 - DM functionality working

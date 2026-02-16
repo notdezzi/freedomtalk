@@ -1,18 +1,22 @@
 /**
  * Message Service
- * 
+ *
  * Handles all message-related business logic including:
  * - Creating messages with Snowflake IDs
  * - Retrieving messages with pagination and filtering
  * - Updating messages with edit history tracking
  * - Soft and hard deletion
  * - Message preview generation
+ * - Embed and link preview integration
  */
 
 import { db } from '../../config/database';
 import { generateSnowflakeId } from '../../utils/snowflake';
 import { NotFoundError, ConflictError, ApiError, ApiErrorCode } from '../../types/api.types';
 import { logger } from '../../config/logger';
+import { embedService, EmbedData } from '../embed/embed.service';
+import { linkPreviewService } from '../embed/link-preview.service';
+import { mentionService, ParsedMention, MentionType } from '../formatting/mention.service';
 
 /**
  * Message interface matching database schema
@@ -29,6 +33,24 @@ export interface Message {
   is_pinned: boolean;
   created_at: Date;
   updated_at: Date;
+}
+
+/**
+ * Mention data for messages
+ */
+export interface MentionData {
+  mentions: ParsedMention[];
+  mentionCounts: Record<MentionType, number>;
+  mentionedUserIds: string[];
+}
+
+/**
+ * Message with embeds response
+ */
+export interface MessageWithEmbeds extends Message {
+  embeds?: EmbedData[];
+  mentions?: MentionData;
+  parsedContent?: string; // HTML-parsed content for client rendering
 }
 
 /**
@@ -85,11 +107,19 @@ class MessageService {
    * @param data.content - Message content (max 2000 characters)
    * @param data.authorId - User ID of the message author
    * @param data.channelId - Optional channel ID (for channel messages)
-   * @returns Created message
+   * @param data.serverId - Optional server ID (for mention validation)
+   * @param data.embeds - Optional array of embed data
+   * @returns Created message with embeds and mentions
    * @throws NotFoundError if author doesn't exist
    * @throws ApiError if database operation fails
    */
-  async createMessage(data: { content: string; authorId: string; channelId?: string }): Promise<Message> {
+  async createMessage(data: {
+    content: string;
+    authorId: string;
+    channelId?: string;
+    serverId?: string;
+    embeds?: EmbedData[];
+  }): Promise<MessageWithEmbeds> {
     try {
       // Verify author exists
       const author = await db('users').where({ id: data.authorId }).first();
@@ -97,30 +127,96 @@ class MessageService {
         throw new NotFoundError('Author not found');
       }
 
+      // Parse and validate mentions
+      const parsedMentions = mentionService.parseMentions(data.content);
+      const mentionCounts = mentionService.countMentions(data.content);
+
+      // Validate mentions if we have channel/server context
+      if (parsedMentions.length > 0 && (data.channelId || data.serverId)) {
+        const validation = await mentionService.validateMentions(
+          parsedMentions,
+          data.channelId,
+          data.serverId
+        );
+
+        if (!validation.valid) {
+          logger.warn({ invalidMentions: validation.invalidMentions, errors: validation.errors }, 'Invalid mentions in message');
+          // We'll still create the message but log the invalid mentions
+          // The client can decide how to handle them
+        }
+      }
+
+      // Get mentioned user IDs for notifications
+      const mentionedUserIds = await mentionService.getMentionedUsers(
+        data.content,
+        data.channelId,
+        data.serverId
+      );
+
       // Generate Snowflake ID for the message
       const messageId = generateSnowflakeId();
       const now = new Date();
 
-      // Create message record
-      const message: Partial<Message> = {
-        id: messageId,
-        content: data.content,
-        author_id: data.authorId,
-        channel_id: data.channelId || null,
-        is_edited: false,
-        edited_at: null,
-        is_deleted: false,
-        deleted_at: null,
-        is_pinned: false,
-        created_at: now,
-        updated_at: now,
+      // Create message record and embeds in a transaction
+      const message = await db.transaction(async (trx) => {
+        // Insert message
+        const messageRecord: Partial<Message> = {
+          id: messageId,
+          content: data.content,
+          author_id: data.authorId,
+          channel_id: data.channelId || null,
+          is_edited: false,
+          edited_at: null,
+          is_deleted: false,
+          deleted_at: null,
+          is_pinned: false,
+          created_at: now,
+          updated_at: now,
+        };
+
+        await trx('messages').insert(messageRecord);
+
+        // Create embeds if provided
+        let createdEmbeds: EmbedData[] = [];
+        if (data.embeds && data.embeds.length > 0) {
+          const embeds = await embedService.createEmbeds(messageId, data.embeds);
+          // Convert Embed[] to EmbedData[] by removing database-specific fields
+          createdEmbeds = embeds.map((e) => ({
+            type: e.type,
+            title: e.title || undefined,
+            description: e.description || undefined,
+            url: e.url || undefined,
+            timestamp: e.timestamp || undefined,
+            color: e.color || undefined,
+            footer_text: e.footer_text || undefined,
+            footer_icon_url: e.footer_icon_url || undefined,
+            image_url: e.image_url || undefined,
+            thumbnail_url: e.thumbnail_url || undefined,
+            author_name: e.author_name || undefined,
+            author_url: e.author_url || undefined,
+            author_icon_url: e.author_icon_url || undefined,
+            fields: e.fields || undefined,
+          }));
+        }
+
+        return { message: messageRecord as Message, embeds: createdEmbeds };
+      });
+
+      logger.info(`Message created: ${messageId} by user ${data.authorId}, embeds: ${message.embeds?.length || 0}, mentions: ${parsedMentions.length}`);
+
+      // Generate link previews asynchronously if message contains URLs and no embeds provided
+      if ((!data.embeds || data.embeds.length === 0) && data.content) {
+        this.generateLinkPreviewsAsync(messageId, data.content);
+      }
+
+      // Build mention data for response
+      const mentionData: MentionData = {
+        mentions: parsedMentions,
+        mentionCounts,
+        mentionedUserIds,
       };
 
-      await db('messages').insert(message);
-
-      logger.info(`Message created: ${messageId} by user ${data.authorId}`);
-
-      return message as Message;
+      return { ...message.message, embeds: message.embeds, mentions: mentionData };
     } catch (error) {
       if (error instanceof NotFoundError) {
         throw error;
@@ -128,6 +224,62 @@ class MessageService {
       logger.error({ error }, 'Error creating message');
       throw new ApiError(ApiErrorCode.DATABASE_ERROR, 'Failed to create message', 500);
     }
+  }
+
+  /**
+   * Generate link previews asynchronously for URLs in message content
+   * This runs in the background and adds embeds to existing messages
+   *
+   * @param messageId - Message ID to add embeds to
+   * @param content - Message content to extract URLs from
+   */
+  private async generateLinkPreviewsAsync(messageId: string, content: string): Promise<void> {
+    // Fire and forget - run asynchronously without blocking response
+    setImmediate(async () => {
+      try {
+        const urls = linkPreviewService.extractUrls(content);
+
+        if (urls.length === 0) {
+          return;
+        }
+
+        logger.debug({ messageId, urlCount: urls.length }, 'Generating link previews');
+
+        // Generate preview for first URL only (Discord behavior)
+        const embed = await linkPreviewService.generatePreview(urls[0]!);
+
+        if (embed) {
+          await embedService.createEmbed(messageId, embed);
+          logger.info({ messageId, url: urls[0] }, 'Link preview added to message');
+
+          // Broadcast embed update via WebSocket
+          const { messageBroadcaster } = await import('../websocket/message.broadcaster');
+          const existingMessage = await this.getMessage(messageId);
+          const wsMessage = {
+            id: existingMessage.id,
+            content: existingMessage.content,
+            authorId: existingMessage.author_id,
+            channelId: existingMessage.channel_id,
+            createdAt: existingMessage.created_at.toISOString(),
+            updatedAt: existingMessage.updated_at.toISOString(),
+            isEdited: existingMessage.is_edited,
+            isDeleted: existingMessage.is_deleted,
+            embeds: [{
+              ...embed,
+              timestamp: embed.timestamp instanceof Date ? embed.timestamp.toISOString() : embed.timestamp,
+            }],
+          };
+
+          // Broadcast as an update so clients see the new embed
+          if (existingMessage.channel_id) {
+            await messageBroadcaster.broadcastMessageUpdate(wsMessage);
+          }
+        }
+      } catch (error) {
+        logger.error({ error, messageId }, 'Error generating link previews');
+        // Silently fail - link previews are optional
+      }
+    });
   }
 
   /**
@@ -251,12 +403,13 @@ class MessageService {
    * @param id - Message ID
    * @param content - New message content
    * @param editorId - User ID of the editor
-   * @returns Updated message
+   * @param serverId - Optional server ID for mention validation
+   * @returns Updated message with mentions
    * @throws NotFoundError if message doesn't exist
    * @throws ConflictError if message is deleted
    * @throws ApiError if database operation fails
    */
-  async updateMessage(id: string, content: string, editorId: string): Promise<Message> {
+  async updateMessage(id: string, content: string, editorId: string, serverId?: string): Promise<MessageWithEmbeds> {
     try {
       // Get existing message (include deleted to check status)
       const existingMessage = await this.getMessage(id, true);
@@ -264,6 +417,17 @@ class MessageService {
       if (existingMessage.is_deleted) {
         throw new ConflictError('Cannot edit deleted message');
       }
+
+      // Parse and validate mentions in new content
+      const parsedMentions = mentionService.parseMentions(content);
+      const mentionCounts = mentionService.countMentions(content);
+
+      // Get mentioned user IDs for notifications
+      const mentionedUserIds = await mentionService.getMentionedUsers(
+        content,
+        existingMessage.channel_id || undefined,
+        serverId
+      );
 
       // Store previous content in history
       const historyId = generateSnowflakeId();
@@ -290,10 +454,18 @@ class MessageService {
           updated_at: now,
         });
 
-      logger.info(`Message updated: ${id} by user ${editorId}`);
+      logger.info(`Message updated: ${id} by user ${editorId}, mentions: ${parsedMentions.length}`);
 
-      // Return updated message
-      return this.getMessage(id, false);
+      // Build mention data for response
+      const mentionData: MentionData = {
+        mentions: parsedMentions,
+        mentionCounts,
+        mentionedUserIds,
+      };
+
+      // Return updated message with mentions
+      const updatedMessage = await this.getMessage(id, false);
+      return { ...updatedMessage, mentions: mentionData };
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof ConflictError) {
         throw error;
