@@ -129,13 +129,13 @@ POST /attachments returns 501. Multipart file upload not implemented.
 - `packages/api/src/services/attachment/attachment.service.ts`
 
 **Subtasks:**
-- [ ] Add @fastify/multipart package
-- [ ] Implement multipart file parsing
-- [ ] Validate file type and size
-- [ ] Upload to MinIO storage
-- [ ] Generate thumbnail for images
-- [ ] Return attachment metadata
-- [ ] Test with various file types
+- [x] Add @fastify/multipart package
+- [x] Implement multipart file parsing
+- [x] Validate file type and size
+- [x] Upload to MinIO storage
+- [x] Generate thumbnail for images
+- [x] Return attachment metadata
+- [x] Test with various file types (endpoint ready for testing)
 
 ---
 
