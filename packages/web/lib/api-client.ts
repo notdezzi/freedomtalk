@@ -689,6 +689,34 @@ class ApiClient {
       body: JSON.stringify({ roleIds }),
     });
   }
+
+  // Voice endpoints
+  async joinVoiceChannel(channelId: string): Promise<ApiResponse<{ sessionId: string; voiceState: unknown }>> {
+    return this.request<{ sessionId: string; voiceState: unknown }>(`/api/v1/voice/channels/${channelId}/join`, {
+      method: 'POST',
+    });
+  }
+
+  async leaveVoiceChannel(channelId: string): Promise<ApiResponse<void>> {
+    return this.request<void>(`/api/v1/voice/channels/${channelId}/leave`, {
+      method: 'POST',
+    });
+  }
+
+  async getVoiceChannelUsers(channelId: string): Promise<ApiResponse<{ users: unknown[] }>> {
+    return this.request<{ users: unknown[] }>(`/api/v1/voice/channels/${channelId}`);
+  }
+
+  async updateVoiceState(sessionId: string, data: { selfMute?: boolean; selfDeaf?: boolean; selfVideo?: boolean; selfStream?: boolean }): Promise<ApiResponse<unknown>> {
+    return this.request<unknown>(`/api/v1/voice/sessions/${sessionId}/state`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getChannelStreams(channelId: string): Promise<ApiResponse<{ streams: unknown[] }>> {
+    return this.request<{ streams: unknown[] }>(`/api/v1/voice/channels/${channelId}/streams`);
+  }
 }
 
 // Export singleton instance

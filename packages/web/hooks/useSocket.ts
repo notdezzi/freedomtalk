@@ -83,6 +83,25 @@ export function useSocket() {
     socketService.updateStatus(status);
   }, []);
 
+  // Voice methods
+  const joinVoiceChannel = useCallback((channelId: string, sessionId: string) => {
+    socketService.joinRoom(`voice:${channelId}`, 'channel');
+  }, []);
+
+  const leaveVoiceChannel = useCallback((channelId: string) => {
+    socketService.leaveRoom(`voice:${channelId}`, 'channel');
+  }, []);
+
+  const updateVoiceState = useCallback((state: {
+    selfMute?: boolean;
+    selfDeaf?: boolean;
+    selfVideo?: boolean;
+    selfStream?: boolean;
+  }) => {
+    // Voice state updates are handled via REST API
+    // This is just for notifying other users via socket
+  }, []);
+
   // Reconnect manually
   const reconnect = useCallback(() => {
     socketService.disconnect();
@@ -103,6 +122,9 @@ export function useSocket() {
     addReaction,
     removeReaction,
     updateStatus,
+    joinVoiceChannel,
+    leaveVoiceChannel,
+    updateVoiceState,
     reconnect,
   };
 }

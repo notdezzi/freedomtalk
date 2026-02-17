@@ -19,6 +19,8 @@ import { useServerStore } from '@/stores/serverStore';
 import { useChannelStore, Channel, Category } from '@/stores/channelStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/stores/uiStore';
+import { useVoiceStore } from '@/stores/voiceStore';
+import { VoiceChannelUsers, VoiceJoinButton } from '@/components/voice';
 
 function getStatusColor(status: string): string {
   switch (status) {
@@ -49,11 +51,61 @@ interface ChannelItemProps {
   isSelected: boolean;
   onClick: () => void;
   onSettingsClick: () => void;
+  serverId: string;
 }
 
-function ChannelItem({ channel, isSelected, onClick, onSettingsClick }: ChannelItemProps) {
+function ChannelItem({ channel, isSelected, onClick, onSettingsClick, serverId }: ChannelItemProps) {
   const hasUnread = channel.unreadCount && channel.unreadCount > 0;
+  const { isConnected, currentChannelId, getUsersByChannel } = useVoiceStore();
+  const voiceUsers = channel.type === 'voice' ? getUsersByChannel(channel.id) : [];
+  const isInVoiceChannel = isConnected && currentChannelId === channel.id;
 
+  // For voice channels, show users and join button
+  if (channel.type === 'voice') {
+    return (
+      <div className="w-full">
+        <div
+          onClick={onClick}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            onSettingsClick();
+          }}
+          className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-sm group transition-colors cursor-pointer ${
+            isInVoiceChannel
+              ? 'bg-accent-muted text-accent'
+              : 'text-foreground-muted hover:bg-background-surface hover:text-foreground'
+          }`}
+        >
+          <ChannelIcon type={channel.type} />
+          <span className="truncate flex-1 text-left">{channel.name}</span>
+          <div className="hidden group-hover:flex items-center gap-0.5">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onSettingsClick();
+              }}
+              className="p-1 rounded hover:bg-background text-foreground-muted hover:text-foreground"
+              aria-label="Channel settings"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Voice users in this channel */}
+        {voiceUsers.length > 0 && (
+          <VoiceChannelUsers channelId={channel.id} />
+        )}
+
+        {/* Join button if not connected */}
+        {!isInVoiceChannel && (
+          <VoiceJoinButton channelId={channel.id} serverId={serverId} />
+        )}
+      </div>
+    );
+  }
+
+  // Text channels
   return (
     <div
       onClick={onClick}
@@ -167,6 +219,7 @@ function CategorySection({
               isSelected={currentChannelId === channel.id}
               onClick={() => onChannelClick(channel)}
               onSettingsClick={() => onChannelSettings(channel)}
+              serverId={serverId}
             />
           ))}
         </div>
@@ -342,6 +395,7 @@ export default function ChannelSidebar() {
                     isSelected={currentChannelId === channel.id}
                     onClick={() => handleChannelClick(channel)}
                     onSettingsClick={() => handleChannelSettings(channel)}
+                    serverId={currentServerId}
                   />
                 ))}
               </div>

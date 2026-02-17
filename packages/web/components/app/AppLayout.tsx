@@ -10,6 +10,7 @@ import MemberSidebar from '@/components/app/MemberSidebar';
 import { DMSidebar } from '@/components/dm';
 import ConnectionStatus from '@/components/app/ConnectionStatus';
 import ContextMenuRenderer from '@/components/common/ContextMenuRenderer';
+import { VoiceConnectedPanel } from '@/components/voice';
 import { useUIStore } from '@/stores/uiStore';
 import { useServerStore } from '@/stores/serverStore';
 import { useChannelStore } from '@/stores/channelStore';
@@ -168,6 +169,9 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Member Sidebar (only for server channels) */}
       {isMemberSidebarOpen && currentServerId && !isDMRoute && <MemberSidebar />}
+
+      {/* Voice Connected Panel */}
+      <VoiceConnectedPanel />
 
       {/* Connection Status Indicator */}
       <ConnectionStatus />
