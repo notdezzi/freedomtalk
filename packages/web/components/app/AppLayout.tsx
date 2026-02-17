@@ -7,11 +7,12 @@ import { useSocket } from '@/hooks/useSocket';
 import ServerSidebar from '@/components/app/ServerSidebar';
 import ChannelSidebar from '@/components/app/ChannelSidebar';
 import MemberSidebar from '@/components/app/MemberSidebar';
+import SidebarWrapper from '@/components/app/SidebarWrapper';
 import { DMSidebar } from '@/components/dm';
 import ConnectionStatus from '@/components/app/ConnectionStatus';
 import ContextMenuRenderer from '@/components/common/ContextMenuRenderer';
 import { ToastContainer } from '@/components/common';
-import { VoiceConnectedPanel } from '@/components/voice';
+import { PinnedMessagesModal } from '@/components/messaging';
 import { useUIStore } from '@/stores/uiStore';
 import { useServerStore } from '@/stores/serverStore';
 import { useChannelStore } from '@/stores/channelStore';
@@ -107,8 +108,9 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 
   // Fetch messages when channel changes (only once per channel)
   useEffect(() => {
-    // Validate channelId is a proper ID (snowflake IDs are typically 18-20 characters)
+    // Skip temporary channel IDs and validate channelId is a proper snowflake ID
     if (currentChannelId &&
+        !currentChannelId.startsWith('temp-') &&
         currentChannelId.length >= 15 &&
         !messagesLoading[currentChannelId] &&
         !fetchedMessagesRef.current.has(currentChannelId) &&
@@ -120,7 +122,11 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 
   // Subscribe to channel room when channel changes
   useEffect(() => {
-    if (socketStatus === 'connected' && currentChannelId && currentChannelRef.current !== currentChannelId) {
+    // Skip temporary channel IDs
+    if (socketStatus === 'connected' &&
+        currentChannelId &&
+        !currentChannelId.startsWith('temp-') &&
+        currentChannelRef.current !== currentChannelId) {
       // Leave previous channel
       if (currentChannelRef.current) {
         leaveChannel(currentChannelRef.current);
@@ -156,12 +162,14 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       {/* Server Sidebar */}
       <ServerSidebar />
 
-      {/* DM Sidebar or Channel Sidebar */}
-      {isDMRoute ? (
-        <DMSidebar />
-      ) : (
-        <ChannelSidebar />
-      )}
+      {/* DM Sidebar or Channel Sidebar with bottom panel */}
+      <SidebarWrapper>
+        {isDMRoute ? (
+          <DMSidebar />
+        ) : (
+          <ChannelSidebar />
+        )}
+      </SidebarWrapper>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0">
@@ -171,9 +179,6 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       {/* Member Sidebar (only for server channels) */}
       {isMemberSidebarOpen && currentServerId && !isDMRoute && <MemberSidebar />}
 
-      {/* Voice Connected Panel */}
-      <VoiceConnectedPanel />
-
       {/* Connection Status Indicator */}
       <ConnectionStatus />
 
@@ -182,6 +187,9 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Toast Notifications */}
       <ToastContainer />
+
+      {/* Pinned Messages Modal */}
+      <PinnedMessagesModal />
     </div>
   );
 }

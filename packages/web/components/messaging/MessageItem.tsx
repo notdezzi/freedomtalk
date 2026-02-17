@@ -387,6 +387,11 @@ export default function MessageItem({
             {message.editedAt && (
               <span className="text-xs text-foreground-subtle">(edited)</span>
             )}
+            {message.pinned && (
+              <span title="Pinned">
+                <Pin className="w-3 h-3 text-accent" />
+              </span>
+            )}
           </div>
 
           {/* Content */}

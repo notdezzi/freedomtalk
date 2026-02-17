@@ -15,6 +15,7 @@ export type ModalType =
   | 'leave-server'
   | 'delete-server'
   | 'user-profile'
+  | 'pinned-messages'
   | 'none';
 
 export interface CreateChannelData {

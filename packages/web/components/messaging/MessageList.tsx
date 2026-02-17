@@ -5,6 +5,7 @@ import { ChevronDown, Hash, Bell, Pin } from 'lucide-react';
 import type { Message } from '@/stores/messageStore';
 import { useMessageStore } from '@/stores/messageStore';
 import { useChannelStore } from '@/stores/channelStore';
+import { useUIStore } from '@/stores/uiStore';
 import MessageItem from './MessageItem';
 import TypingIndicator from './TypingIndicator';
 
@@ -58,6 +59,7 @@ function groupMessagesByDate(messages: Message[]): Array<{ type: 'date'; date: s
 export default function MessageList({ channelId }: MessageListProps) {
   const { getMessages, loading, hasMore, fetchMessages, setLoading } = useMessageStore();
   const { getChannel } = useChannelStore();
+  const { openModal } = useUIStore();
   const listRef = useRef<HTMLDivElement>(null);
   const [showJumpButton, setShowJumpButton] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -172,7 +174,11 @@ export default function MessageList({ channelId }: MessageListProps) {
           <button className="p-1.5 rounded hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors" title="Notifications">
             <Bell className="w-4 h-4" />
           </button>
-          <button className="p-1.5 rounded hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors" title="Pinned Messages">
+          <button
+            onClick={() => openModal('pinned-messages', { channelId, channelName: channel?.name })}
+            className="p-1.5 rounded hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
+            title="Pinned Messages"
+          >
             <Pin className="w-4 h-4" />
           </button>
         </div>
