@@ -398,6 +398,12 @@ class ApiClient {
     return response;
   }
 
+  async regenerateBackupCodes(): Promise<ApiResponse<{ backupCodes: string[] }>> {
+    return this.request<{ backupCodes: string[] }>('/api/v1/auth/mfa/backup-codes', {
+      method: 'POST',
+    });
+  }
+
   // User endpoints
   async getCurrentUser(): Promise<ApiResponse<SessionResponse>> {
     return this.request<SessionResponse>('/api/v1/auth/session');

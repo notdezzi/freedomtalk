@@ -348,6 +348,45 @@ export default async function authRoutes(app: FastifyInstance) {
   );
 
   /**
+   * POST /api/v1/auth/mfa/backup-codes
+   * Regenerate MFA backup codes
+   */
+  app.post(
+    '/mfa/backup-codes',
+    {
+      preHandler: requireAuth,
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = request.user!.id;
+
+      try {
+        // Get user to verify MFA is enabled
+        const user = await db('users').where({ id: userId }).first();
+
+        if (!user || !user.mfa_enabled) {
+          return reply.code(400).send({
+            success: false,
+            error: { code: 'MFA_NOT_ENABLED', message: 'MFA must be enabled to regenerate backup codes' },
+          });
+        }
+
+        // Regenerate backup codes
+        const backupCodes = await mfaService.regenerateBackupCodes(userId);
+
+        logger.info({ userId }, 'Backup codes regenerated');
+
+        return reply.send(successResponse({ backupCodes }));
+      } catch (error: any) {
+        logger.error({ error, userId }, 'Error regenerating backup codes');
+        return reply.code(500).send({
+          success: false,
+          error: { code: 'BACKUP_CODES_ERROR', message: error.message || 'Failed to regenerate backup codes' },
+        });
+      }
+    }
+  );
+
+  /**
    * POST /api/v1/auth/refresh
    * Refresh access token using refresh token with token rotation
    */

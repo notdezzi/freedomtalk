@@ -2,24 +2,59 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { MessageCircle, ArrowLeft, Key, Copy, Check, Download } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MessageCircle, ArrowLeft, Key, Copy, Check, Download, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { apiClient } from '@/lib/api-client';
 
 export default function BackupCodesPage() {
   const router = useRouter();
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [regenerating, setRegenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock backup codes - in production these would come from the API
-  const [backupCodes] = useState([
-    'ABCD-EFGH-IJKL',
-    'MNOP-QRST-UVWX',
-    'YZ12-3456-7890',
-    'ABCD-EFGH-IJKL',
-    'MNOP-QRST-UVWX',
-    'YZ12-3456-7890',
-    'ABCD-EFGH-IJKL',
-    'MNOP-QRST-UVWX',
-  ]);
+  useEffect(() => {
+    fetchBackupCodes();
+  }, []);
+
+  const fetchBackupCodes = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await apiClient.regenerateBackupCodes();
+
+      if (response.success && response.data?.backupCodes) {
+        setBackupCodes(response.data.backupCodes);
+      } else {
+        setError(response.error?.message || 'Failed to load backup codes');
+      }
+    } catch (err) {
+      setError('Failed to load backup codes. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegenerate = async () => {
+    setRegenerating(true);
+    setError(null);
+
+    try {
+      const response = await apiClient.regenerateBackupCodes();
+
+      if (response.success && response.data?.backupCodes) {
+        setBackupCodes(response.data.backupCodes);
+      } else {
+        setError(response.error?.message || 'Failed to regenerate backup codes');
+      }
+    } catch (err) {
+      setError('Failed to regenerate backup codes. Please try again.');
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(backupCodes.join('\n'));
@@ -75,32 +110,74 @@ ${backupCodes.join('\n')}`;
         </p>
       </div>
 
+      {/* Error */}
+      {error && (
+        <div className="p-4 rounded-xl bg-error/10 border border-error/20 mb-6 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-error flex-shrink-0" />
+          <p className="text-error text-sm">{error}</p>
+        </div>
+      )}
+
       {/* Backup codes */}
       <div className="card mb-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold">Backup Codes</h3>
           <div className="flex gap-2">
-            <button onClick={handleCopy} className="btn btn-ghost text-sm">
-              {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
-            <button onClick={handleDownload} className="btn btn-ghost text-sm">
-              <Download className="w-4 h-4 mr-2" />
-              Download
-            </button>
+            {!loading && backupCodes.length > 0 && (
+              <>
+                <button onClick={handleCopy} className="btn btn-ghost text-sm">
+                  {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+                <button onClick={handleDownload} className="btn btn-ghost text-sm">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download
+                </button>
+              </>
+            )}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          {backupCodes.map((code, index) => (
-            <code
-              key={index}
-              className="px-3 py-2 bg-background-surface rounded-lg font-mono text-sm text-center"
-            >
-              {code}
-            </code>
-          ))}
-        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-foreground-muted" />
+          </div>
+        ) : backupCodes.length > 0 ? (
+          <div className="grid grid-cols-2 gap-2">
+            {backupCodes.map((code, index) => (
+              <code
+                key={index}
+                className="px-3 py-2 bg-background-surface rounded-lg font-mono text-sm text-center"
+              >
+                {code}
+              </code>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-foreground-muted mb-4">No backup codes available</p>
+            <button onClick={handleRegenerate} className="btn btn-primary">
+              Generate Backup Codes
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Regenerate button */}
+      {!loading && backupCodes.length > 0 && (
+        <button
+          onClick={handleRegenerate}
+          disabled={regenerating}
+          className="btn btn-ghost w-full mb-6"
+        >
+          {regenerating ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <RefreshCw className="w-4 h-4 mr-2" />
+          )}
+          Regenerate Codes
+        </button>
+      )}
 
       <div className="p-4 rounded-xl bg-warning/10 border border-warning/20 mb-6">
         <h4 className="font-medium text-warning mb-2">Important Security Information</h4>
@@ -109,6 +186,7 @@ ${backupCodes.join('\n')}`;
           <li>• Store these codes in a secure location</li>
           <li>• Never share these codes with anyone</li>
           <li>• Consider printing them and storing in a safe</li>
+          <li>• Regenerating codes invalidates all previous codes</li>
         </ul>
       </div>
 

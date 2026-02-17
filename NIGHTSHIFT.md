@@ -191,10 +191,10 @@ Backup codes page shows hardcoded array instead of real codes.
 - `packages/web/app/auth/2fa/backup-codes/page.tsx`
 
 **Subtasks:**
-- [ ] Create API endpoint to get backup codes
-- [ ] Fetch codes on page load
-- [ ] Add download/print functionality
-- [ ] Show warning about saving codes
+- [x] Create API endpoint to get backup codes
+- [x] Fetch codes on page load
+- [x] Add download/print functionality
+- [x] Show warning about saving codes
 
 ---
 
