@@ -137,6 +137,10 @@ class SocketService {
     this.socket.on(WS_EVENTS.SERVER_CREATE, this.handleServerCreate.bind(this));
     this.socket.on(WS_EVENTS.SERVER_UPDATE, this.handleServerUpdate.bind(this));
     this.socket.on(WS_EVENTS.SERVER_DELETE, this.handleServerDelete.bind(this));
+
+    // Reaction events
+    this.socket.on('reaction:added', this.handleReactionAdded.bind(this));
+    this.socket.on('reaction:removed', this.handleReactionRemoved.bind(this));
   }
 
   // Connection handlers
@@ -389,6 +393,36 @@ class SocketService {
   private handleServerDelete(data: unknown): void {
     console.log('[Socket] Server deleted:', data);
     // Handle server deletion
+  }
+
+  // Reaction handlers
+  private handleReactionAdded(data: unknown): void {
+    console.log('[Socket] Reaction added:', data);
+    const { channelId, messageId, emoji, userId, username } = data as {
+      channelId: string;
+      messageId: string;
+      emoji: { id?: string; name: string };
+      userId: string;
+      username?: string;
+    };
+
+    if (channelId && messageId && emoji) {
+      useMessageStore.getState().addReaction(channelId, messageId, emoji, userId);
+    }
+  }
+
+  private handleReactionRemoved(data: unknown): void {
+    console.log('[Socket] Reaction removed:', data);
+    const { channelId, messageId, emoji, userId } = data as {
+      channelId: string;
+      messageId: string;
+      emoji: { id?: string; name: string };
+      userId: string;
+    };
+
+    if (channelId && messageId && emoji) {
+      useMessageStore.getState().removeReaction(channelId, messageId, emoji, userId);
+    }
   }
 
   // Queue processing

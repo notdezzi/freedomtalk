@@ -527,6 +527,23 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  // Reaction endpoints
+  async addReaction(messageId: string, emoji: string): Promise<ApiResponse<{ count: number }>> {
+    return this.request<{ count: number }>(`/api/v1/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`, {
+      method: 'PUT',
+    });
+  }
+
+  async removeReaction(messageId: string, emoji: string): Promise<ApiResponse<void>> {
+    return this.request<void>(`/api/v1/messages/${messageId}/reactions/${encodeURIComponent(emoji)}/@me`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getReactionUsers(messageId: string, emoji: string): Promise<ApiResponse<{ users: { id: string; username: string }[] }>> {
+    return this.request<{ users: { id: string; username: string }[] }>(`/api/v1/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`);
+  }
 }
 
 // Export singleton instance

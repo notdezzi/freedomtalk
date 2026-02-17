@@ -16,6 +16,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import { useMessageStore } from '@/stores/messageStore';
 import { useChannelStore } from '@/stores/channelStore';
+import { useMemberStore } from '@/stores/memberStore';
+import { useServerStore } from '@/stores/serverStore';
 
 interface MessageInputProps {
   channelId: string;
@@ -30,12 +32,14 @@ const EMOJI_CATEGORIES = [
   ['👀', '🔥', '💯', '⚡', '💡', '📌', '🎯', '✅', '❌', '⚠️'],
 ];
 
-export default function MessageInput({ channelId }: MessageInputProps) {
+export default function MessageInput({ channelId, serverId }: MessageInputProps) {
   const { user } = useAuth();
   const { isConnected, sendMessage, sendTyping, stopTyping } = useSocket();
   const { editingMessageId, setEditingMessage, replyingTo, setReplyingTo, messages } =
     useMessageStore();
   const { channels } = useChannelStore();
+  const { members } = useMemberStore();
+  const { currentServerId } = useServerStore();
 
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,6 +56,18 @@ export default function MessageInput({ channelId }: MessageInputProps) {
   const channel = channels[channelId];
   const isEditing = editingMessageId !== null;
   const editingMessage = messages[channelId]?.find((m) => m.id === editingMessageId);
+
+  // Get server members for mentions
+  const activeServerId = serverId || currentServerId;
+  const serverMembers = activeServerId ? (members[activeServerId] || []) : [];
+  const filteredMembers = serverMembers
+    .filter((m) =>
+      mentionFilter
+        ? m.username.toLowerCase().includes(mentionFilter.toLowerCase()) ||
+          (m.displayName?.toLowerCase().includes(mentionFilter.toLowerCase()))
+        : true
+    )
+    .slice(0, 8);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -315,26 +331,45 @@ export default function MessageInput({ channelId }: MessageInputProps) {
                 Mention someone
               </div>
               <div className="max-h-48 overflow-y-auto">
-                {/* Mock mention suggestions */}
-                {['Alice', 'Bob', 'Charlie', 'Diana']
-                  .filter((name) => name.toLowerCase().includes(mentionFilter.toLowerCase()))
-                  .map((name) => (
+                {filteredMembers.length > 0 ? (
+                  filteredMembers.map((member) => (
                     <button
-                      key={name}
+                      key={member.userId}
                       onClick={() => {
                         const lastAtIndex = content.lastIndexOf('@');
-                        setContent(content.slice(0, lastAtIndex) + `@${name} `);
+                        setContent(content.slice(0, lastAtIndex) + `@${member.username} `);
                         setShowMentions(false);
                         textareaRef.current?.focus();
                       }}
                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-background-surface transition-colors"
                     >
-                      <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-sm font-bold text-background">
-                        {name.charAt(0)}
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-background"
+                        style={{ backgroundColor: '#00E5CC' }}
+                      >
+                        {member.avatar ? (
+                          <img
+                            src={member.avatar}
+                            alt=""
+                            className="w-full h-full rounded-full object-cover"
+                          />
+                        ) : (
+                          member.username.charAt(0).toUpperCase()
+                        )}
                       </div>
-                      <span className="font-medium">{name}</span>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{member.displayName || member.username}</span>
+                        {member.displayName && (
+                          <span className="text-xs text-foreground-muted">{member.username}</span>
+                        )}
+                      </div>
                     </button>
-                  ))}
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-sm text-foreground-muted">
+                    No members found
+                  </div>
+                )}
               </div>
             </div>
           )}

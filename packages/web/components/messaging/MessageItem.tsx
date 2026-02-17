@@ -15,6 +15,11 @@ import type { Message } from '@/stores/messageStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useMessageStore } from '@/stores/messageStore';
 import { useUIStore } from '@/stores/uiStore';
+import { useSocket } from '@/hooks/useSocket';
+import ReactionPicker from './ReactionPicker';
+import MessageContent from './MessageContent';
+import MessageAttachments from './MessageAttachments';
+import MessageEmbed from './MessageEmbed';
 
 interface MessageItemProps {
   message: Message;
@@ -57,10 +62,13 @@ export default function MessageItem({
   onReply,
 }: MessageItemProps) {
   const { user } = useAuth();
-  const { setEditingMessage, setReplyingTo, deleteMessage } = useMessageStore();
+  const { setEditingMessage, setReplyingTo, deleteMessage, addReaction, removeReaction } = useMessageStore();
   const { openContextMenu, closeContextMenu, contextMenu } = useUIStore();
+  const { addReaction: socketAddReaction, removeReaction: socketRemoveReaction } = useSocket();
   const [showActions, setShowActions] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [reactionPickerPosition, setReactionPickerPosition] = useState({ x: 0, y: 0 });
   const messageRef = useRef<HTMLDivElement>(null);
 
   const isOwn = user?.id === message.authorId;
@@ -97,6 +105,28 @@ export default function MessageItem({
     closeContextMenu();
   };
 
+  const handleReactionClick = (reaction: { emoji: { id?: string; name: string }; me: boolean }) => {
+    if (reaction.me) {
+      removeReaction(message.channelId, message.id, reaction.emoji, user?.id || '');
+      socketRemoveReaction(message.channelId, message.id, reaction.emoji.name);
+    } else {
+      addReaction(message.channelId, message.id, reaction.emoji, user?.id || '');
+      socketAddReaction(message.channelId, message.id, reaction.emoji.name);
+    }
+  };
+
+  const handleOpenReactionPicker = (e: React.MouseEvent) => {
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    setReactionPickerPosition({ x: rect.left, y: rect.top - 8 });
+    setShowReactionPicker(true);
+  };
+
+  const handleSelectReaction = (emoji: string) => {
+    addReaction(message.channelId, message.id, { name: emoji }, user?.id || '');
+    socketAddReaction(message.channelId, message.id, emoji);
+    setShowReactionPicker(false);
+  };
+
   // Close context menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -108,6 +138,159 @@ export default function MessageItem({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showContextMenu, closeContextMenu]);
+
+  const renderReactions = () => {
+    if (message.reactions.length === 0) return null;
+
+    return (
+      <div className="flex flex-wrap gap-1 mt-1">
+        {message.reactions.map((reaction, i) => (
+          <button
+            key={`${reaction.emoji.id || reaction.emoji.name}-${i}`}
+            onClick={() => handleReactionClick(reaction)}
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-sm border transition-colors ${
+              reaction.me
+                ? 'border-accent bg-accent-muted'
+                : 'border-border hover:border-accent-muted bg-background-surface'
+            }`}
+          >
+            <span>{reaction.emoji.name}</span>
+            <span className={reaction.me ? 'text-accent' : 'text-foreground-muted'}>
+              {reaction.count}
+            </span>
+          </button>
+        ))}
+        <button
+          onClick={handleOpenReactionPicker}
+          className="flex items-center justify-center w-6 h-6 rounded border border-border hover:border-accent-muted bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
+        >
+          <Smile className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    );
+  };
+
+  const renderHoverActions = () => (
+    <div className="absolute right-4 -top-3 flex items-center gap-0.5 bg-background-elevated rounded border border-border shadow-lg">
+      <button
+        onClick={handleOpenReactionPicker}
+        className="p-1.5 hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
+        title="Add Reaction"
+      >
+        <Smile className="w-4 h-4" />
+      </button>
+      <button
+        onClick={handleReply}
+        className="p-1.5 hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
+        title="Reply"
+      >
+        <Reply className="w-4 h-4" />
+      </button>
+      {isOwn && (
+        <button
+          onClick={handleEdit}
+          className="p-1.5 hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
+          title="Edit"
+        >
+          <Edit3 className="w-4 h-4" />
+        </button>
+      )}
+      <button
+        onClick={() => {}}
+        className="p-1.5 hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
+        title="More"
+      >
+        <MoreHorizontal className="w-4 h-4" />
+      </button>
+    </div>
+  );
+
+  const renderContextMenu = () => {
+    if (!showContextMenu) return null;
+
+    return (
+      <div
+        className="fixed z-50 min-w-[180px] bg-background-elevated rounded-lg border border-border shadow-xl py-1"
+        style={{ left: contextMenu.x, top: contextMenu.y }}
+      >
+        <button
+          onClick={handleReply}
+          className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
+        >
+          <Reply className="w-4 h-4" />
+          Reply
+        </button>
+        <button
+          onClick={handleOpenReactionPicker}
+          className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
+        >
+          <Smile className="w-4 h-4" />
+          Add Reaction
+        </button>
+        <button
+          onClick={() => {}}
+          className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
+        >
+          <Pin className="w-4 h-4" />
+          Pin Message
+        </button>
+        <button
+          onClick={handleCopy}
+          className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
+        >
+          {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+          Copy Text
+        </button>
+        <div className="my-1 border-t border-border" />
+        {isOwn ? (
+          <>
+            <button
+              onClick={handleEdit}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
+            >
+              <Edit3 className="w-4 h-4" />
+              Edit Message
+            </button>
+            <button
+              onClick={handleDelete}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-error hover:bg-error/10 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete Message
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={handleDelete}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-error hover:bg-error/10 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Message
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const renderReactionPicker = () => {
+    if (!showReactionPicker) return null;
+
+    return (
+      <div
+        className="fixed z-50"
+        style={{
+          left: reactionPickerPosition.x,
+          top: reactionPickerPosition.y,
+          transform: 'translateY(-100%)'
+        }}
+      >
+        <ReactionPicker
+          onSelect={handleSelectReaction}
+          onClose={() => setShowReactionPicker(false)}
+        />
+      </div>
+    );
+  };
 
   if (isCompact && !showHeader) {
     return (
@@ -126,105 +309,32 @@ export default function MessageItem({
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <p className="text-sm break-words whitespace-pre-wrap">{message.content}</p>
+            <MessageContent
+              content={message.content}
+              mentions={message.mentions}
+              mentionRoles={message.mentionRoles}
+              mentionEveryone={message.mentionEveryone}
+            />
+            <MessageAttachments attachments={message.attachments} />
+            {message.embeds.length > 0 && (
+              <div className="flex flex-col gap-2 mt-2">
+                {message.embeds.map((embed, i) => (
+                  <MessageEmbed key={i} embed={embed} />
+                ))}
+              </div>
+            )}
+            {renderReactions()}
           </div>
         </div>
 
         {/* Hover actions */}
-        {showActions && (
-          <div className="absolute right-4 -top-3 flex items-center gap-0.5 bg-background-elevated rounded border border-border shadow-lg">
-            <button className="p-1.5 hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors" title="Add Reaction">
-              <Smile className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleReply}
-              className="p-1.5 hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
-              title="Reply"
-            >
-              <Reply className="w-4 h-4" />
-            </button>
-            {isOwn && (
-              <button
-                onClick={handleEdit}
-                className="p-1.5 hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
-                title="Edit"
-              >
-                <Edit3 className="w-4 h-4" />
-              </button>
-            )}
-            <button
-              onClick={() => {}}
-              className="p-1.5 hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
-              title="More"
-            >
-              <MoreHorizontal className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        {showActions && renderHoverActions()}
 
         {/* Context Menu */}
-        {showContextMenu && (
-          <div
-            className="fixed z-50 min-w-[180px] bg-background-elevated rounded-lg border border-border shadow-xl py-1"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-          >
-            <button
-              onClick={handleReply}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
-            >
-              <Reply className="w-4 h-4" />
-              Reply
-            </button>
-            <button
-              onClick={() => {}}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
-            >
-              <Smile className="w-4 h-4" />
-              Add Reaction
-            </button>
-            <button
-              onClick={() => {}}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
-            >
-              <Pin className="w-4 h-4" />
-              Pin Message
-            </button>
-            <button
-              onClick={handleCopy}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
-            >
-              {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
-              Copy Text
-            </button>
-            <div className="my-1 border-t border-border" />
-            {isOwn ? (
-              <>
-                <button
-                  onClick={handleEdit}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
-                >
-                  <Edit3 className="w-4 h-4" />
-                  Edit Message
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-error hover:bg-error/10 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete Message
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={handleDelete}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-error hover:bg-error/10 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete Message
-              </button>
-            )}
-          </div>
-        )}
+        {renderContextMenu()}
+
+        {/* Reaction Picker */}
+        {renderReactionPicker()}
       </div>
     );
   }
@@ -280,154 +390,38 @@ export default function MessageItem({
           </div>
 
           {/* Content */}
-          <p className="text-sm break-words whitespace-pre-wrap">{message.content}</p>
+          <MessageContent
+            content={message.content}
+            mentions={message.mentions}
+            mentionRoles={message.mentionRoles}
+            mentionEveryone={message.mentionEveryone}
+          />
 
           {/* Attachments */}
-          {message.attachments.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {message.attachments.map((attachment) => (
-                <div key={attachment.id} className="max-w-md">
-                  {attachment.contentType.startsWith('image/') ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={attachment.url}
-                      alt={attachment.filename}
-                      className="rounded-lg max-h-80 object-contain"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-2 p-2 bg-background-surface rounded border border-border">
-                      <span className="text-sm">{attachment.filename}</span>
-                      <span className="text-xs text-foreground-muted">
-                        {(attachment.size / 1024).toFixed(1)} KB
-                      </span>
-                    </div>
-                  )}
-                </div>
+          <MessageAttachments attachments={message.attachments} />
+
+          {/* Embeds */}
+          {message.embeds.length > 0 && (
+            <div className="flex flex-col gap-2 mt-2">
+              {message.embeds.map((embed, i) => (
+                <MessageEmbed key={i} embed={embed} />
               ))}
             </div>
           )}
 
           {/* Reactions */}
-          {message.reactions.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {message.reactions.map((reaction, i) => (
-                <button
-                  key={i}
-                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-sm border transition-colors ${
-                    reaction.me
-                      ? 'border-accent bg-accent-muted'
-                      : 'border-border hover:border-accent-muted bg-background-surface'
-                  }`}
-                >
-                  <span>{reaction.emoji.name}</span>
-                  <span className={reaction.me ? 'text-accent' : 'text-foreground-muted'}>
-                    {reaction.count}
-                  </span>
-                </button>
-              ))}
-              <button className="flex items-center justify-center w-6 h-6 rounded border border-border hover:border-accent-muted bg-background-surface text-foreground-muted hover:text-foreground transition-colors">
-                <Smile className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+          {renderReactions()}
         </div>
       </div>
 
       {/* Hover actions */}
-      {showActions && (
-        <div className="absolute right-4 -top-3 flex items-center gap-0.5 bg-background-elevated rounded border border-border shadow-lg">
-          <button className="p-1.5 hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors" title="Add Reaction">
-            <Smile className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleReply}
-            className="p-1.5 hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
-            title="Reply"
-          >
-            <Reply className="w-4 h-4" />
-          </button>
-          {isOwn && (
-            <button
-              onClick={handleEdit}
-              className="p-1.5 hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
-              title="Edit"
-            >
-              <Edit3 className="w-4 h-4" />
-            </button>
-          )}
-          <button
-            onClick={() => {}}
-            className="p-1.5 hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
-            title="More"
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+      {showActions && renderHoverActions()}
 
       {/* Context Menu */}
-      {showContextMenu && (
-        <div
-          className="fixed z-50 min-w-[180px] bg-background-elevated rounded-lg border border-border shadow-xl py-1"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-        >
-          <button
-            onClick={handleReply}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
-          >
-            <Reply className="w-4 h-4" />
-            Reply
-          </button>
-          <button
-            onClick={() => {}}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
-          >
-            <Smile className="w-4 h-4" />
-            Add Reaction
-          </button>
-          <button
-            onClick={() => {}}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
-          >
-            <Pin className="w-4 h-4" />
-            Pin Message
-          </button>
-          <button
-            onClick={handleCopy}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
-          >
-            {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
-            Copy Text
-          </button>
-          <div className="my-1 border-t border-border" />
-          {isOwn ? (
-            <>
-              <button
-                onClick={handleEdit}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
-              >
-                <Edit3 className="w-4 h-4" />
-                Edit Message
-              </button>
-              <button
-                onClick={handleDelete}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-error hover:bg-error/10 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete Message
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={handleDelete}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-error hover:bg-error/10 transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete Message
-            </button>
-          )}
-        </div>
-      )}
+      {renderContextMenu()}
+
+      {/* Reaction Picker */}
+      {renderReactionPicker()}
     </div>
   );
 }
