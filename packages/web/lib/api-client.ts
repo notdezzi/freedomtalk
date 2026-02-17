@@ -717,6 +717,25 @@ class ApiClient {
   async getChannelStreams(channelId: string): Promise<ApiResponse<{ streams: unknown[] }>> {
     return this.request<{ streams: unknown[] }>(`/api/v1/voice/channels/${channelId}/streams`);
   }
+
+  // User endpoints
+  async getUser(userId: string): Promise<ApiResponse<unknown>> {
+    return this.request<unknown>(`/api/v1/users/${userId}`);
+  }
+
+  async updateUserProfile(data: { displayName?: string; aboutMe?: string; avatar?: string; banner?: string }): Promise<ApiResponse<unknown>> {
+    return this.request<unknown>('/api/v1/users/me', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse<void>> {
+    return this.request<void>('/api/v1/users/me/password', {
+      method: 'PATCH',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  }
 }
 
 // Export singleton instance
