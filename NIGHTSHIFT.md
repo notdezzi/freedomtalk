@@ -172,10 +172,10 @@ JoinServerModal uses simulated API and mock server preview.
 - `packages/web/components/modals/JoinServerModal.tsx`
 
 **Subtasks:**
-- [ ] Call real invite preview endpoint
-- [ ] Display real server info (name, icon, member count)
-- [ ] Handle invalid invite codes
-- [ ] Add loading states
+- [x] Call real invite preview endpoint
+- [x] Display real server info (name, icon, member count)
+- [x] Handle invalid invite codes
+- [x] Add loading states
 
 ---
 

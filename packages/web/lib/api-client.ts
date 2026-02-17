@@ -217,15 +217,25 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
 
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...options.headers,
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string>),
     };
+
+    // Only set Content-Type for requests with a body
+    // For POST/PUT/PATCH without body, send empty object to avoid "Body cannot be empty" error
+    const methodHasBody = ['POST', 'PUT', 'PATCH'].includes((options.method || 'GET').toUpperCase());
+    if (options.body) {
+      headers['Content-Type'] = 'application/json';
+    } else if (methodHasBody) {
+      // Send empty object body for POST/PUT/PATCH without explicit body
+      options.body = JSON.stringify({});
+      headers['Content-Type'] = 'application/json';
+    }
 
     // Add authorization header if we have a token
     const accessToken = getStoredAccessToken();
     if (accessToken) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${accessToken}`;
+      headers['Authorization'] = `Bearer ${accessToken}`;
     }
 
     try {
@@ -235,7 +245,23 @@ class ApiClient {
         credentials: 'include', // Include cookies for refresh tokens
       });
 
-      const data = await response.json();
+      // Handle empty responses (204 No Content)
+      if (response.status === 204) {
+        return {
+          success: true,
+          data: undefined,
+        };
+      }
+
+      // Handle empty body
+      const contentType = response.headers.get('content-type');
+      let data;
+      if (contentType && contentType.includes('application/json')) {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } else {
+        data = {};
+      }
 
       if (!response.ok) {
         return {
@@ -406,10 +432,20 @@ class ApiClient {
     });
   }
 
-  async joinServer(inviteCode: string): Promise<ApiResponse<ServerResponse>> {
-    return this.request<ServerResponse>(`/api/v1/servers/join/${inviteCode}`, {
+  async joinServer(inviteCode: string): Promise<ApiResponse<{ server: ServerResponse; member: MemberResponse }>> {
+    return this.request<{ server: ServerResponse; member: MemberResponse }>('/api/v1/servers/join', {
       method: 'POST',
+      body: JSON.stringify({ inviteCode }),
     });
+  }
+
+  async previewInvite(code: string): Promise<ApiResponse<{
+    invite: { code: string; expiresAt: string | null; maxUses: number | null; uses: number };
+    server: { id: string; name: string; icon_url: string | null; member_count: number } | null;
+    channel: { id: string; name: string; type: string } | null;
+    inviter: { id: string; username: string; avatar: string | null } | null;
+  }>> {
+    return this.request(`/api/v1/servers/invite/${code}/preview`);
   }
 
   async leaveServer(serverId: string): Promise<ApiResponse<{ message: string }>> {
@@ -757,6 +793,74 @@ class ApiClient {
 
     const query = searchParams.toString();
     return this.request<{ servers: unknown[]; total: number }>(`/api/v1/discover/servers${query ? `?${query}` : ''}`);
+  }
+
+  // Friend endpoints
+  async sendFriendRequest(targetUserId: string): Promise<ApiResponse<{ message: string; connection: unknown }>> {
+    return this.request<{ message: string; connection: unknown }>('/api/v1/friends/request', {
+      method: 'POST',
+      body: JSON.stringify({ targetUserId }),
+    });
+  }
+
+  async acceptFriendRequest(requesterId: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('/api/v1/friends/accept', {
+      method: 'POST',
+      body: JSON.stringify({ requesterId }),
+    });
+  }
+
+  async rejectFriendRequest(requesterId: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('/api/v1/friends/reject', {
+      method: 'POST',
+      body: JSON.stringify({ requesterId }),
+    });
+  }
+
+  async cancelFriendRequest(targetUserId: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('/api/v1/friends/cancel', {
+      method: 'POST',
+      body: JSON.stringify({ targetUserId }),
+    });
+  }
+
+  async removeFriend(friendId: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>(`/api/v1/friends/${friendId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async blockUser(targetUserId: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('/api/v1/friends/block', {
+      method: 'POST',
+      body: JSON.stringify({ targetUserId }),
+    });
+  }
+
+  async unblockUser(targetUserId: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>(`/api/v1/friends/block/${targetUserId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getFriends(): Promise<ApiResponse<{ friends: { id: string; username: string; displayName: string | null; avatarUrl: string | null; customStatus: string | null; friendSince: string }[] }>> {
+    return this.request<{ friends: { id: string; username: string; displayName: string | null; avatarUrl: string | null; customStatus: string | null; friendSince: string }[] }>('/api/v1/friends');
+  }
+
+  async getPendingFriendRequests(): Promise<ApiResponse<{ incoming: { id: string; userId: string; username: string; displayName: string | null; avatarUrl: string | null; requestedAt: string }[]; outgoing: { id: string; userId: string; username: string; displayName: string | null; avatarUrl: string | null; requestedAt: string }[] }>> {
+    return this.request<{ incoming: { id: string; userId: string; username: string; displayName: string | null; avatarUrl: string | null; requestedAt: string }[]; outgoing: { id: string; userId: string; username: string; displayName: string | null; avatarUrl: string | null; requestedAt: string }[] }>('/api/v1/friends/pending');
+  }
+
+  async getBlockedUsers(): Promise<ApiResponse<{ blocked: { id: string; username: string; displayName: string | null; avatarUrl: string | null }[] }>> {
+    return this.request<{ blocked: { id: string; username: string; displayName: string | null; avatarUrl: string | null }[] }>('/api/v1/friends/blocked');
+  }
+
+  async searchFriendUsers(query: string): Promise<ApiResponse<{ results: { id: string; username: string; displayName: string | null; avatarUrl: string | null; isFriend: boolean; hasPendingRequest: boolean; isBlocked: boolean }[] }>> {
+    return this.request<{ results: { id: string; username: string; displayName: string | null; avatarUrl: string | null; isFriend: boolean; hasPendingRequest: boolean; isBlocked: boolean }[] }>(`/api/v1/friends/search?q=${encodeURIComponent(query)}`);
+  }
+
+  async getFriendshipStatus(targetUserId: string): Promise<ApiResponse<{ isFriend: boolean; hasIncomingRequest: boolean; hasOutgoingRequest: boolean; isBlocked: boolean }>> {
+    return this.request<{ isFriend: boolean; hasIncomingRequest: boolean; hasOutgoingRequest: boolean; isBlocked: boolean }>(`/api/v1/friends/status/${targetUserId}`);
   }
 }
 

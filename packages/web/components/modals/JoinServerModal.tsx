@@ -2,9 +2,17 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Link as LinkIcon, ArrowRight, Loader2, CheckCircle } from 'lucide-react';
+import { X, Link as LinkIcon, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useServerStore, Server } from '@/stores/serverStore';
+import { apiClient } from '@/lib/api-client';
+
+interface InvitePreview {
+  invite: { code: string; expiresAt: string | null; maxUses: number | null; uses: number };
+  server: { id: string; name: string; icon_url: string | null; member_count: number } | null;
+  channel: { id: string; name: string; type: string } | null;
+  inviter: { id: string; username: string; avatar: string | null } | null;
+}
 
 export default function JoinServerModal() {
   const router = useRouter();
@@ -14,7 +22,7 @@ export default function JoinServerModal() {
   const [inviteCode, setInviteCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [previewServer, setPreviewServer] = useState<Server | null>(null);
+  const [preview, setPreview] = useState<InvitePreview | null>(null);
 
   const isOpen = activeModal.type === 'join-server';
 
@@ -22,50 +30,93 @@ export default function JoinServerModal() {
     closeModal();
     setInviteCode('');
     setError('');
-    setPreviewServer(null);
+    setPreview(null);
+  };
+
+  // Extract invite code from full URL if pasted
+  const extractInviteCode = (input: string): string => {
+    // Handle full URL like https://freedomtalk.app/invite/xxxxx
+    const inviteMatch = input.match(/invite\/([a-zA-Z0-9]+)/);
+    if (inviteMatch) {
+      return inviteMatch[1];
+    }
+    // Handle just the code
+    return input.trim();
   };
 
   const handlePreview = async () => {
     setError('');
 
-    if (!inviteCode.trim()) {
+    const code = extractInviteCode(inviteCode);
+    if (!code) {
       setError('Please enter an invite code');
       return;
     }
 
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const response = await apiClient.previewInvite(code);
 
-    // Mock server preview
-    const mockServer: Server = {
-      id: Date.now().toString(),
-      name: 'Cool Server',
-      description: 'A cool community for cool people',
-      ownerId: '0',
-      memberCount: 1234,
-      onlineCount: 567,
-      createdAt: new Date().toISOString(),
-      isOwner: false,
-    };
+      if (!response.success) {
+        setError(response.error?.message || 'Invalid invite code');
+        setPreview(null);
+        return;
+      }
 
-    setPreviewServer(mockServer);
-    setIsLoading(false);
+      if (!response.data?.server) {
+        setError('Server information not available');
+        setPreview(null);
+        return;
+      }
+
+      setPreview(response.data);
+    } catch (err) {
+      setError('Failed to preview invite. Please check the code and try again.');
+      setPreview(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleJoin = async () => {
-    if (!previewServer) return;
+    if (!preview?.server) return;
 
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      const code = extractInviteCode(inviteCode);
+      const response = await apiClient.joinServer(code);
 
-    addServer(previewServer);
-    setCurrentServer(previewServer.id);
-    handleClose();
-    router.push(`/app/servers/${previewServer.id}`);
+      if (!response.success) {
+        setError(response.error?.message || 'Failed to join server');
+        return;
+      }
+
+      // Convert to Server format and add to store
+      const serverData = response.data?.server;
+      const previewServer = preview.server;
+      const server: Server = {
+        id: previewServer.id,
+        name: previewServer.name,
+        description: '',
+        icon: previewServer.icon_url || undefined,
+        ownerId: '',
+        memberCount: previewServer.member_count || 0,
+        onlineCount: 0,
+        createdAt: new Date().toISOString(),
+        isOwner: false,
+      };
+
+      addServer(server);
+      setCurrentServer(server.id);
+      handleClose();
+      router.push(`/app/servers/${server.id}`);
+    } catch (err) {
+      setError('Failed to join server. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -73,7 +124,7 @@ export default function JoinServerModal() {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div
-        className="card max-w-md w-full animate-fade-in"
+        className="card max-w-md w-full animate-fade-in relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -100,7 +151,13 @@ export default function JoinServerModal() {
                 value={inviteCode}
                 onChange={(e) => {
                   setInviteCode(e.target.value);
-                  setPreviewServer(null);
+                  setPreview(null);
+                  setError('');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handlePreview();
+                  }
                 }}
                 autoFocus
               />
@@ -109,42 +166,62 @@ export default function JoinServerModal() {
 
           {/* Error */}
           {error && (
-            <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-error text-sm">
+            <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-error text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
           )}
 
           {/* Server preview */}
-          {previewServer && (
+          {preview?.server && (
             <div className="card bg-background-surface">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-accent to-secondary flex items-center justify-center">
-                  <span className="text-lg font-bold text-background">
-                    {previewServer.name.charAt(0)}
-                  </span>
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-accent to-secondary flex items-center justify-center overflow-hidden">
+                  {preview.server.icon_url ? (
+                    <img
+                      src={preview.server.icon_url}
+                      alt={preview.server.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-lg font-bold text-background">
+                      {preview.server.name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </div>
-                <div>
-                  <h3 className="font-semibold">{previewServer.name}</h3>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold truncate">{preview.server.name}</h3>
                   <p className="text-sm text-foreground-muted">
-                    {previewServer.memberCount.toLocaleString()} members •{' '}
-                    {previewServer.onlineCount.toLocaleString()} online
+                    {preview.server.member_count.toLocaleString()} members
                   </p>
+                  {preview.channel && (
+                    <p className="text-xs text-foreground-subtle">
+                      #{preview.channel.name}
+                    </p>
+                  )}
                 </div>
               </div>
+              {preview.inviter && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <p className="text-xs text-foreground-subtle">
+                    Invited by <span className="text-foreground-muted font-medium">{preview.inviter.username}</span>
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Actions */}
         <div className="flex gap-3">
-          {!previewServer ? (
+          {!preview ? (
             <>
               <button onClick={handleClose} className="btn btn-ghost flex-1" disabled={isLoading}>
                 Cancel
               </button>
               <button
                 onClick={handlePreview}
-                disabled={isLoading}
+                disabled={isLoading || !inviteCode.trim()}
                 className="btn btn-primary flex-1"
               >
                 {isLoading ? (
@@ -157,7 +234,10 @@ export default function JoinServerModal() {
           ) : (
             <>
               <button
-                onClick={() => setPreviewServer(null)}
+                onClick={() => {
+                  setPreview(null);
+                  setError('');
+                }}
                 className="btn btn-ghost flex-1"
                 disabled={isLoading}
               >
@@ -179,22 +259,6 @@ export default function JoinServerModal() {
               </button>
             </>
           )}
-        </div>
-
-        {/* Examples */}
-        <div className="mt-6 pt-6 border-t border-border text-center">
-          <p className="text-xs text-foreground-subtle mb-2">Examples:</p>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {['freedomtalk', 'gaming', 'dev-community'].map((code) => (
-              <button
-                key={code}
-                onClick={() => setInviteCode(code)}
-                className="px-2 py-1 rounded text-xs bg-background-surface hover:bg-accent-muted hover:text-accent transition-colors"
-              >
-                {code}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Close button */}

@@ -26,9 +26,9 @@ const updateServerSchema = z.object({
   description: z.string().max(VALIDATION.SERVER_DESCRIPTION.MAX_LENGTH).nullable().optional(),
   iconUrl: z.string().url().nullable().optional(),
   bannerUrl: z.string().url().nullable().optional(),
-  systemChannelId: z.string().length(20).nullable().optional(),
-  rulesChannelId: z.string().length(20).nullable().optional(),
-  afkChannelId: z.string().length(20).nullable().optional(),
+  systemChannelId: z.string().min(18).max(20).nullable().optional(),
+  rulesChannelId: z.string().min(18).max(20).nullable().optional(),
+  afkChannelId: z.string().min(18).max(20).nullable().optional(),
   afkTimeout: z.number().int().min(0).optional(),
   preferredLocale: z.string().max(10).optional(),
 });
@@ -42,7 +42,7 @@ const updateMemberSchema = z.object({
 });
 
 const memberRolesSchema = z.object({
-  roleIds: z.array(z.string().length(20)),
+  roleIds: z.array(z.string().min(18).max(20)),
 });
 
 const createBanSchema = z.object({
@@ -341,6 +341,70 @@ export default async function serverRoutes(app: FastifyInstance) {
       });
 
       return reply.send(successResponse({ server: invite.server, member }));
+    }
+  );
+
+  /**
+   * GET /api/v1/servers/invite/:code/preview
+   * Preview an invite without joining
+   */
+  app.get(
+    '/invite/:code/preview',
+    {
+      schema: {
+        description: 'Preview an invite without joining the server',
+        tags: ['Servers', 'Invites'],
+        params: {
+          type: 'object',
+          required: ['code'],
+          properties: {
+            code: { type: 'string', minLength: 1, maxLength: VALIDATION.INVITE.MAX_CODE_LENGTH },
+          },
+        },
+        response: {
+          200: { type: 'object' },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { code: string } }>, reply: FastifyReply) => {
+      const { code } = request.params;
+
+      const invite = await inviteService.getInviteByCode(code);
+
+      if (!invite) {
+        return reply.code(404).send({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Invalid invite code' },
+        });
+      }
+
+      // Check if expired
+      if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+        return reply.code(410).send({
+          success: false,
+          error: { code: 'EXPIRED', message: 'This invite has expired' },
+        });
+      }
+
+      // Check if max uses reached
+      if (invite.max_uses !== null && invite.uses >= invite.max_uses) {
+        return reply.code(410).send({
+          success: false,
+          error: { code: 'MAX_USES', message: 'This invite has reached its maximum uses' },
+        });
+      }
+
+      return reply.send(successResponse({
+        invite: {
+          code: invite.code,
+          expiresAt: invite.expires_at,
+          maxUses: invite.max_uses,
+          uses: invite.uses,
+        },
+        server: invite.server,
+        channel: invite.channel,
+        inviter: invite.inviter,
+      }));
     }
   );
 
