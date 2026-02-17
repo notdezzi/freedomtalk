@@ -208,9 +208,9 @@ Backup codes page shows hardcoded array instead of real codes.
 - `packages/web/app/auth/reset-password/page.tsx`
 
 **Subtasks:**
-- [ ] Replace setTimeout with real API calls
-- [ ] Handle API responses properly
-- [ ] Add error states
+- [x] Replace setTimeout with real API calls
+- [x] Handle API responses properly
+- [x] Add error states
 
 ---
 

@@ -404,6 +404,27 @@ class ApiClient {
     });
   }
 
+  async forgotPassword(email: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('/api/v1/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, password: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('/api/v1/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
+  }
+
+  async resendVerification(email: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('/api/v1/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
   // User endpoints
   async getCurrentUser(): Promise<ApiResponse<SessionResponse>> {
     return this.request<SessionResponse>('/api/v1/auth/session');

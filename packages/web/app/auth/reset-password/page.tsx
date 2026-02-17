@@ -4,7 +4,8 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
-import { Eye, EyeOff, MessageCircle, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, MessageCircle, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { apiClient } from '@/lib/api-client';
 
 const passwordRequirements = [
   { label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
@@ -42,20 +43,33 @@ function ResetPasswordContent() {
       return;
     }
 
+    if (!token) {
+      setError('Invalid reset token');
+      return;
+    }
+
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const response = await apiClient.resetPassword(token, formData.password);
 
-    setIsLoading(false);
-    setIsSuccess(true);
+      if (response.success) {
+        setIsSuccess(true);
+      } else {
+        setError(response.error?.message || 'Failed to reset password');
+      }
+    } catch (err) {
+      setError('Failed to reset password. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!token) {
     return (
       <div className="animate-fade-in text-center">
         <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mx-auto mb-6">
-          <span className="text-2xl">!</span>
+          <AlertCircle className="w-8 h-8 text-error" />
         </div>
         <h1 className="text-2xl font-bold mb-2">Invalid Link</h1>
         <p className="text-foreground-muted mb-6">
@@ -113,6 +127,14 @@ function ResetPasswordContent() {
           Your new password must be different from previous passwords.
         </p>
       </div>
+
+      {/* Error */}
+      {error && (
+        <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-error text-sm flex items-center gap-2 mb-6">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {error}
+        </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -181,19 +203,13 @@ function ResetPasswordContent() {
           </div>
         </div>
 
-        {error && (
-          <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-error text-sm">
-            {error}
-          </div>
-        )}
-
         <button
           type="submit"
           className="btn btn-primary w-full"
           disabled={isLoading}
         >
           {isLoading ? (
-            <div className="w-5 h-5 border-2 border-background border-t-transparent rounded-full animate-spin" />
+            <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
             'Reset Password'
           )}
@@ -207,7 +223,7 @@ function LoadingFallback() {
   return (
     <div className="animate-fade-in text-center">
       <div className="w-16 h-16 rounded-full bg-secondary-muted flex items-center justify-center mx-auto mb-6">
-        <div className="w-8 h-8 border-2 border-secondary border-t-transparent rounded-full animate-spin" />
+        <Loader2 className="w-8 h-8 text-secondary animate-spin" />
       </div>
       <h1 className="text-2xl font-bold mb-2">Loading...</h1>
     </div>

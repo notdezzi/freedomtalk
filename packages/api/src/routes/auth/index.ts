@@ -514,6 +514,173 @@ export default async function authRoutes(app: FastifyInstance) {
   );
 
   /**
+   * POST /api/v1/auth/forgot-password
+   * Request password reset email
+   */
+  app.post(
+    '/forgot-password',
+    {
+      config: {
+        rateLimit: {
+          max: 3,
+          timeWindow: '1 hour',
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Body: { email: string } }>, reply: FastifyReply) => {
+      const { email } = request.body;
+
+      try {
+        // Find user by email
+        const user = await db('users').where({ email: email.toLowerCase() }).first();
+
+        if (user) {
+          // Generate reset token
+          const resetToken = snowflake.generate();
+          const expiresAt = new Date(Date.now() + 3600000); // 1 hour
+
+          // Store reset token in database
+          await db('password_reset_tokens').insert({
+            id: snowflake.generate(),
+            user_id: user.id,
+            token: resetToken,
+            expires_at: expiresAt,
+            created_at: new Date(),
+          }).onConflict('user_id').merge(); // Replace any existing token
+
+          // Send reset email
+          const { emailService } = await import('../../services/email/email.service');
+          const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/reset-password?token=${resetToken}`;
+          await emailService.sendPasswordResetEmail(email, resetLink);
+
+          logger.info({ userId: user.id, email }, 'Password reset email sent');
+        }
+
+        // Always return success to prevent email enumeration
+        reply.send(successResponse({
+          message: 'If an account exists with this email, a reset link has been sent',
+        }));
+      } catch (error) {
+        logger.error({ error, email }, 'Error in forgot password');
+        // Don't reveal errors
+        reply.send(successResponse({
+          message: 'If an account exists with this email, a reset link has been sent',
+        }));
+      }
+    }
+  );
+
+  /**
+   * POST /api/v1/auth/reset-password
+   * Reset password using token
+   */
+  app.post(
+    '/reset-password',
+    {
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: '1 hour',
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Body: { token: string; password: string } }>, reply: FastifyReply) => {
+      const { token, password } = request.body;
+
+      try {
+        // Find reset token
+        const resetToken = await db('password_reset_tokens').where({ token }).first();
+
+        if (!resetToken || new Date() > new Date(resetToken.expires_at)) {
+          return reply.code(400).send({
+            success: false,
+            error: { code: 'INVALID_TOKEN', message: 'Invalid or expired reset token' },
+          });
+        }
+
+        // Hash new password
+        const hashedPassword = await passwordService.hashPassword(password);
+
+        // Update user password
+        await db('users').where({ id: resetToken.user_id }).update({
+          password_hash: hashedPassword,
+          updated_at: new Date(),
+        });
+
+        // Delete reset token
+        await db('password_reset_tokens').where({ id: resetToken.id }).delete();
+
+        // Invalidate all sessions for this user
+        await db('sessions').where({ user_id: resetToken.user_id }).delete();
+
+        logger.info({ userId: resetToken.user_id }, 'Password reset successful');
+
+        reply.send(successResponse({
+          message: 'Password reset successfully',
+        }));
+      } catch (error) {
+        logger.error({ error }, 'Error in reset password');
+        return reply.code(500).send({
+          success: false,
+          error: { code: 'RESET_ERROR', message: 'Failed to reset password' },
+        });
+      }
+    }
+  );
+
+  /**
+   * POST /api/v1/auth/resend-verification
+   * Resend email verification
+   */
+  app.post(
+    '/resend-verification',
+    {
+      config: {
+        rateLimit: {
+          max: 3,
+          timeWindow: '1 hour',
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Body: { email: string } }>, reply: FastifyReply) => {
+      const { email } = request.body;
+
+      try {
+        // Find user by email
+        const user = await db('users').where({ email: email.toLowerCase() }).first();
+
+        if (user && !user.email_verified) {
+          // Generate verification token
+          const verificationToken = snowflake.generate();
+
+          // Update user with new verification token
+          await db('users').where({ id: user.id }).update({
+            verification_token: verificationToken,
+            updated_at: new Date(),
+          });
+
+          // Send verification email
+          const { emailService } = await import('../../services/email/email.service');
+          const verifyLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/verify-email?token=${verificationToken}`;
+          await emailService.sendVerificationEmail(email, verifyLink);
+
+          logger.info({ userId: user.id, email }, 'Verification email resent');
+        }
+
+        // Always return success to prevent email enumeration
+        reply.send(successResponse({
+          message: 'If an unverified account exists with this email, a verification link has been sent',
+        }));
+      } catch (error) {
+        logger.error({ error, email }, 'Error in resend verification');
+        reply.send(successResponse({
+          message: 'If an unverified account exists with this email, a verification link has been sent',
+        }));
+      }
+    }
+  );
+
+  /**
    * GET /api/v1/auth/google/authorize
    * Get Google OAuth2 authorization URL
    */

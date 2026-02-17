@@ -2,22 +2,33 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { MessageCircle, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
+import { MessageCircle, ArrowLeft, Mail, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { apiClient } from '@/lib/api-client';
 
 export default function VerifyPendingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
   const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
 
   const handleResend = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setIsLoading(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const response = await apiClient.resendVerification(email);
 
-    setIsLoading(false);
-    setIsSent(true);
+      if (response.success) {
+        setIsSent(true);
+      } else {
+        setError(response.error?.message || 'Failed to send verification email');
+      }
+    } catch (err) {
+      setError('Failed to send verification email. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -68,6 +79,14 @@ export default function VerifyPendingPage() {
             </p>
           </div>
 
+          {/* Error */}
+          {error && (
+            <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-error text-sm flex items-center gap-2 mb-6">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleResend} className="space-y-6">
             <div>
@@ -94,7 +113,7 @@ export default function VerifyPendingPage() {
               disabled={isLoading}
             >
               {isLoading ? (
-                <div className="w-5 h-5 border-2 border-background border-t-transparent rounded-full animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 'Resend Verification Email'
               )}
