@@ -24,9 +24,9 @@ export default async function searchRoutes(app: FastifyInstance) {
           required: ['query'],
           properties: {
             query: { type: 'string', minLength: 1, maxLength: 500 },
-            channel_id: { type: 'string', minLength: 20, maxLength: 20 },
-            server_id: { type: 'string', minLength: 20, maxLength: 20 },
-            author_id: { type: 'string', minLength: 20, maxLength: 20 },
+            channel_id: { type: 'string', minLength: 15, maxLength: 25 },
+            server_id: { type: 'string', minLength: 15, maxLength: 25 },
+            author_id: { type: 'string', minLength: 15, maxLength: 25 },
             limit: { type: 'number', minimum: 1, maximum: 100, default: 50 },
             offset: { type: 'number', minimum: 0, default: 0 },
           },

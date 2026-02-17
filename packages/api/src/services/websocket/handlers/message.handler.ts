@@ -69,7 +69,7 @@ export async function handleMessageCreate(socket: Socket, data: unknown): Promis
       embeds,
     });
 
-    // Convert message to WebSocket format (camelCase)
+    // Convert message to WebSocket format (camelCase) with author info
     const wsMessage = {
       id: message.id,
       content: message.content,
@@ -79,6 +79,10 @@ export async function handleMessageCreate(socket: Socket, data: unknown): Promis
       updatedAt: message.updated_at.toISOString(),
       isEdited: message.is_edited,
       isDeleted: message.is_deleted,
+      author: {
+        id: user.id,
+        username: user.username,
+      },
       embeds: message.embeds?.map(embed => ({
         ...embed,
         timestamp: embed.timestamp instanceof Date ? embed.timestamp.toISOString() : embed.timestamp,

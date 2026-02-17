@@ -1,0 +1,428 @@
+'use client';
+
+import { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  PlusCircle,
+  Gift,
+  Sticker,
+  Smile,
+  Send,
+  X,
+  Image as ImageIcon,
+  FileText,
+  Loader2,
+} from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useSocket } from '@/hooks/useSocket';
+import { useMessageStore } from '@/stores/messageStore';
+import { useChannelStore } from '@/stores/channelStore';
+
+interface MessageInputProps {
+  channelId: string;
+  serverId?: string;
+}
+
+const EMOJI_CATEGORIES = [
+  ['😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂'],
+  ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '💕', '💖'],
+  ['👍', '👎', '👏', '🙌', '🤝', '✌️', '🤞', '👋', '🤙', '💪'],
+  ['🎉', '🎊', '✨', '🌟', '💥', '💫', '🎁', '🏆', '🎮', '🚀'],
+  ['👀', '🔥', '💯', '⚡', '💡', '📌', '🎯', '✅', '❌', '⚠️'],
+];
+
+export default function MessageInput({ channelId }: MessageInputProps) {
+  const { user } = useAuth();
+  const { isConnected, sendMessage, sendTyping, stopTyping } = useSocket();
+  const { editingMessageId, setEditingMessage, replyingTo, setReplyingTo, messages } =
+    useMessageStore();
+  const { channels } = useChannelStore();
+
+  const [content, setContent] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [slowmodeRemaining, setSlowmodeRemaining] = useState(0);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const channel = channels[channelId];
+  const isEditing = editingMessageId !== null;
+  const editingMessage = messages[channelId]?.find((m) => m.id === editingMessageId);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+    }
+  }, [content]);
+
+  // Focus textarea when editing or replying
+  useEffect(() => {
+    if ((isEditing || replyingTo) && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [isEditing, replyingTo]);
+
+  // Load editing content
+  useEffect(() => {
+    if (editingMessage) {
+      setContent(editingMessage.content);
+    }
+  }, [editingMessage]);
+
+  // Slowmode timer
+  useEffect(() => {
+    if (slowmodeRemaining > 0) {
+      const timer = setTimeout(() => setSlowmodeRemaining(slowmodeRemaining - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [slowmodeRemaining]);
+
+  // Send typing indicator when content changes
+  useEffect(() => {
+    if (content.trim() && isConnected) {
+      sendTyping(channelId);
+
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      // Auto-stop typing after 3 seconds of no changes
+      typingTimeoutRef.current = setTimeout(() => {
+        stopTyping(channelId);
+      }, 3000);
+    }
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [content, channelId, isConnected, sendTyping, stopTyping]);
+
+  // Handle mention detection
+  useEffect(() => {
+    const lastAtIndex = content.lastIndexOf('@');
+    if (lastAtIndex !== -1 && lastAtIndex === content.length - 1) {
+      setShowMentions(true);
+      setMentionFilter('');
+    } else if (lastAtIndex !== -1) {
+      const afterAt = content.slice(lastAtIndex + 1);
+      if (!afterAt.includes(' ') && afterAt.length <= 20) {
+        setShowMentions(true);
+        setMentionFilter(afterAt);
+      } else {
+        setShowMentions(false);
+      }
+    } else {
+      setShowMentions(false);
+    }
+  }, [content]);
+
+  const handleSubmit = useCallback(async () => {
+    if ((!content.trim() && attachments.length === 0) || !user) return;
+    if (slowmodeRemaining > 0) return;
+
+    setIsSubmitting(true);
+
+    // Stop typing indicator
+    stopTyping(channelId);
+
+    try {
+      if (isEditing && editingMessage) {
+        // Update existing message via socket
+        sendMessage(channelId, content.trim(), editingMessage.referencedMessage?.id);
+        const { updateMessage } = useMessageStore.getState();
+        updateMessage(channelId, editingMessage.id, {
+          content: content.trim(),
+          editedAt: new Date().toISOString(),
+        });
+        setEditingMessage(null);
+      } else {
+        // Send message via socket - the server will broadcast it back
+        // Don't add optimistically to avoid duplicates
+        sendMessage(channelId, content.trim(), replyingTo?.id);
+
+        // Set slowmode if channel has it
+        if (channel?.rateLimitPerUser && channel.rateLimitPerUser > 0) {
+          setSlowmodeRemaining(channel.rateLimitPerUser);
+        }
+      }
+
+      setContent('');
+      setAttachments([]);
+      setReplyingTo(null);
+
+      // Reset textarea height
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [content, attachments, user, slowmodeRemaining, isEditing, editingMessage, channelId, channel, setEditingMessage, setReplyingTo, replyingTo, sendMessage, stopTyping]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    } else if (e.key === 'Escape') {
+      if (isEditing) {
+        setEditingMessage(null);
+        setContent('');
+      }
+      if (replyingTo) {
+        setReplyingTo(null);
+      }
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setAttachments((prev) => [...prev, ...files]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const addEmoji = (emoji: string) => {
+    setContent((prev) => prev + emoji);
+    setShowEmojiPicker(false);
+    textareaRef.current?.focus();
+  };
+
+  const cancelEdit = () => {
+    setEditingMessage(null);
+    setContent('');
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  const charCount = content.length;
+  const maxChars = 2000;
+  const isOverLimit = charCount > maxChars;
+  const canSend = (content.trim() || attachments.length > 0) && !isOverLimit && !isSubmitting && slowmodeRemaining === 0;
+
+  return (
+    <div className="px-4 pb-6">
+      {/* Reply/Edit indicator */}
+      {(replyingTo || isEditing) && (
+        <div className="flex items-center justify-between px-4 py-2 bg-background-surface rounded-t-lg border-b border-border">
+          <div className="flex items-center gap-2 text-sm">
+            {isEditing ? (
+              <>
+                <span className="text-foreground-muted">Editing message from</span>
+                <span className="font-medium">{user?.username}</span>
+              </>
+            ) : replyingTo ? (
+              <>
+                <span className="text-foreground-muted">Replying to</span>
+                <span
+                  className="font-medium"
+                  style={{ color: replyingTo.author.color }}
+                >
+                  {replyingTo.author.username}
+                </span>
+              </>
+            ) : null}
+          </div>
+          <button
+            onClick={isEditing ? cancelEdit : cancelReply}
+            className="p-1 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Attachments preview */}
+      {attachments.length > 0 && (
+        <div className="flex flex-wrap gap-2 p-2 bg-background-surface rounded-t-lg border-b border-border">
+          {attachments.map((file, index) => (
+            <div
+              key={index}
+              className="relative flex items-center gap-2 px-2 py-1 bg-background rounded border border-border"
+            >
+              {file.type.startsWith('image/') ? (
+                <ImageIcon className="w-4 h-4 text-accent" />
+              ) : (
+                <FileText className="w-4 h-4 text-foreground-muted" />
+              )}
+              <span className="text-sm truncate max-w-[150px]">{file.name}</span>
+              <button
+                onClick={() => removeAttachment(index)}
+                className="p-0.5 rounded hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Input area */}
+      <div
+        className={`relative flex items-end gap-2 bg-background-surface rounded-lg border transition-colors ${
+          isEditing ? 'rounded-t-none' : ''
+        } ${isOverLimit ? 'border-error' : 'border-border focus-within:border-accent'}`}
+      >
+        {/* File upload button */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="p-3 text-foreground-muted hover:text-foreground transition-colors"
+          title="Upload file"
+        >
+          <PlusCircle className="w-5 h-5" />
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          onChange={handleFileSelect}
+          className="hidden"
+          accept="image/*,video/*,audio/*,.pdf,.txt,.doc,.docx"
+        />
+
+        {/* Textarea */}
+        <div className="flex-1 relative py-2">
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={`Message #${channel?.name || 'channel'}`}
+            className="w-full bg-transparent resize-none outline-none text-sm placeholder:text-foreground-subtle min-h-[40px] max-h-[200px]"
+            rows={1}
+            disabled={slowmodeRemaining > 0}
+          />
+
+          {/* Mention autocomplete */}
+          {showMentions && (
+            <div className="absolute bottom-full left-0 mb-2 w-full max-w-xs bg-background-elevated rounded-lg border border-border shadow-xl overflow-hidden">
+              <div className="p-2 text-xs text-foreground-muted border-b border-border">
+                Mention someone
+              </div>
+              <div className="max-h-48 overflow-y-auto">
+                {/* Mock mention suggestions */}
+                {['Alice', 'Bob', 'Charlie', 'Diana']
+                  .filter((name) => name.toLowerCase().includes(mentionFilter.toLowerCase()))
+                  .map((name) => (
+                    <button
+                      key={name}
+                      onClick={() => {
+                        const lastAtIndex = content.lastIndexOf('@');
+                        setContent(content.slice(0, lastAtIndex) + `@${name} `);
+                        setShowMentions(false);
+                        textareaRef.current?.focus();
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-background-surface transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-sm font-bold text-background">
+                        {name.charAt(0)}
+                      </div>
+                      <span className="font-medium">{name}</span>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Emoji picker */}
+          {showEmojiPicker && (
+            <div className="absolute bottom-full right-0 mb-2 bg-background-elevated rounded-lg border border-border shadow-xl overflow-hidden">
+              <div className="p-2 border-b border-border">
+                <input
+                  type="text"
+                  placeholder="Search emoji..."
+                  className="w-full px-2 py-1 text-sm bg-background-surface rounded border border-border focus:border-accent focus:outline-none"
+                />
+              </div>
+              <div className="p-2 max-h-64 overflow-y-auto">
+                {EMOJI_CATEGORIES.map((category, i) => (
+                  <div key={i} className="grid grid-cols-10 gap-1 mb-2">
+                    {category.map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => addEmoji(emoji)}
+                        className="w-8 h-8 flex items-center justify-center text-lg hover:bg-background-surface rounded transition-colors"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-1 pr-2 pb-2">
+          <button
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            className="p-1.5 rounded text-foreground-muted hover:text-foreground transition-colors"
+            title="Emoji"
+          >
+            <Smile className="w-5 h-5" />
+          </button>
+          <button
+            className="p-1.5 rounded text-foreground-muted hover:text-foreground transition-colors"
+            title="Stickers"
+          >
+            <Sticker className="w-5 h-5" />
+          </button>
+          <button
+            className="p-1.5 rounded text-foreground-muted hover:text-foreground transition-colors"
+            title="Gift"
+          >
+            <Gift className="w-5 h-5" />
+          </button>
+
+          {/* Send button */}
+          <button
+            onClick={handleSubmit}
+            disabled={!canSend}
+            className={`p-2 rounded transition-colors ${
+              canSend
+                ? 'bg-accent text-background hover:bg-accent-hover'
+                : 'bg-background-surface text-foreground-muted cursor-not-allowed'
+            }`}
+            title="Send message"
+          >
+            {isSubmitting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Character count / Slowmode */}
+      <div className="flex justify-between items-center mt-1 px-2 text-xs">
+        {slowmodeRemaining > 0 ? (
+          <span className="text-warning">Slowmode: {slowmodeRemaining}s</span>
+        ) : (
+          <span />
+        )}
+        {charCount > maxChars - 100 && (
+          <span className={isOverLimit ? 'text-error' : 'text-foreground-muted'}>
+            {charCount}/{maxChars}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}

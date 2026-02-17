@@ -27,7 +27,7 @@ export default async function attachmentRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['messageId'],
           properties: {
-            messageId: { type: 'string', minLength: 20, maxLength: 20 },
+            messageId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -71,7 +71,7 @@ export default async function attachmentRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['messageId'],
           properties: {
-            messageId: { type: 'string', minLength: 20, maxLength: 20 },
+            messageId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -108,7 +108,7 @@ export default async function attachmentRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['attachmentId'],
           properties: {
-            attachmentId: { type: 'string', minLength: 20, maxLength: 20 },
+            attachmentId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -118,7 +118,7 @@ export default async function attachmentRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { attachmentId: string } }>, reply: FastifyReply) => {
       const { attachmentId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       try {
         await attachmentService.deleteAttachment(attachmentId, userId);

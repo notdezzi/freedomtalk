@@ -56,7 +56,7 @@ export default async function permissionRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['channelId'],
           properties: {
-            channelId: { type: 'string', minLength: 20, maxLength: 20 },
+            channelId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -66,7 +66,7 @@ export default async function permissionRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { channelId: string } }>, reply: FastifyReply) => {
       const { channelId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       const channel = await channelService.getChannel(channelId);
       if (!channel) {
@@ -99,8 +99,8 @@ export default async function permissionRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['channelId', 'targetId'],
           properties: {
-            channelId: { type: 'string', minLength: 20, maxLength: 20 },
-            targetId: { type: 'string', minLength: 20, maxLength: 20 },
+            channelId: { type: 'string', minLength: 15, maxLength: 25 },
+            targetId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
@@ -122,7 +122,7 @@ export default async function permissionRoutes(app: FastifyInstance) {
       Body: z.infer<typeof overwriteSchema> & { type?: 'role' | 'member' };
     }>, reply: FastifyReply) => {
       const { channelId, targetId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
       const body = request.body;
 
       const channel = await channelService.getChannel(channelId);
@@ -196,8 +196,8 @@ export default async function permissionRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['channelId', 'targetId'],
           properties: {
-            channelId: { type: 'string', minLength: 20, maxLength: 20 },
-            targetId: { type: 'string', minLength: 20, maxLength: 20 },
+            channelId: { type: 'string', minLength: 15, maxLength: 25 },
+            targetId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -207,7 +207,7 @@ export default async function permissionRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { channelId: string; targetId: string } }>, reply: FastifyReply) => {
       const { channelId, targetId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       const channel = await channelService.getChannel(channelId);
       if (!channel) {
@@ -240,7 +240,7 @@ export default async function permissionRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['channelId'],
           properties: {
-            channelId: { type: 'string', minLength: 20, maxLength: 20 },
+            channelId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -250,7 +250,7 @@ export default async function permissionRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { channelId: string } }>, reply: FastifyReply) => {
       const { channelId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       const channel = await channelService.getChannel(channelId);
       if (!channel) {
@@ -288,7 +288,7 @@ export default async function permissionRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['channelId'],
           properties: {
-            channelId: { type: 'string', minLength: 20, maxLength: 20 },
+            channelId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
@@ -313,7 +313,7 @@ export default async function permissionRoutes(app: FastifyInstance) {
       Body: z.infer<typeof permissionCheckSchema>;
     }>, reply: FastifyReply) => {
       const { channelId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
       const { permissions: permissionNames } = request.body;
 
       const channel = await channelService.getChannel(channelId);

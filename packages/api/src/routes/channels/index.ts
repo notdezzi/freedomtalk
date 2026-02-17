@@ -84,17 +84,15 @@ export default async function channelRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
-        response: {
-          200: { type: 'object' },
-        },
+        // Remove response schema to avoid Fastify stripping properties
       },
     },
     async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Check if member
       const isMember = await serverService.isMember(serverId, userId);
@@ -122,7 +120,7 @@ export default async function channelRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
@@ -131,7 +129,7 @@ export default async function channelRoutes(app: FastifyInstance) {
           properties: {
             name: { type: 'string', minLength: VALIDATION.CHANNEL_NAME.MIN_LENGTH, maxLength: VALIDATION.CHANNEL_NAME.MAX_LENGTH },
             type: { type: 'string', enum: ['text', 'voice', 'announcement'] },
-            categoryId: { type: 'string', minLength: 20, maxLength: 20 },
+            categoryId: { type: 'string', minLength: 15, maxLength: 25 },
             topic: { type: 'string', maxLength: VALIDATION.CHANNEL_TOPIC.MAX_LENGTH },
             position: { type: 'integer', minimum: 0 },
             nsfw: { type: 'boolean' },
@@ -149,7 +147,7 @@ export default async function channelRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string }; Body: z.infer<typeof createChannelSchema> }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
       const body = request.body;
 
       // Check MANAGE_CHANNELS permission
@@ -182,7 +180,7 @@ export default async function channelRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
@@ -195,9 +193,9 @@ export default async function channelRoutes(app: FastifyInstance) {
                 type: 'object',
                 required: ['id', 'position'],
                 properties: {
-                  id: { type: 'string', minLength: 20, maxLength: 20 },
+                  id: { type: 'string', minLength: 15, maxLength: 25 },
                   position: { type: 'integer', minimum: 0 },
-                  categoryId: { type: 'string', minLength: 20, maxLength: 20, nullable: true },
+                  categoryId: { type: 'string', minLength: 15, maxLength: 25, nullable: true },
                 },
               },
             },
@@ -211,7 +209,7 @@ export default async function channelRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string }; Body: z.infer<typeof channelPositionsSchema> }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
       const { positions } = request.body;
 
       // Check MANAGE_CHANNELS permission
@@ -244,7 +242,7 @@ export default async function channelRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -254,7 +252,7 @@ export default async function channelRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Check if member
       const isMember = await serverService.isMember(serverId, userId);
@@ -282,7 +280,7 @@ export default async function channelRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
@@ -302,7 +300,7 @@ export default async function channelRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string }; Body: z.infer<typeof createCategorySchema> }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Check MANAGE_CHANNELS permission
       const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.MANAGE_CHANNELS);
@@ -334,7 +332,7 @@ export default async function channelRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['categoryId'],
           properties: {
-            categoryId: { type: 'string', minLength: 20, maxLength: 20 },
+            categoryId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
@@ -353,7 +351,7 @@ export default async function channelRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { categoryId: string }; Body: z.infer<typeof updateCategorySchema> }>, reply: FastifyReply) => {
       const { categoryId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       const category = await categoryService.getCategory(categoryId);
       if (!category) {
@@ -386,7 +384,7 @@ export default async function channelRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['categoryId'],
           properties: {
-            categoryId: { type: 'string', minLength: 20, maxLength: 20 },
+            categoryId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -396,7 +394,7 @@ export default async function channelRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { categoryId: string } }>, reply: FastifyReply) => {
       const { categoryId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       const category = await categoryService.getCategory(categoryId);
       if (!category) {

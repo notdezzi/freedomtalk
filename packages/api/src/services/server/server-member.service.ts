@@ -157,10 +157,11 @@ class ServerMemberService {
 
     if (!member) return null;
 
-    // Get user info
+    // Get user info with profile
     const user = await db('users')
-      .where('id', userId)
-      .select('id', 'username', 'avatar')
+      .where('users.id', userId)
+      .leftJoin('user_profiles', 'users.id', 'user_profiles.user_id')
+      .select('users.id', 'users.username', 'user_profiles.avatar_url as avatar')
       .first();
 
     // Get member roles
@@ -190,8 +191,9 @@ class ServerMemberService {
     const offset = options?.offset || 0;
 
     let query = db('server_members')
-      .where('server_id', serverId)
-      .join('users', 'server_members.user_id', 'users.id');
+      .where('server_members.server_id', serverId)
+      .join('users', 'server_members.user_id', 'users.id')
+      .leftJoin('user_profiles', 'users.id', 'user_profiles.user_id');
 
     if (options?.search) {
       query = query.where(function() {
@@ -211,7 +213,7 @@ class ServerMemberService {
         'server_members.*',
         'users.id as user_id',
         'users.username as user_username',
-        'users.avatar as user_avatar'
+        'user_profiles.avatar_url as user_avatar'
       )
       .orderBy('server_members.joined_at', 'asc')
       .limit(limit)
@@ -219,12 +221,12 @@ class ServerMemberService {
 
     // Get roles for all members
     const userIds = members.map(m => m.user_id);
-    const allRoles = await db('member_roles')
+    const allRoles = userIds.length > 0 ? await db('member_roles')
       .whereIn('member_roles.user_id', userIds)
       .where('member_roles.server_id', serverId)
       .join('roles', 'member_roles.role_id', 'roles.id')
       .select('member_roles.user_id', 'roles.id', 'roles.name', 'roles.color', 'roles.position')
-      .orderBy('roles.position', 'desc');
+      .orderBy('roles.position', 'desc') : [];
 
     // Group roles by user
     const rolesByUser: Record<string, typeof allRoles> = {};

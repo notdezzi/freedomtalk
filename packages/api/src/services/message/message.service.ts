@@ -87,10 +87,27 @@ export interface MessageFilter {
 }
 
 /**
+ * Message author info for responses
+ */
+export interface MessageAuthor {
+  id: string;
+  username: string;
+  displayName?: string;
+  avatar?: string;
+}
+
+/**
+ * Message with author info
+ */
+export interface MessageWithAuthor extends Message {
+  author?: MessageAuthor;
+}
+
+/**
  * Paginated message response
  */
 export interface PaginatedMessages {
-  messages: Message[];
+  messages: MessageWithAuthor[];
   hasMore: boolean;
   nextCursor?: string;
   prevCursor?: string;
@@ -365,21 +382,51 @@ class MessageService {
       }
 
       // Fetch limit + 1 to determine if there are more messages
+      // Join with users and user_profiles to get author info
       const messages = await query
-        .orderBy('created_at', 'desc')
+        .leftJoin('users', 'messages.author_id', 'users.id')
+        .leftJoin('user_profiles', 'users.id', 'user_profiles.user_id')
+        .select(
+          'messages.*',
+          'users.username as author_username',
+          'user_profiles.display_name as author_display_name',
+          'user_profiles.avatar_url as author_avatar'
+        )
+        .orderBy('messages.created_at', 'desc')
         .limit(limit + 1);
 
       // Determine if there are more messages
       const hasMore = messages.length > limit;
-      const resultMessages = hasMore ? messages.slice(0, limit) : messages;
+      const rawMessages = hasMore ? messages.slice(0, limit) : messages;
+
+      // Transform messages to include author data
+      const resultMessages: MessageWithAuthor[] = rawMessages.map((msg) => ({
+        id: msg.id,
+        content: msg.content,
+        author_id: msg.author_id,
+        channel_id: msg.channel_id,
+        is_edited: msg.is_edited,
+        edited_at: msg.edited_at,
+        is_deleted: msg.is_deleted,
+        deleted_at: msg.deleted_at,
+        is_pinned: msg.is_pinned,
+        created_at: msg.created_at,
+        updated_at: msg.updated_at,
+        author: msg.author_username ? {
+          id: msg.author_id,
+          username: msg.author_username,
+          displayName: msg.author_display_name || undefined,
+          avatar: msg.author_avatar || undefined,
+        } : undefined,
+      }));
 
       // Generate cursors
       const nextCursor = hasMore && resultMessages.length > 0
-        ? resultMessages[resultMessages.length - 1].id
+        ? resultMessages[resultMessages.length - 1]?.id
         : undefined;
 
       const prevCursor = resultMessages.length > 0
-        ? resultMessages[0].id
+        ? resultMessages[0]?.id
         : undefined;
 
       return {

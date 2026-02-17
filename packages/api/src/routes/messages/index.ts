@@ -52,7 +52,7 @@ export default async function messageRoutes(app: FastifyInstance) {
           required: ['content'],
           properties: {
             content: { type: 'string', minLength: 1, maxLength: 2000 },
-            channelId: { type: 'string', minLength: 20, maxLength: 20 },
+            channelId: { type: 'string', minLength: 15, maxLength: 25 },
             embeds: {
               type: 'array',
               maxItems: VALIDATION.EMBED.MAX_PER_MESSAGE,
@@ -123,7 +123,7 @@ export default async function messageRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Body: { content: string; channelId?: string; embeds?: any[] } }>, reply: FastifyReply) => {
       const { content, channelId, embeds } = request.body;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       const message = await messageService.createMessage({
         content,
@@ -151,7 +151,7 @@ export default async function messageRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['id'],
           properties: {
-            id: { type: 'string', minLength: 20, maxLength: 20 },
+            id: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -200,16 +200,7 @@ export default async function messageRoutes(app: FastifyInstance) {
             endDate: { type: 'string', format: 'date-time' },
           },
         },
-        response: {
-          200: {
-            description: 'Messages retrieved successfully',
-            type: 'object',
-            properties: {
-              success: { type: 'boolean' },
-              data: { type: 'object' },
-            },
-          },
-        },
+        // Remove response schema to avoid Fastify stripping properties
       },
     },
     async (request: FastifyRequest<{ Querystring: GetMessagesQuerystring }>, reply: FastifyReply) => {
@@ -246,7 +237,7 @@ export default async function messageRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['id'],
           properties: {
-            id: { type: 'string', minLength: 20, maxLength: 20 },
+            id: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
@@ -271,7 +262,7 @@ export default async function messageRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Params: { id: string }; Body: { content: string } }>, reply: FastifyReply) => {
       const { id } = request.params;
       const { content } = request.body;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       const message = await messageService.updateMessage(id, content, userId);
 
@@ -294,7 +285,7 @@ export default async function messageRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['id'],
           properties: {
-            id: { type: 'string', minLength: 20, maxLength: 20 },
+            id: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         querystring: {
@@ -314,7 +305,7 @@ export default async function messageRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Params: { id: string }; Querystring: { hard?: boolean } }>, reply: FastifyReply) => {
       const { id } = request.params;
       const { hard } = request.query;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       if (hard) {
         await messageService.hardDeleteMessage(id);
@@ -341,7 +332,7 @@ export default async function messageRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['id'],
           properties: {
-            id: { type: 'string', minLength: 20, maxLength: 20 },
+            id: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -380,7 +371,7 @@ export default async function messageRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['id'],
           properties: {
-            id: { type: 'string', minLength: 20, maxLength: 20 },
+            id: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -419,7 +410,7 @@ export default async function messageRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['id'],
           properties: {
-            id: { type: 'string', minLength: 20, maxLength: 20 },
+            id: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {

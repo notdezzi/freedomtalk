@@ -3,6 +3,7 @@ import { logger } from '../../config/logger';
 import { WS_EVENTS } from '@freedomtalk/shared';
 import { roomManager, RoomType } from './room.manager';
 import { wsServer } from './websocket.server';
+import { db } from '../../config/database';
 
 /**
  * Channel type for typing indicators
@@ -47,7 +48,7 @@ class TypingManager {
       await redis.expire(redisKey, this.TYPING_TTL);
 
       // Broadcast typing start
-      this.broadcastTypingStart(userId, channelId, channelType);
+      await this.broadcastTypingStart(userId, channelId, channelType);
 
       // Set up automatic timeout
       this.setupTimeout(userId, channelId, channelType);
@@ -72,7 +73,7 @@ class TypingManager {
       await redis.sRem(redisKey, userId);
 
       // Broadcast typing stop
-      this.broadcastTypingStop(userId, channelId, channelType);
+      await this.broadcastTypingStop(userId, channelId, channelType);
 
       // Clear timeout
       const key = `${userId}:${channelType}:${channelId}`;
@@ -131,21 +132,37 @@ class TypingManager {
   }
 
   /**
+   * Get username from user ID
+   * @param userId - User ID
+   * @returns Username or 'Unknown User'
+   */
+  private async getUsername(userId: string): Promise<string> {
+    try {
+      const user = await db('users').where({ id: userId }).select('username').first();
+      return user?.username || 'Unknown User';
+    } catch {
+      return 'Unknown User';
+    }
+  }
+
+  /**
    * Broadcast typing start to channel or DM
    * @param userId - User ID
    * @param channelId - Channel ID
    * @param channelType - Type of channel
    */
-  private broadcastTypingStart(userId: string, channelId: string, channelType: ChannelType): void {
+  private async broadcastTypingStart(userId: string, channelId: string, channelType: ChannelType): Promise<void> {
     try {
       const io = wsServer.getIO();
       const timestamp = new Date().toISOString();
+      const username = await this.getUsername(userId);
 
       if (channelType === 'dm') {
         // For DMs, broadcast to the DM room
         const roomName = `dm:${channelId}`;
         io.to(roomName).emit(WS_EVENTS.TYPING_START, {
           userId,
+          username,
           dmChannelId: channelId,
           timestamp,
         });
@@ -154,6 +171,7 @@ class TypingManager {
         const roomName = roomManager.getRoomName(RoomType.CHANNEL, channelId);
         roomManager.broadcastToRoom(roomName, WS_EVENTS.TYPING_START, {
           userId,
+          username,
           channelId,
           timestamp,
         });
@@ -169,16 +187,18 @@ class TypingManager {
    * @param channelId - Channel ID
    * @param channelType - Type of channel
    */
-  private broadcastTypingStop(userId: string, channelId: string, channelType: ChannelType): void {
+  private async broadcastTypingStop(userId: string, channelId: string, channelType: ChannelType): Promise<void> {
     try {
       const io = wsServer.getIO();
       const timestamp = new Date().toISOString();
+      const username = await this.getUsername(userId);
 
       if (channelType === 'dm') {
         // For DMs, broadcast to the DM room
         const roomName = `dm:${channelId}`;
         io.to(roomName).emit(WS_EVENTS.TYPING_STOP, {
           userId,
+          username,
           dmChannelId: channelId,
           timestamp,
         });
@@ -187,6 +207,7 @@ class TypingManager {
         const roomName = roomManager.getRoomName(RoomType.CHANNEL, channelId);
         roomManager.broadcastToRoom(roomName, WS_EVENTS.TYPING_STOP, {
           userId,
+          username,
           channelId,
           timestamp,
         });

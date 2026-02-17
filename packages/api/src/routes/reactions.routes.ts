@@ -86,7 +86,7 @@ export default async function reactionRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['messageId', 'emoji'],
           properties: {
-            messageId: { type: 'string', minLength: 20, maxLength: 20 },
+            messageId: { type: 'string', minLength: 15, maxLength: 25 },
             emoji: { type: 'string', minLength: 1, maxLength: 100 },
           },
         },
@@ -121,7 +121,7 @@ export default async function reactionRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { messageId: string; emoji: string } }>, reply: FastifyReply) => {
       const { messageId, emoji } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       const parsed = parseEmoji(emoji);
       const reaction = await reactionService.addReaction(
@@ -159,7 +159,7 @@ export default async function reactionRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['messageId', 'emoji'],
           properties: {
-            messageId: { type: 'string', minLength: 20, maxLength: 20 },
+            messageId: { type: 'string', minLength: 15, maxLength: 25 },
             emoji: { type: 'string', minLength: 1, maxLength: 100 },
           },
         },
@@ -168,7 +168,7 @@ export default async function reactionRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { messageId: string; emoji: string } }>, reply: FastifyReply) => {
       const { messageId, emoji } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       const parsed = parseEmoji(emoji);
       await reactionService.removeReaction(
@@ -200,7 +200,7 @@ export default async function reactionRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['messageId', 'emoji'],
           properties: {
-            messageId: { type: 'string', minLength: 20, maxLength: 20 },
+            messageId: { type: 'string', minLength: 15, maxLength: 25 },
             emoji: { type: 'string', minLength: 1, maxLength: 100 },
           },
         },
@@ -227,7 +227,7 @@ export default async function reactionRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { messageId: string; emoji: string } }>, reply: FastifyReply) => {
       const { messageId, emoji } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // TODO: Add permission check (message author or admin)
       // For now, we'll allow any authenticated user (will be fixed in permission system)
@@ -261,7 +261,7 @@ export default async function reactionRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['messageId'],
           properties: {
-            messageId: { type: 'string', minLength: 20, maxLength: 20 },
+            messageId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -287,7 +287,7 @@ export default async function reactionRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { messageId: string } }>, reply: FastifyReply) => {
       const { messageId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // TODO: Add permission check (message author or admin)
       // For now, we'll allow any authenticated user (will be fixed in permission system)
@@ -315,7 +315,7 @@ export default async function reactionRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['messageId', 'emoji'],
           properties: {
-            messageId: { type: 'string', minLength: 20, maxLength: 20 },
+            messageId: { type: 'string', minLength: 15, maxLength: 25 },
             emoji: { type: 'string', minLength: 1, maxLength: 100 },
           },
         },
@@ -388,7 +388,7 @@ export default async function reactionRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['messageId'],
           properties: {
-            messageId: { type: 'string', minLength: 20, maxLength: 20 },
+            messageId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -424,7 +424,7 @@ export default async function reactionRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { messageId: string } }>, reply: FastifyReply) => {
       const { messageId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       const reactions = await reactionService.getReactionsByMessage(messageId);
 

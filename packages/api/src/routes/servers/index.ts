@@ -18,7 +18,7 @@ import { VALIDATION, PERMISSION_FLAGS, Permissions } from '@freedomtalk/shared';
 const createServerSchema = z.object({
   name: z.string().min(VALIDATION.SERVER_NAME.MIN_LENGTH).max(VALIDATION.SERVER_NAME.MAX_LENGTH),
   description: z.string().max(VALIDATION.SERVER_DESCRIPTION.MAX_LENGTH).optional(),
-  iconUrl: z.string().url().optional(),
+  iconUrl: z.string().max(2048).optional(), // Accept any string (URL or data URL)
 });
 
 const updateServerSchema = z.object({
@@ -136,17 +136,16 @@ export default async function serverRoutes(app: FastifyInstance) {
           properties: {
             name: { type: 'string', minLength: VALIDATION.SERVER_NAME.MIN_LENGTH, maxLength: VALIDATION.SERVER_NAME.MAX_LENGTH },
             description: { type: 'string', maxLength: VALIDATION.SERVER_DESCRIPTION.MAX_LENGTH },
-            iconUrl: { type: 'string', format: 'uri' },
+            iconUrl: { type: 'string', maxLength: 2048 },
           },
         },
-        response: {
-          201: { type: 'object' },
-        },
+        // Remove response schema to avoid Fastify stripping properties
       },
       preHandler: validateBody(createServerSchema),
     },
     async (request: FastifyRequest<{ Body: z.infer<typeof createServerSchema> }>, reply: FastifyReply) => {
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
+
       const server = await serverService.createServer({
         ...request.body,
         ownerId: userId,
@@ -167,13 +166,12 @@ export default async function serverRoutes(app: FastifyInstance) {
         description: 'Get all servers the user is a member of',
         tags: ['Servers'],
         security: [{ bearerAuth: [] }],
-        response: {
-          200: { type: 'object' },
-        },
+        // Remove response schema to avoid Fastify stripping properties
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
+
       const servers = await serverService.getUserServers(userId);
       return reply.send(successResponse(servers));
     }
@@ -194,7 +192,7 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -204,7 +202,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Check if user is a member
       const isMember = await serverService.isMember(serverId, userId);
@@ -236,7 +234,7 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
@@ -246,9 +244,9 @@ export default async function serverRoutes(app: FastifyInstance) {
             description: { type: 'string', maxLength: VALIDATION.SERVER_DESCRIPTION.MAX_LENGTH, nullable: true },
             iconUrl: { type: 'string', format: 'uri', nullable: true },
             bannerUrl: { type: 'string', format: 'uri', nullable: true },
-            systemChannelId: { type: 'string', minLength: 20, maxLength: 20, nullable: true },
-            rulesChannelId: { type: 'string', minLength: 20, maxLength: 20, nullable: true },
-            afkChannelId: { type: 'string', minLength: 20, maxLength: 20, nullable: true },
+            systemChannelId: { type: 'string', minLength: 15, maxLength: 25, nullable: true },
+            rulesChannelId: { type: 'string', minLength: 15, maxLength: 25, nullable: true },
+            afkChannelId: { type: 'string', minLength: 15, maxLength: 25, nullable: true },
             afkTimeout: { type: 'integer', minimum: 0 },
             preferredLocale: { type: 'string', maxLength: 10 },
           },
@@ -261,7 +259,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string }; Body: z.infer<typeof updateServerSchema> }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       const server = await serverService.updateServer(serverId, request.body, userId);
       return reply.send(successResponse(server));
@@ -283,7 +281,7 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -293,7 +291,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       await serverService.deleteServer(serverId, userId);
       return reply.code(204).send();
@@ -329,7 +327,7 @@ export default async function serverRoutes(app: FastifyInstance) {
       preHandler: validateBody(joinServerSchema),
     },
     async (request: FastifyRequest<{ Body: z.infer<typeof joinServerSchema> }>, reply: FastifyReply) => {
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
       const { inviteCode } = request.body;
 
       // Use invite
@@ -361,7 +359,7 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         querystring: {
@@ -372,14 +370,12 @@ export default async function serverRoutes(app: FastifyInstance) {
             search: { type: 'string' },
           },
         },
-        response: {
-          200: { type: 'object' },
-        },
+        // Remove response schema to avoid Fastify stripping properties
       },
     },
     async (request: FastifyRequest<{ Params: { serverId: string }; Querystring: { limit?: number; offset?: number; search?: string } }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Check if user is a member
       const isMember = await serverService.isMember(serverId, userId);
@@ -412,8 +408,8 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId', 'userId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
-            userId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+            userId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -423,7 +419,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string; userId: string } }>, reply: FastifyReply) => {
       const { serverId, userId } = request.params;
-      const currentUserId = (request as any).user.userId;
+      const currentUserId = request.user!.id;
 
       // Check if current user is a member
       const isMember = await serverService.isMember(serverId, currentUserId);
@@ -455,8 +451,8 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId', 'userId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
-            userId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+            userId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
@@ -477,7 +473,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string; userId: string }; Body: z.infer<typeof updateMemberSchema> }>, reply: FastifyReply) => {
       const { serverId, userId } = request.params;
-      const currentUserId = (request as any).user.userId;
+      const currentUserId = request.user!.id;
       const body = request.body;
 
       // Users can update their own nickname/avatar
@@ -516,8 +512,8 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId', 'userId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
-            userId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+            userId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -527,7 +523,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string; userId: string } }>, reply: FastifyReply) => {
       const { serverId, userId } = request.params;
-      const currentUserId = (request as any).user.userId;
+      const currentUserId = request.user!.id;
 
       // Check if leaving or kicking
       const isSelf = userId === currentUserId;
@@ -560,15 +556,15 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId', 'userId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
-            userId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+            userId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
           type: 'object',
           required: ['roleIds'],
           properties: {
-            roleIds: { type: 'array', items: { type: 'string', minLength: 20, maxLength: 20 } },
+            roleIds: { type: 'array', items: { type: 'string', minLength: 15, maxLength: 25 } },
           },
         },
         response: {
@@ -579,7 +575,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string; userId: string }; Body: z.infer<typeof memberRolesSchema> }>, reply: FastifyReply) => {
       const { serverId, userId } = request.params;
-      const currentUserId = (request as any).user.userId;
+      const currentUserId = request.user!.id;
       const { roleIds } = request.body;
 
       // Check MANAGE_ROLES permission
@@ -612,7 +608,7 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         querystring: {
@@ -629,7 +625,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string }; Querystring: { limit?: number; offset?: number } }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Check BAN_MEMBERS permission
       const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.BAN_MEMBERS);
@@ -661,8 +657,8 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId', 'userId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
-            userId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+            userId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
@@ -680,7 +676,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string; userId: string }; Body: z.infer<typeof createBanSchema> }>, reply: FastifyReply) => {
       const { serverId, userId: targetUserId } = request.params;
-      const currentUserId = (request as any).user.userId;
+      const currentUserId = request.user!.id;
 
       // Check BAN_MEMBERS permission
       const hasPerms = await checkServerPermission(serverId, currentUserId, PERMISSION_FLAGS.BAN_MEMBERS);
@@ -715,8 +711,8 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId', 'userId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
-            userId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+            userId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -726,7 +722,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string; userId: string } }>, reply: FastifyReply) => {
       const { serverId, userId: targetUserId } = request.params;
-      const currentUserId = (request as any).user.userId;
+      const currentUserId = request.user!.id;
 
       // Check BAN_MEMBERS permission
       const hasPerms = await checkServerPermission(serverId, currentUserId, PERMISSION_FLAGS.BAN_MEMBERS);
@@ -758,7 +754,7 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -768,7 +764,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Check if member
       const isMember = await serverService.isMember(serverId, userId);
@@ -796,13 +792,13 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
           type: 'object',
           properties: {
-            channelId: { type: 'string', minLength: 20, maxLength: 20 },
+            channelId: { type: 'string', minLength: 15, maxLength: 25 },
             maxUses: { type: 'integer', minimum: 0, maximum: VALIDATION.INVITE.MAX_USES },
             maxAge: { type: 'integer', minimum: 0, maximum: VALIDATION.INVITE.MAX_AGE },
             temporary: { type: 'boolean' },
@@ -816,7 +812,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string }; Body: z.infer<typeof createInviteSchema> }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
       const body = request.body;
 
       // Check CREATE_INSTANT_INVITE permission
@@ -869,7 +865,7 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId', 'code'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
             code: { type: 'string' },
           },
         },
@@ -880,7 +876,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string; code: string } }>, reply: FastifyReply) => {
       const { code } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       await inviteService.deleteInvite(code, userId);
       return reply.code(204).send();
@@ -906,7 +902,7 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -916,7 +912,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Check if member
       const isMember = await serverService.isMember(serverId, userId);
@@ -945,7 +941,7 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
@@ -967,7 +963,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string }; Body: any }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
       const body = request.body as {
         name: string;
         permissions?: string;
@@ -1013,8 +1009,8 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId', 'roleId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
-            roleId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+            roleId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
@@ -1035,7 +1031,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string; roleId: string }; Body: any }>, reply: FastifyReply) => {
       const { serverId, roleId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
       const body = request.body as {
         name?: string;
         permissions?: string;
@@ -1080,8 +1076,8 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId', 'roleId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
-            roleId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+            roleId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -1091,7 +1087,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string; roleId: string } }>, reply: FastifyReply) => {
       const { serverId, roleId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Check MANAGE_ROLES permission
       const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.MANAGE_ROLES);
@@ -1120,7 +1116,7 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         body: {
@@ -1133,7 +1129,7 @@ export default async function serverRoutes(app: FastifyInstance) {
                 type: 'object',
                 required: ['id', 'position'],
                 properties: {
-                  id: { type: 'string', minLength: 20, maxLength: 20 },
+                  id: { type: 'string', minLength: 15, maxLength: 25 },
                   position: { type: 'integer', minimum: 0 },
                 },
               },
@@ -1147,7 +1143,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { serverId: string }; Body: { positions: { id: string; position: number }[] } }>, reply: FastifyReply) => {
       const { serverId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
       const { positions } = request.body;
 
       // Check MANAGE_ROLES permission

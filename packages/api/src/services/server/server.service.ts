@@ -63,11 +63,12 @@ class ServerService {
   async createServer(input: CreateServerInput): Promise<ServerWithMembers> {
     const serverId = generateSnowflakeId();
     const roleId = generateSnowflakeId();
-    const channelId = generateSnowflakeId();
+    const textChannelId = generateSnowflakeId();
+    const voiceChannelId = generateSnowflakeId();
 
-    // Use transaction to create server, default role, and general channel
+    // Use transaction to create server, default role, and general channels
     const result = await db.transaction(async (trx) => {
-      // Create server
+      // Create server WITHOUT default_role_id first (to avoid FK constraint)
       const [server] = await trx('servers').insert({
         id: serverId,
         name: input.name,
@@ -77,8 +78,8 @@ class ServerService {
         banner_url: null,
         splash_url: null,
         discovery_splash_url: null,
-        default_role_id: roleId,
-        system_channel_id: channelId,
+        // default_role_id is set AFTER role creation
+        system_channel_id: textChannelId,
         rules_channel_id: null,
         public_updates_channel_id: null,
         afk_channel_id: null,
@@ -105,9 +106,14 @@ class ServerService {
         mentionable: false,
       });
 
+      // Update server with the default role id
+      await trx('servers').where('id', serverId).update({
+        default_role_id: roleId,
+      });
+
       // Create #general text channel
       await trx('channels').insert({
-        id: channelId,
+        id: textChannelId,
         server_id: serverId,
         category_id: null,
         name: 'general',
@@ -120,6 +126,24 @@ class ServerService {
         last_message_id: null,
         bitrate: null,
         user_limit: null,
+        rtc_region: null,
+      });
+
+      // Create #general voice channel
+      await trx('channels').insert({
+        id: voiceChannelId,
+        server_id: serverId,
+        category_id: null,
+        name: 'General',
+        type: 'voice',
+        topic: null,
+        position: 1,
+        nsfw: false,
+        rate_limit_per_user: 0,
+        parent_id: null,
+        last_message_id: null,
+        bitrate: 64000,
+        user_limit: 0,
         rtc_region: null,
       });
 

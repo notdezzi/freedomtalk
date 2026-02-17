@@ -63,7 +63,7 @@ export default async function voiceRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['channelId'],
           properties: {
-            channelId: { type: 'string', minLength: 20, maxLength: 20 },
+            channelId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -73,7 +73,7 @@ export default async function voiceRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { channelId: string } }>, reply: FastifyReply) => {
       const { channelId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Get channel info
       const channel = await channelService.getChannel(channelId);
@@ -131,7 +131,7 @@ export default async function voiceRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['channelId'],
           properties: {
-            channelId: { type: 'string', minLength: 20, maxLength: 20 },
+            channelId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -141,7 +141,7 @@ export default async function voiceRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { channelId: string } }>, reply: FastifyReply) => {
       const { channelId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       await voiceStateService.deleteVoiceStateByUserChannel(channelId, userId);
 
@@ -164,7 +164,7 @@ export default async function voiceRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['channelId'],
           properties: {
-            channelId: { type: 'string', minLength: 20, maxLength: 20 },
+            channelId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -174,7 +174,7 @@ export default async function voiceRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { channelId: string } }>, reply: FastifyReply) => {
       const { channelId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Get channel to check server membership
       const channel = await channelService.getChannel(channelId);
@@ -232,7 +232,7 @@ export default async function voiceRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { sessionId: string }; Body: z.infer<typeof updateStateSchema> }>, reply: FastifyReply) => {
       const { sessionId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
       const body = request.body;
 
       // Verify ownership
@@ -272,7 +272,7 @@ export default async function voiceRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['targetChannelId'],
           properties: {
-            targetChannelId: { type: 'string', minLength: 20, maxLength: 20 },
+            targetChannelId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -284,7 +284,7 @@ export default async function voiceRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Params: { sessionId: string }; Body: z.infer<typeof moveUserSchema> }>, reply: FastifyReply) => {
       const { sessionId } = request.params;
       const { targetChannelId } = request.body;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Get current state
       const state = await voiceStateService.getVoiceStateBySession(sessionId);
@@ -353,7 +353,7 @@ export default async function voiceRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Params: { sessionId: string }; Body: { suppress?: boolean } }>, reply: FastifyReply) => {
       const { sessionId } = request.params;
       const { suppress = true } = request.body || {};
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Get current state
       const state = await voiceStateService.getVoiceStateBySession(sessionId);
@@ -404,7 +404,7 @@ export default async function voiceRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Params: { sessionId: string }; Body: { deafen?: boolean } }>, reply: FastifyReply) => {
       const { sessionId } = request.params;
       const { deafen = true } = request.body || {};
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Get current state
       const state = await voiceStateService.getVoiceStateBySession(sessionId);
@@ -450,7 +450,7 @@ export default async function voiceRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { sessionId: string } }>, reply: FastifyReply) => {
       const { sessionId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Get current state
       const state = await voiceStateService.getVoiceStateBySession(sessionId);
@@ -488,7 +488,7 @@ export default async function voiceRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['channelId'],
           properties: {
-            channelId: { type: 'string', minLength: 20, maxLength: 20 },
+            channelId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
@@ -498,7 +498,7 @@ export default async function voiceRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { channelId: string } }>, reply: FastifyReply) => {
       const { channelId } = request.params;
-      const userId = (request as any).user.userId;
+      const userId = request.user!.id;
 
       // Get channel to check server membership
       const channel = await channelService.getChannel(channelId);

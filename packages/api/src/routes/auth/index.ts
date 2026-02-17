@@ -6,6 +6,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { registerSchema, loginSchema, refreshTokenSchema, oauth2CallbackSchema } from '@freedomtalk/shared';
 import { validateBody, validateQuery } from '../../middleware/validation.middleware';
+import { requireAuth } from '../../middleware/auth.middleware';
 import { successResponse } from '../../utils/errors';
 import { AuthenticationError, ConflictError, ApiError, ApiErrorCode } from '../../types/api.types';
 import { jwtService } from '../../services/auth/jwt.service';
@@ -728,6 +729,9 @@ export default async function authRoutes(app: FastifyInstance) {
         throw new AuthenticationError('User not found');
       }
 
+      // Get user profile for onboarding status
+      const profile = await db('user_profiles').where({ user_id: user.id }).first();
+
       // Return standardized response
       reply.send(
         successResponse({
@@ -738,6 +742,9 @@ export default async function authRoutes(app: FastifyInstance) {
             emailVerified: user.email_verified,
             mfaEnabled: user.mfa_enabled,
             accountStatus: user.account_status,
+            displayName: profile?.display_name,
+            avatar: profile?.avatar_url,
+            onboardingComplete: !!profile?.onboarding_completed_at,
           },
         })
       );
@@ -745,5 +752,53 @@ export default async function authRoutes(app: FastifyInstance) {
       throw error;
     }
   });
+
+  /**
+   * POST /api/v1/auth/onboarding/complete
+   * Mark onboarding as complete
+   */
+  app.post(
+    '/onboarding/complete',
+    {
+      preHandler: requireAuth,
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        // Extract user ID from auth middleware
+        const userId = request.user!.id;
+
+        // Check if profile exists, create if not
+        const existingProfile = await db('user_profiles').where({ user_id: userId }).first();
+
+        if (existingProfile) {
+          // Update user profile to mark onboarding as complete
+          await db('user_profiles')
+            .where({ user_id: userId })
+            .update({
+              onboarding_completed_at: new Date(),
+              updated_at: new Date(),
+            });
+        } else {
+          // Create profile with onboarding complete
+          await db('user_profiles').insert({
+            id: snowflake.generate(),
+            user_id: userId,
+            onboarding_completed_at: new Date(),
+          });
+        }
+
+        logger.info({ userId }, 'Onboarding completed');
+
+        reply.send(
+          successResponse({
+            message: 'Onboarding completed successfully',
+            onboardingComplete: true,
+          })
+        );
+      } catch (error) {
+        throw error;
+      }
+    }
+  );
 }
 

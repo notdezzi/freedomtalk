@@ -133,7 +133,7 @@ export default async function discoveryRoutes(app: FastifyInstance) {
           type: 'object',
           required: ['serverId'],
           properties: {
-            serverId: { type: 'string', minLength: 20, maxLength: 20 },
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
         response: {
