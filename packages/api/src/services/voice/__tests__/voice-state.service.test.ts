@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock the database module before importing service
 vi.mock('../../../config/database', () => ({
-  db: vi.fn((table: string) => {
+  db: vi.fn((_table: string) => {
     const chainable: any = Promise.resolve([]);
     const methods = [
       'into', 'returning', 'from', 'where', 'first', 'update', 'delete',

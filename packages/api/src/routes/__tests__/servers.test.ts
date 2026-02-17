@@ -7,7 +7,6 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { build } from '../../app';
 import { FastifyInstance } from 'fastify';
 import { db } from '../../config/database';
-import { PERMISSION_FLAGS } from '@freedomtalk/shared';
 
 interface TestUser {
   id: string;
@@ -67,6 +66,7 @@ describe('Server Routes', () => {
   let app: FastifyInstance;
   let testUser: TestUser;
   let secondUser: TestUser;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let testServerId: string;
 
   beforeAll(async () => {

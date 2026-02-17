@@ -208,7 +208,7 @@ describe('SearchService', () => {
         limit: 5,
       }));
       expect(result).toHaveLength(2);
-      expect(result[0].type).toBe('user');
+      expect(result[0]?.type).toBe('user');
     });
   });
 });

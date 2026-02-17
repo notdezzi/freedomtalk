@@ -18,7 +18,7 @@ export async function up(knex: Knex): Promise<void> {
     table.boolean('nsfw').notNullable().defaultTo(false).comment('Whether channel is NSFW');
     table.integer('rate_limit_per_user').notNullable().defaultTo(0).comment('Slow mode rate limit in seconds (0 = disabled)');
     table.string('parent_id', 20).nullable().comment('Parent channel ID (for announcements)');
-    table.text('last_message_id', 20).nullable().comment('ID of the last message sent in this channel');
+    table.string('last_message_id', 20).nullable().comment('ID of the last message sent in this channel');
 
     // Voice channel settings
     table.integer('bitrate').nullable().comment('Bitrate in bits per second (voice channels only)');
