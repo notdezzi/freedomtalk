@@ -1,16 +1,15 @@
 /**
  * Voice WebSocket Handler
  * Handles voice-related WebSocket events for WebRTC signaling
+ * Directly integrates with Mediasoup service (no separate media server process needed)
  */
 
 import { Socket } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
-import { redisClient } from '../../../config/redis';
 import { logger } from '../../../config/logger';
 import { voiceStateService } from '../../voice/voice-state.service';
+import { mediasoupService } from '../../voice/mediasoup.service';
 import { channelService } from '../../channel/channel.service';
-
-const REDIS_CHANNEL_REQUESTS = 'voice:signaling:request';
 
 interface VoiceSession {
   sessionId: string;
@@ -22,69 +21,15 @@ interface VoiceSession {
 const socketSessions = new Map<string, VoiceSession>();
 
 class VoiceHandler {
-  private pendingRequests = new Map<string, { resolve: Function; reject: Function; timeout: NodeJS.Timeout }>();
   private initialized = false;
 
   /**
-   * Initialize the voice handler (subscribe to media server responses)
+   * Initialize the voice handler
    */
   async initialize(): Promise<void> {
     if (this.initialized) return;
-
-    redisClient.on('message', this.handleResponse.bind(this));
-
     this.initialized = true;
-    logger.info('Voice WebSocket handler initialized');
-  }
-
-  /**
-   * Handle response from media server
-   */
-  private handleResponse(_channel: string, message: string): void {
-    try {
-      const response = JSON.parse(message);
-      const pending = this.pendingRequests.get(response.requestId);
-
-      if (pending) {
-        clearTimeout(pending.timeout);
-        this.pendingRequests.delete(response.requestId);
-
-        if (response.success) {
-          pending.resolve(response.data);
-        } else {
-          pending.reject(new Error(response.error));
-        }
-      }
-    } catch (error) {
-      logger.error({ error }, 'Error handling voice response');
-    }
-  }
-
-  /**
-   * Send request to media server and wait for response
-   */
-  private async sendRequest(type: string, channelId: string, sessionId: string, data?: any): Promise<any> {
-    const requestId = uuidv4();
-
-    return new Promise((resolve, reject) => {
-      // Set timeout for response
-      const timeout = setTimeout(() => {
-        this.pendingRequests.delete(requestId);
-        reject(new Error('Request timeout'));
-      }, 10000);
-
-      this.pendingRequests.set(requestId, { resolve, reject, timeout });
-
-      const message = JSON.stringify({
-        type,
-        channelId,
-        sessionId,
-        requestId,
-        data,
-      });
-
-      redisClient.publish(REDIS_CHANNEL_REQUESTS, message);
-    });
+    logger.info('Voice WebSocket handler initialized (direct mediasoup integration)');
   }
 
   /**
@@ -120,11 +65,15 @@ class VoiceHandler {
         // Join socket room for the voice channel
         socket.join(`voice:${channelId}`);
 
-        // Request to join media server room
-        const result = await this.sendRequest('join_room', channelId, sessionId, { userId });
+        // Join mediasoup room and get router RTP capabilities
+        await mediasoupService.getOrCreateRoom(channelId);
+        mediasoupService.addParticipant(channelId, userId, sessionId);
 
         // Get router RTP capabilities
-        const { rtpCapabilities } = await this.sendRequest('get_router_rtp_capabilities', channelId, sessionId);
+        const rtpCapabilities = await mediasoupService.getRouterRtpCapabilities(channelId);
+
+        // Get existing producers in the room
+        const producers = mediasoupService.getRoomProducers(channelId);
 
         // Notify others in the channel
         socket.to(`voice:${channelId}`).emit('voice:user_joined', {
@@ -137,7 +86,7 @@ class VoiceHandler {
           data: {
             sessionId,
             rtpCapabilities,
-            producers: result?.producers || [],
+            producers,
           },
         });
 
@@ -158,8 +107,8 @@ class VoiceHandler {
 
         const { sessionId, channelId } = session;
 
-        // Leave media server room
-        await this.sendRequest('leave_room', channelId, sessionId);
+        // Leave mediasoup room
+        await mediasoupService.removeParticipant(channelId, sessionId);
 
         // Delete voice state
         await voiceStateService.deleteVoiceState(sessionId);
@@ -190,14 +139,13 @@ class VoiceHandler {
           return callback?.({ success: false, error: 'Not in a voice channel' });
         }
 
-        const transport = await this.sendRequest(
-          'create_transport',
+        const transport = await mediasoupService.createTransport(
           session.channelId,
           session.sessionId,
-          { direction: data.direction }
+          data.direction
         );
 
-        callback?.({ success: true, data: transport });
+        callback?.({ success: true, data: { transport } });
       } catch (error: any) {
         logger.error({ error }, 'Error creating transport');
         callback?.({ success: false, error: error.message });
@@ -212,11 +160,11 @@ class VoiceHandler {
           return callback?.({ success: false, error: 'Not in a voice channel' });
         }
 
-        await this.sendRequest(
-          'connect_transport',
+        await mediasoupService.connectTransport(
           session.channelId,
           session.sessionId,
-          { transportId: data.transportId, dtlsParameters: data.dtlsParameters }
+          data.transportId,
+          data.dtlsParameters
         );
 
         callback?.({ success: true });
@@ -234,11 +182,12 @@ class VoiceHandler {
           return callback?.({ success: false, error: 'Not in a voice channel' });
         }
 
-        const result = await this.sendRequest(
-          'produce',
+        const result = await mediasoupService.produce(
           session.channelId,
           session.sessionId,
-          { kind: data.kind, rtpParameters: data.rtpParameters, appData: data.appData }
+          data.kind,
+          data.rtpParameters,
+          data.appData
         );
 
         // Update voice state for video/screen
@@ -280,11 +229,11 @@ class VoiceHandler {
           return callback?.({ success: false, error: 'Not in a voice channel' });
         }
 
-        const result = await this.sendRequest(
-          'consume',
+        const result = await mediasoupService.consume(
           session.channelId,
           session.sessionId,
-          { producerId: data.producerId, rtpCapabilities: data.rtpCapabilities }
+          data.producerId,
+          data.rtpCapabilities
         );
 
         callback?.({ success: true, data: result });
@@ -302,11 +251,10 @@ class VoiceHandler {
           return callback?.({ success: false, error: 'Not in a voice channel' });
         }
 
-        await this.sendRequest(
-          'resume_consumer',
+        await mediasoupService.resumeConsumer(
           session.channelId,
           session.sessionId,
-          { consumerId: data.consumerId }
+          data.consumerId
         );
 
         callback?.({ success: true });
@@ -324,11 +272,10 @@ class VoiceHandler {
           return callback?.({ success: false, error: 'Not in a voice channel' });
         }
 
-        await this.sendRequest(
-          'close_producer',
+        await mediasoupService.closeProducer(
           session.channelId,
           session.sessionId,
-          { producerId: data.producerId }
+          data.producerId
         );
 
         callback?.({ success: true });
@@ -377,7 +324,7 @@ class VoiceHandler {
       const session = socketSessions.get(socket.id);
       if (session) {
         try {
-          await this.sendRequest('leave_room', session.channelId, session.sessionId);
+          await mediasoupService.removeParticipant(session.channelId, session.sessionId);
           await voiceStateService.deleteVoiceState(session.sessionId);
           socket.to(`voice:${session.channelId}`).emit('voice:user_left', { sessionId: session.sessionId });
         } catch (error) {
@@ -393,6 +340,7 @@ class VoiceHandler {
    */
   async close(): Promise<void> {
     this.initialized = false;
+    socketSessions.clear();
     logger.info('Voice WebSocket handler closed');
   }
 }

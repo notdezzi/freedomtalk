@@ -1,24 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Mic,
   MicOff,
   Volume2,
   VolumeX,
-  Phone,
   PhoneOff,
   Video,
   VideoOff,
   MonitorUp,
   MonitorDown,
-  Settings,
   Wifi,
   Users,
+  Settings,
 } from 'lucide-react';
 import { useVoiceStore } from '@/stores/voiceStore';
 import { apiClient } from '@/lib/api-client';
 import { useSocket } from '@/hooks/useSocket';
+import { getVoiceClient } from '@/lib/voice-client';
 
 export default function VoiceConnectedPanel() {
   const {
@@ -47,6 +47,12 @@ export default function VoiceConnectedPanel() {
     const newMute = !selfMute;
     setSelfMute(newMute);
 
+    // Update WebRTC producer
+    const voiceClient = getVoiceClient();
+    if (voiceClient) {
+      voiceClient.setMuted(newMute);
+    }
+
     if (sessionId) {
       await apiClient.updateVoiceState(sessionId, { selfMute: newMute });
       updateVoiceState({ selfMute: newMute });
@@ -64,32 +70,68 @@ export default function VoiceConnectedPanel() {
   };
 
   const handleToggleVideo = async () => {
+    const voiceClient = getVoiceClient();
+    if (!voiceClient) return;
+
     const newVideo = !selfVideo;
     setSelfVideo(newVideo);
 
-    if (sessionId) {
-      await apiClient.updateVoiceState(sessionId, { selfVideo: newVideo });
-      updateVoiceState({ selfVideo: newVideo });
+    try {
+      if (newVideo) {
+        await voiceClient.startVideo();
+      } else {
+        await voiceClient.stopVideo();
+      }
+
+      if (sessionId) {
+        await apiClient.updateVoiceState(sessionId, { selfVideo: newVideo });
+        updateVoiceState({ selfVideo: newVideo });
+      }
+    } catch (error) {
+      console.error('Video toggle error:', error);
+      setSelfVideo(!newVideo); // Revert on error
     }
   };
 
   const handleToggleStream = async () => {
+    const voiceClient = getVoiceClient();
+    if (!voiceClient) return;
+
     const newStream = !selfStream;
     setSelfStream(newStream);
 
-    if (sessionId) {
-      await apiClient.updateVoiceState(sessionId, { selfStream: newStream });
-      updateVoiceState({ selfStream: newStream });
+    try {
+      if (newStream) {
+        await voiceClient.startScreenShare();
+      } else {
+        await voiceClient.stopScreenShare();
+      }
+
+      if (sessionId) {
+        await apiClient.updateVoiceState(sessionId, { selfStream: newStream });
+        updateVoiceState({ selfStream: newStream });
+      }
+    } catch (error) {
+      console.error('Screen share toggle error:', error);
+      setSelfStream(!newStream); // Revert on error
     }
   };
 
   const handleDisconnect = async () => {
-    await apiClient.leaveVoiceChannel(currentChannelId);
+    const voiceClient = getVoiceClient();
+    if (voiceClient) {
+      await voiceClient.leaveChannel();
+    }
+
+    if (currentChannelId) {
+      await apiClient.leaveVoiceChannel(currentChannelId);
+    }
+
     disconnectFromChannel();
   };
 
-  // Count users excluding self
-  const otherUsersCount = users.length;
+  // Count users including self
+  const usersCount = users.length;
 
   return (
     <div className="h-20 bg-background-elevated border-t border-border flex items-center px-2 gap-1">
@@ -103,7 +145,7 @@ export default function VoiceConnectedPanel() {
           <span className="text-sm font-medium text-success">Voice Connected</span>
           <span className="text-xs text-foreground-muted flex items-center gap-1">
             <Users className="w-3 h-3" />
-            {otherUsersCount} {otherUsersCount === 1 ? 'user' : 'users'}
+            {usersCount} {usersCount === 1 ? 'user' : 'users'}
           </span>
         </div>
       </div>

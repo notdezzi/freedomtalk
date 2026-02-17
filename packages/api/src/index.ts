@@ -12,6 +12,8 @@ import routes from './routes/index.js';
 import { wsServer } from './services/websocket/websocket.server';
 import { registerHandlers } from './services/websocket/handlers';
 import { initializeMeilisearchIndices } from './services/search/meilisearch.client.js';
+import { mediasoupService } from './services/voice/mediasoup.service';
+import { voiceHandler } from './services/websocket/handlers/voice.handler';
 
 /**
  * Main application entry point
@@ -182,6 +184,23 @@ async function initializeInfrastructure() {
       // Non-fatal: Search may not be available
       app.log.warn({ err: error }, 'Meilisearch initialization failed (search may be unavailable)');
     }
+
+    // Initialize Mediasoup for voice/video
+    try {
+      await mediasoupService.initialize();
+      app.log.info('Mediasoup service initialized');
+    } catch (error) {
+      // Non-fatal in development - voice may not work
+      app.log.warn({ err: error }, 'Mediasoup initialization failed (voice/video may be unavailable)');
+    }
+
+    // Initialize voice handler for WebSocket signaling
+    try {
+      await voiceHandler.initialize();
+      app.log.info('Voice handler initialized');
+    } catch (error) {
+      app.log.warn({ err: error }, 'Voice handler initialization failed');
+    }
   } catch (error) {
     app.log.error({ err: error }, 'Failed to initialize infrastructure');
     throw error;
@@ -213,6 +232,22 @@ async function gracefulShutdown(signal: string) {
   app.log.info(`Received ${signal}, starting graceful shutdown...`);
 
   try {
+    // Close voice handler
+    try {
+      await voiceHandler.close();
+      app.log.info('Voice handler closed');
+    } catch (error) {
+      app.log.warn({ err: error }, 'Error closing voice handler');
+    }
+
+    // Close mediasoup service
+    try {
+      await mediasoupService.close();
+      app.log.info('Mediasoup service closed');
+    } catch (error) {
+      app.log.warn({ err: error }, 'Error closing mediasoup service');
+    }
+
     // Close WebSocket server first (with 30s timeout)
     const wsClosePromise = wsServer.close();
     const wsTimeout = new Promise<void>((resolve) => {

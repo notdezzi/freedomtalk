@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { Volume2, Loader2 } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { Volume2, Loader2, VolumeX } from 'lucide-react';
 import { useVoiceStore } from '@/stores/voiceStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import { apiClient } from '@/lib/api-client';
+import { createVoiceClient, getVoiceClient, VoiceClient } from '@/lib/voice-client';
 
 interface VoiceJoinButtonProps {
   channelId: string;
@@ -18,18 +19,68 @@ export default function VoiceJoinButton({ channelId, serverId }: VoiceJoinButton
     isConnected,
     currentChannelId,
     connectToChannel,
+    disconnectFromChannel,
     setUsers,
+    addUser,
+    removeUser,
+    updateUser,
     isConnecting,
     setError,
   } = useVoiceStore();
-  const { joinVoiceChannel } = useSocket();
+  const { getSocket } = useSocket();
 
   const [loading, setLoading] = useState(false);
+  const [voiceClient, setVoiceClient] = useState<VoiceClient | null>(null);
 
   // If already in this channel, don't show join button
   if (isConnected && currentChannelId === channelId) {
     return null;
   }
+
+  // Setup voice client callbacks
+  const setupVoiceClientCallbacks = useCallback((client: VoiceClient) => {
+    client.onUserJoined = (userId, sessionId) => {
+      // Add user to the voice channel list
+      const voiceUser = {
+        userId,
+        username: '', // Will be updated when we get full user data
+        channelId,
+        sessionId,
+        selfMute: false,
+        selfDeaf: false,
+        selfVideo: false,
+        selfStream: false,
+        suppress: false,
+        isSpeaking: false,
+      };
+      addUser(channelId, voiceUser);
+    };
+
+    client.onUserLeft = (sessionId) => {
+      removeUser(channelId, sessionId);
+    };
+
+    client.onUserStateChange = (sessionId, state) => {
+      updateUser(channelId, sessionId, state);
+    };
+
+    client.onUserSpeaking = (sessionId, speaking) => {
+      updateUser(channelId, sessionId, { isSpeaking: speaking });
+    };
+
+    client.onProducerCreated = (producerId, kind, sessionId) => {
+      console.log('New producer:', producerId, kind, sessionId);
+    };
+
+    client.onError = (error) => {
+      setError(error);
+      setLoading(false);
+    };
+
+    client.onDisconnected = () => {
+      disconnectFromChannel();
+    };
+  }, [channelId, addUser, removeUser, updateUser, setError, disconnectFromChannel]);
 
   const handleJoin = async () => {
     if (!user || loading) return;
@@ -38,16 +89,45 @@ export default function VoiceJoinButton({ channelId, serverId }: VoiceJoinButton
     setError(null);
 
     try {
+      // Get the socket for voice client
+      const socket = getSocket();
+      if (!socket) {
+        throw new Error('WebSocket not connected');
+      }
+
+      // Join via REST API to create voice state
       const response = await apiClient.joinVoiceChannel(channelId);
 
       if (response.success && response.data) {
         const { sessionId } = response.data;
 
-        // Connect to voice store
+        // Create voice client and setup callbacks
+        const client = createVoiceClient(socket);
+        setupVoiceClientCallbacks(client);
+        setVoiceClient(client);
+
+        // Connect to voice channel via WebRTC
+        await client.joinChannel(channelId);
+
+        // Connect voice store
         connectToChannel(channelId, serverId, sessionId);
 
-        // Notify via socket
-        joinVoiceChannel(channelId, sessionId);
+        // Add current user to voice users list
+        const currentUserVoice = {
+          userId: user.id,
+          username: user.username,
+          displayName: user.displayName,
+          avatar: user.avatar,
+          channelId,
+          sessionId,
+          selfMute: false,
+          selfDeaf: false,
+          selfVideo: false,
+          selfStream: false,
+          suppress: false,
+          isSpeaking: false,
+        };
+        addUser(channelId, currentUserVoice);
 
         // Fetch current users in channel
         const usersResponse = await apiClient.getVoiceChannelUsers(channelId);
@@ -56,7 +136,6 @@ export default function VoiceJoinButton({ channelId, serverId }: VoiceJoinButton
             ? usersResponse.data
             : (usersResponse.data as { users?: unknown[] }).users || [];
 
-          // Map to VoiceUser format
           const voiceUsers = usersArray.map((u: unknown) => {
             const userData = u as Record<string, unknown>;
             return {
@@ -76,6 +155,14 @@ export default function VoiceJoinButton({ channelId, serverId }: VoiceJoinButton
           });
 
           setUsers(channelId, voiceUsers);
+        }
+
+        // Start audio automatically
+        try {
+          await client.startAudio();
+        } catch (audioError) {
+          console.warn('Could not start audio automatically:', audioError);
+          // Non-fatal - user can manually enable
         }
       } else {
         setError(response.error?.message || 'Failed to join voice channel');

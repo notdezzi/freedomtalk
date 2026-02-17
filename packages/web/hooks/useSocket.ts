@@ -62,8 +62,8 @@ export function useSocket() {
 
   // Send a message
   const sendMessage = useCallback(
-    (channelId: string, content: string, referencedMessageId?: string) => {
-      socketService.sendMessage(channelId, content, referencedMessageId);
+    (channelId: string, content: string, referencedMessageId?: string, isDM?: boolean) => {
+      socketService.sendMessage(channelId, content, referencedMessageId, isDM);
     },
     []
   );
@@ -102,6 +102,11 @@ export function useSocket() {
     // This is just for notifying other users via socket
   }, []);
 
+  // Get the socket instance for voice client
+  const getSocket = useCallback(() => {
+    return socketService.getSocket();
+  }, []);
+
   // Reconnect manually
   const reconnect = useCallback(() => {
     socketService.disconnect();
@@ -125,6 +130,7 @@ export function useSocket() {
     joinVoiceChannel,
     leaveVoiceChannel,
     updateVoiceState,
+    getSocket,
     reconnect,
   };
 }
