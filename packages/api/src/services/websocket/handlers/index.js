@@ -7,6 +7,7 @@ import { handlePresenceUpdate, handleStatusChange, handleTypingStart, handleTypi
 import { handleMessageCreate, handleMessageUpdate, handleMessageDelete, } from './message.handler';
 import { handleReactionAdd, handleReactionRemove, handleReactionRemoveAll, handleReactionRemoveEmoji, } from './reaction.handler';
 import { registerDMChannelHandlers } from './dm.handler';
+import { voiceHandler } from './voice.handler';
 export function registerHandlers(io) {
     io.use(authenticateSocket);
     io.on(WS_EVENTS.CONNECT, (socket) => {
@@ -29,6 +30,7 @@ export function registerHandlers(io) {
         socket.on(WS_EVENTS.REACTION_REMOVE_ALL, (data) => handleReactionRemoveAll(socket, data));
         socket.on(WS_EVENTS.REACTION_REMOVE_EMOJI, (data) => handleReactionRemoveEmoji(socket, data));
         registerDMChannelHandlers(socket);
+        voiceHandler.registerHandlers(socket);
     });
     logger.info('WebSocket event handlers registered');
 }

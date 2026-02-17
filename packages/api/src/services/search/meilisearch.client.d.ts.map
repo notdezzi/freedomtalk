@@ -1,0 +1,1 @@
+{"version":3,"file":"meilisearch.client.d.ts","sourceRoot":"","sources":["meilisearch.client.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,WAAW,EAAE,MAAM,aAAa,CAAC;AAe1C,wBAAgB,oBAAoB,IAAI,WAAW,CAYlD;AAKD,wBAAsB,4BAA4B,IAAI,OAAO,CAAC,IAAI,CAAC,CA4BlE;AAKD,wBAAgB,gBAAgB,IAAI,IAAI,CAEvC;AAGD,eAAO,MAAM,OAAO;;;;CAIV,CAAC;AAGX,YAAY,EAAE,WAAW,EAAE,CAAC"}

@@ -12,6 +12,16 @@ interface UseWebSocketOptions {
   onError?: (error: Error) => void;
 }
 
+// Helper to get access token from localStorage
+function getAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem("accessToken");
+  } catch {
+    return null;
+  }
+}
+
 export function useWebSocket(options: UseWebSocketOptions = {}) {
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -27,9 +37,19 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       return;
     }
 
-    // Initialize socket connection
+    // Get access token for WebSocket authentication
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+      console.warn("[WebSocket] No access token available");
+      return;
+    }
+
+    // Initialize socket connection with auth token
     socketRef.current = io(WS_URL, {
       path: "/socket.io",
+      auth: {
+        token: accessToken,
+      },
       withCredentials: true,
       transports: ["websocket", "polling"],
       reconnection: true,
@@ -114,8 +134,10 @@ export function getSocket(): Socket | null {
 
 export function initSocket(): Socket {
   if (!globalSocket) {
+    const accessToken = getAccessToken();
     globalSocket = io(WS_URL, {
       path: "/socket.io",
+      auth: accessToken ? { token: accessToken } : undefined,
       withCredentials: true,
       transports: ["websocket", "polling"],
       reconnection: true,

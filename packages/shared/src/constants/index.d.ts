@@ -12,10 +12,18 @@ export declare const API_ROUTES: {
     readonly SERVERS: {
         readonly LIST: "/api/v1/servers";
         readonly BY_ID: (id: string) => string;
+        readonly MEMBERS: (serverId: string) => string;
+        readonly MEMBER: (serverId: string, userId: string) => string;
+        readonly BANS: (serverId: string) => string;
+        readonly BAN: (serverId: string, userId: string) => string;
+        readonly ROLES: (serverId: string) => string;
+        readonly ROLE: (serverId: string, roleId: string) => string;
+        readonly INVITES: (serverId: string) => string;
     };
     readonly CHANNELS: {
         readonly BY_SERVER: (serverId: string) => string;
         readonly BY_ID: (id: string) => string;
+        readonly MESSAGES: (channelId: string) => string;
     };
     readonly MESSAGES: {
         readonly BY_CHANNEL: (channelId: string) => string;
@@ -55,6 +63,23 @@ export declare const WS_EVENTS: {
     readonly DM_CHANNEL_DELETE: "dm_channel:delete";
     readonly DM_CHANNEL_RECIPIENT_ADD: "dm_channel:recipient_add";
     readonly DM_CHANNEL_RECIPIENT_REMOVE: "dm_channel:recipient_remove";
+    readonly SERVER_CREATE: "server:create";
+    readonly SERVER_UPDATE: "server:update";
+    readonly SERVER_DELETE: "server:delete";
+    readonly SERVER_MEMBER_ADD: "server_member:add";
+    readonly SERVER_MEMBER_UPDATE: "server_member:update";
+    readonly SERVER_MEMBER_REMOVE: "server_member:remove";
+    readonly SERVER_BAN_ADD: "server_ban:add";
+    readonly SERVER_BAN_REMOVE: "server_ban:remove";
+    readonly SERVER_ROLE_CREATE: "server_role:create";
+    readonly SERVER_ROLE_UPDATE: "server_role:update";
+    readonly SERVER_ROLE_DELETE: "server_role:delete";
+    readonly CHANNEL_CREATE: "channel:create";
+    readonly CHANNEL_UPDATE: "channel:update";
+    readonly CHANNEL_DELETE: "channel:delete";
+    readonly CHANNEL_PINS_UPDATE: "channel_pins:update";
+    readonly INVITE_CREATE: "invite:create";
+    readonly INVITE_DELETE: "invite:delete";
 };
 export type WebSocketEvent = typeof WS_EVENTS[keyof typeof WS_EVENTS];
 export declare const VALIDATION: {
@@ -73,9 +98,34 @@ export declare const VALIDATION: {
         readonly MIN_LENGTH: 2;
         readonly MAX_LENGTH: 100;
     };
+    readonly SERVER_DESCRIPTION: {
+        readonly MAX_LENGTH: 1200;
+    };
     readonly CHANNEL_NAME: {
-        readonly MIN_LENGTH: 2;
+        readonly MIN_LENGTH: 1;
         readonly MAX_LENGTH: 100;
+    };
+    readonly CHANNEL_TOPIC: {
+        readonly MAX_LENGTH: 1024;
+    };
+    readonly CATEGORY_NAME: {
+        readonly MIN_LENGTH: 1;
+        readonly MAX_LENGTH: 100;
+    };
+    readonly ROLE: {
+        readonly MIN_NAME_LENGTH: 1;
+        readonly MAX_NAME_LENGTH: 100;
+        readonly MAX_ROLES_PER_SERVER: 250;
+    };
+    readonly NICKNAME: {
+        readonly MIN_LENGTH: 1;
+        readonly MAX_LENGTH: 32;
+    };
+    readonly INVITE: {
+        readonly CODE_LENGTH: 7;
+        readonly MAX_CODE_LENGTH: 10;
+        readonly MAX_USES: 100;
+        readonly MAX_AGE: 604800;
     };
     readonly REACTION: {
         readonly MAX_PER_MESSAGE: 20;
@@ -105,5 +155,40 @@ export declare const VALIDATION: {
         readonly MAX_PARTICIPANTS: 10;
         readonly MAX_NAME_LENGTH: 100;
     };
+    readonly VOICE: {
+        readonly MIN_BITRATE: 8000;
+        readonly MAX_BITRATE: 384000;
+        readonly DEFAULT_BITRATE: 64000;
+        readonly MAX_USER_LIMIT: 99;
+    };
+};
+export declare const DEFAULTS: {
+    readonly SERVER: {
+        readonly MAX_MEMBERS: 100000;
+        readonly AFK_TIMEOUT: 300;
+        readonly PREFERRED_LOCALE: "en-US";
+    };
+    readonly CHANNEL: {
+        readonly POSITION: 0;
+        readonly RATE_LIMIT: 0;
+        readonly BITRATE: 64000;
+    };
+    readonly ROLE: {
+        readonly COLOR: 0;
+        readonly POSITION: 0;
+        readonly PERMISSIONS: 0n;
+    };
+    readonly INVITE: {
+        readonly MAX_AGE: 86400;
+        readonly MAX_USES: 0;
+    };
+};
+export declare const SERVER_CATEGORIES: readonly ["gaming", "music", "education", "science_tech", "entertainment", "hobbies", "community", "finance"];
+export type ServerCategory = typeof SERVER_CATEGORIES[number];
+export declare const SEARCH: {
+    readonly MAX_QUERY_LENGTH: 500;
+    readonly DEFAULT_LIMIT: 25;
+    readonly MAX_LIMIT: 100;
+    readonly AUTOCOMPLETE_LIMIT: 10;
 };
 //# sourceMappingURL=index.d.ts.map

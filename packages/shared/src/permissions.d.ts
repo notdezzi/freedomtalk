@@ -1,0 +1,58 @@
+export declare const PERMISSION_FLAGS: {
+    readonly CREATE_INSTANT_INVITE: bigint;
+    readonly KICK_MEMBERS: bigint;
+    readonly BAN_MEMBERS: bigint;
+    readonly ADMINISTRATOR: bigint;
+    readonly MANAGE_CHANNELS: bigint;
+    readonly MANAGE_SERVER: bigint;
+    readonly ADD_REACTIONS: bigint;
+    readonly VIEW_AUDIT_LOG: bigint;
+    readonly PRIORITY_SPEAKER: bigint;
+    readonly STREAM: bigint;
+    readonly VIEW_CHANNEL: bigint;
+    readonly SEND_MESSAGES: bigint;
+    readonly SEND_TTS_MESSAGES: bigint;
+    readonly MANAGE_MESSAGES: bigint;
+    readonly EMBED_LINKS: bigint;
+    readonly ATTACH_FILES: bigint;
+    readonly READ_MESSAGE_HISTORY: bigint;
+    readonly MENTION_EVERYONE: bigint;
+    readonly USE_EXTERNAL_EMOJIS: bigint;
+    readonly VIEW_SERVER_INSIGHTS: bigint;
+    readonly CONNECT: bigint;
+    readonly SPEAK: bigint;
+    readonly MUTE_MEMBERS: bigint;
+    readonly DEAFEN_MEMBERS: bigint;
+    readonly MOVE_MEMBERS: bigint;
+    readonly USE_VAD: bigint;
+    readonly CHANGE_NICKNAME: bigint;
+    readonly MANAGE_NICKNAMES: bigint;
+    readonly MANAGE_ROLES: bigint;
+    readonly MANAGE_WEBHOOKS: bigint;
+    readonly MANAGE_EMOJIS_AND_STICKERS: bigint;
+    readonly USE_APPLICATION_COMMANDS: bigint;
+    readonly REQUEST_TO_SPEAK: bigint;
+    readonly MANAGE_EVENTS: bigint;
+    readonly MANAGE_THREADS: bigint;
+    readonly CREATE_PUBLIC_THREADS: bigint;
+    readonly CREATE_PRIVATE_THREADS: bigint;
+    readonly USE_EXTERNAL_STICKERS: bigint;
+    readonly SEND_MESSAGES_IN_THREADS: bigint;
+    readonly USE_EMBEDDED_ACTIVITIES: bigint;
+    readonly MODERATE_MEMBERS: bigint;
+};
+export declare const PERMISSION_NAMES: Record<keyof typeof PERMISSION_FLAGS, string>;
+export declare const ALL_PERMISSIONS: bigint;
+export declare const DEFAULT_PERMISSIONS: bigint;
+export declare class Permissions {
+    static has(permissions: bigint, flag: bigint): boolean;
+    static add(permissions: bigint, ...flags: bigint[]): bigint;
+    static remove(permissions: bigint, ...flags: bigint[]): bigint;
+    static hasAll(permissions: bigint, ...flags: bigint[]): boolean;
+    static hasAny(permissions: bigint, ...flags: bigint[]): boolean;
+    static getNames(permissions: bigint): string[];
+    static toArray(permissions: bigint): string[];
+    static fromArray(keys: string[]): bigint;
+}
+export type PermissionFlag = keyof typeof PERMISSION_FLAGS;
+//# sourceMappingURL=permissions.d.ts.map
