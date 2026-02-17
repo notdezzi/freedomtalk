@@ -22,6 +22,10 @@ import AccountSettingsTab from './AccountSettingsTab';
 import ProfileSettingsTab from './ProfileSettingsTab';
 import AppearanceSettingsTab from './AppearanceSettingsTab';
 import NotificationSettingsTab from './NotificationSettingsTab';
+import PrivacySettingsTab from './PrivacySettingsTab';
+import AuthorizedAppsTab from './AuthorizedAppsTab';
+import DevicesTab from './DevicesTab';
+import VoiceVideoTab from './VoiceVideoTab';
 
 type TabType = 'account' | 'profile' | 'privacy' | 'apps' | 'devices' | 'appearance' | 'voice' | 'notifications';
 
@@ -191,26 +195,10 @@ export default function UserSettingsModal() {
             {activeTab === 'profile' && <ProfileSettingsTab />}
             {activeTab === 'appearance' && <AppearanceSettingsTab />}
             {activeTab === 'notifications' && <NotificationSettingsTab />}
-            {activeTab === 'privacy' && (
-              <div className="text-center py-8 text-foreground-muted">
-                Privacy settings coming soon
-              </div>
-            )}
-            {activeTab === 'apps' && (
-              <div className="text-center py-8 text-foreground-muted">
-                Authorized apps coming soon
-              </div>
-            )}
-            {activeTab === 'devices' && (
-              <div className="text-center py-8 text-foreground-muted">
-                Device settings coming soon
-              </div>
-            )}
-            {activeTab === 'voice' && (
-              <div className="text-center py-8 text-foreground-muted">
-                Voice & Video settings coming soon
-              </div>
-            )}
+            {activeTab === 'privacy' && <PrivacySettingsTab />}
+            {activeTab === 'apps' && <AuthorizedAppsTab />}
+            {activeTab === 'devices' && <DevicesTab />}
+            {activeTab === 'voice' && <VoiceVideoTab />}
           </div>
         </div>
       </div>
