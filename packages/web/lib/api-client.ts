@@ -130,6 +130,23 @@ export interface MessageReactionResponse {
   me: boolean;
 }
 
+export interface DMChannelResponse {
+  id: string;
+  type: 'dm' | 'group_dm';
+  name?: string;
+  iconUrl?: string;
+  ownerId?: string;
+  recipients: {
+    id: string;
+    username: string;
+    displayName?: string;
+    avatar?: string;
+  }[];
+  lastMessageId?: string;
+  lastMessageAt?: string;
+  createdAt: string;
+}
+
 export interface MessageResponse {
   id: string;
   channelId?: string;
@@ -543,6 +560,83 @@ class ApiClient {
 
   async getReactionUsers(messageId: string, emoji: string): Promise<ApiResponse<{ users: { id: string; username: string }[] }>> {
     return this.request<{ users: { id: string; username: string }[] }>(`/api/v1/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`);
+  }
+
+  // DM Channel endpoints
+  async getDMChannels(limit = 50, offset = 0): Promise<ApiResponse<{ dmChannels: DMChannelResponse[]; total: number }>> {
+    return this.request<{ dmChannels: DMChannelResponse[]; total: number }>(`/api/v1/users/@me/channels?limit=${limit}&offset=${offset}`);
+  }
+
+  async createDM(recipientId: string): Promise<ApiResponse<DMChannelResponse>> {
+    return this.request<DMChannelResponse>('/api/v1/users/@me/channels', {
+      method: 'POST',
+      body: JSON.stringify({ recipient_id: recipientId }),
+    });
+  }
+
+  async createGroupDM(recipients: string[], name?: string, iconUrl?: string): Promise<ApiResponse<DMChannelResponse>> {
+    return this.request<DMChannelResponse>('/api/v1/users/@me/channels', {
+      method: 'POST',
+      body: JSON.stringify({ recipients, name, icon_url: iconUrl }),
+    });
+  }
+
+  async getDMChannel(channelId: string): Promise<ApiResponse<DMChannelResponse>> {
+    return this.request<DMChannelResponse>(`/api/v1/channels/${channelId}`);
+  }
+
+  async updateGroupDM(channelId: string, data: { name?: string; iconUrl?: string | null }): Promise<ApiResponse<DMChannelResponse>> {
+    const body: Record<string, unknown> = {};
+    if (data.name !== undefined) body.name = data.name;
+    if (data.iconUrl !== undefined) body.icon_url = data.iconUrl;
+
+    return this.request<DMChannelResponse>(`/api/v1/channels/${channelId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+  }
+
+  async leaveDM(channelId: string): Promise<ApiResponse<void>> {
+    return this.request<void>(`/api/v1/channels/${channelId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async addDMParticipant(channelId: string, userId: string): Promise<ApiResponse<DMChannelResponse>> {
+    return this.request<DMChannelResponse>(`/api/v1/channels/${channelId}/recipients/${userId}`, {
+      method: 'PUT',
+    });
+  }
+
+  async removeDMParticipant(channelId: string, userId: string): Promise<ApiResponse<DMChannelResponse>> {
+    return this.request<DMChannelResponse>(`/api/v1/channels/${channelId}/recipients/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getDMMessages(channelId: string, params?: { before?: string; after?: string; limit?: number }): Promise<ApiResponse<{ messages: MessageResponse[]; hasMore: boolean }>> {
+    const searchParams = new URLSearchParams();
+    if (params?.before) searchParams.set('before', params.before);
+    if (params?.after) searchParams.set('after', params.after);
+    if (params?.limit) searchParams.set('limit', params.limit.toString());
+
+    const query = searchParams.toString();
+    return this.request<{ messages: MessageResponse[]; hasMore: boolean }>(`/api/v1/channels/${channelId}/messages${query ? `?${query}` : ''}`);
+  }
+
+  async createDMMessage(channelId: string, content: string): Promise<ApiResponse<MessageResponse>> {
+    return this.request<MessageResponse>(`/api/v1/channels/${channelId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+  }
+
+  // Search endpoints
+  async searchUsers(query: string): Promise<ApiResponse<{ users: { id: string; username: string; displayName?: string; avatar?: string }[] }>> {
+    return this.request<{ users: { id: string; username: string; displayName?: string; avatar?: string }[] }>('/api/v1/search/users', {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    });
   }
 }
 

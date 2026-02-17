@@ -7,6 +7,7 @@ import { useSocket } from '@/hooks/useSocket';
 import ServerSidebar from '@/components/app/ServerSidebar';
 import ChannelSidebar from '@/components/app/ChannelSidebar';
 import MemberSidebar from '@/components/app/MemberSidebar';
+import { DMSidebar } from '@/components/dm';
 import ConnectionStatus from '@/components/app/ConnectionStatus';
 import { useUIStore } from '@/stores/uiStore';
 import { useServerStore } from '@/stores/serverStore';
@@ -144,21 +145,28 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Determine if we're on a DM route
+  const isDMRoute = pathname.startsWith('/app/dms') || pathname === '/app';
+
   return (
     <div className="h-screen flex overflow-hidden bg-background">
       {/* Server Sidebar */}
       <ServerSidebar />
 
-      {/* Channel Sidebar */}
-      <ChannelSidebar />
+      {/* DM Sidebar or Channel Sidebar */}
+      {isDMRoute ? (
+        <DMSidebar />
+      ) : (
+        <ChannelSidebar />
+      )}
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0">
         {children}
       </main>
 
-      {/* Member Sidebar */}
-      {isMemberSidebarOpen && currentServerId && <MemberSidebar />}
+      {/* Member Sidebar (only for server channels) */}
+      {isMemberSidebarOpen && currentServerId && !isDMRoute && <MemberSidebar />}
 
       {/* Connection Status Indicator */}
       <ConnectionStatus />
