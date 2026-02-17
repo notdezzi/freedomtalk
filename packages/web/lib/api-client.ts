@@ -638,6 +638,57 @@ class ApiClient {
       body: JSON.stringify({ query }),
     });
   }
+
+  // Role endpoints
+  async getRoles(serverId: string): Promise<ApiResponse<{ roles: { id: string; name: string; color: number; position: number; permissions: string; hoist: boolean; mentionable: boolean }[] }>> {
+    return this.request<{ roles: { id: string; name: string; color: number; position: number; permissions: string; hoist: boolean; mentionable: boolean }[] }>(`/api/v1/servers/${serverId}/roles`);
+  }
+
+  async createRole(serverId: string, data: { name: string; permissions?: string; color?: number; hoist?: boolean; mentionable?: boolean }): Promise<ApiResponse<unknown>> {
+    return this.request<unknown>(`/api/v1/servers/${serverId}/roles`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateRole(serverId: string, roleId: string, data: { name?: string; permissions?: string; color?: number; hoist?: boolean; mentionable?: boolean }): Promise<ApiResponse<unknown>> {
+    return this.request<unknown>(`/api/v1/servers/${serverId}/roles/${roleId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteRole(serverId: string, roleId: string): Promise<ApiResponse<void>> {
+    return this.request<void>(`/api/v1/servers/${serverId}/roles/${roleId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Ban endpoints
+  async getBans(serverId: string): Promise<ApiResponse<{ bans: { userId: string; reason?: string; bannedAt: string; bannedBy: string }[] }>> {
+    return this.request<{ bans: { userId: string; reason?: string; bannedAt: string; bannedBy: string }[] }>(`/api/v1/servers/${serverId}/bans`);
+  }
+
+  async banMember(serverId: string, userId: string, reason?: string): Promise<ApiResponse<unknown>> {
+    return this.request<unknown>(`/api/v1/servers/${serverId}/bans/${userId}`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async unbanMember(serverId: string, userId: string): Promise<ApiResponse<void>> {
+    return this.request<void>(`/api/v1/servers/${serverId}/bans/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Member roles
+  async setMemberRoles(serverId: string, userId: string, roleIds: string[]): Promise<ApiResponse<void>> {
+    return this.request<void>(`/api/v1/servers/${serverId}/members/${userId}/roles`, {
+      method: 'PUT',
+      body: JSON.stringify({ roleIds }),
+    });
+  }
 }
 
 // Export singleton instance

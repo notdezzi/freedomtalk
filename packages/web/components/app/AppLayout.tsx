@@ -9,6 +9,7 @@ import ChannelSidebar from '@/components/app/ChannelSidebar';
 import MemberSidebar from '@/components/app/MemberSidebar';
 import { DMSidebar } from '@/components/dm';
 import ConnectionStatus from '@/components/app/ConnectionStatus';
+import ContextMenuRenderer from '@/components/common/ContextMenuRenderer';
 import { useUIStore } from '@/stores/uiStore';
 import { useServerStore } from '@/stores/serverStore';
 import { useChannelStore } from '@/stores/channelStore';
@@ -170,6 +171,9 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Connection Status Indicator */}
       <ConnectionStatus />
+
+      {/* Context Menus */}
+      <ContextMenuRenderer />
     </div>
   );
 }
