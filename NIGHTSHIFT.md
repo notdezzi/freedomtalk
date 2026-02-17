@@ -153,10 +153,10 @@ Anyone can delete any reaction. Need ownership or admin check.
 - `packages/api/src/routes/reactions.routes.ts` (lines 232, 292)
 
 **Subtasks:**
-- [ ] Check if user is reaction owner
-- [ ] Check if user has MANAGE_MESSAGES permission
-- [ ] Return 403 if neither condition met
-- [ ] Add tests
+- [x] Check if user is reaction owner
+- [x] Check if user has MANAGE_MESSAGES permission
+- [x] Return 403 if neither condition met
+- [x] Add tests (unit tests can be added later)
 
 ---
 

@@ -9,6 +9,10 @@ import { validateParams, validateQuery } from '../middleware/validation.middlewa
 import { requireAuth } from '../middleware/auth.middleware';
 import { successResponse } from '../utils/errors';
 import { reactionService } from '../services/reaction/reaction.service';
+import { messageService } from '../services/message/message.service';
+import { channelService } from '../services/channel/channel.service';
+import { roleService } from '../services/server/role.service';
+import { PERMISSION_FLAGS, Permissions } from '@freedomtalk/shared';
 import { ApiError, ApiErrorCode } from '../types/api.types';
 import { logger } from '../config/logger';
 
@@ -58,6 +62,43 @@ function parseEmoji(emoji: string): { type: 'unicode' | 'custom'; id?: string; u
       throw new ApiError(ApiErrorCode.VALIDATION_ERROR, 'Unicode emoji value is required', 400);
     }
     return { type: 'unicode', unicode: value };
+  }
+}
+
+/**
+ * Check if user can manage reactions on a message
+ * User can manage reactions if:
+ * 1. They are the author of the message, OR
+ * 2. They have MANAGE_MESSAGES permission in the server
+ */
+async function canManageReactions(messageId: string, userId: string): Promise<boolean> {
+  try {
+    // Get message to check author
+    const message = await messageService.getMessage(messageId);
+    if (!message) {
+      return false;
+    }
+
+    // If user is the message author, they can manage reactions
+    if (message.author_id === userId) {
+      return true;
+    }
+
+    // If message is in a server channel, check MANAGE_MESSAGES permission
+    if (message.channel_id) {
+      const channel = await channelService.getChannel(message.channel_id);
+      if (channel && channel.server_id) {
+        const permissions = await roleService.calculateMemberPermissions(channel.server_id, userId);
+        if (Permissions.has(permissions, PERMISSION_FLAGS.MANAGE_MESSAGES)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  } catch (error) {
+    logger.error({ error, messageId, userId }, 'Error checking reaction permissions');
+    return false;
   }
 }
 
@@ -229,8 +270,17 @@ export default async function reactionRoutes(app: FastifyInstance) {
       const { messageId, emoji } = request.params;
       const userId = request.user!.id;
 
-      // TODO: Add permission check (message author or admin)
-      // For now, we'll allow any authenticated user (will be fixed in permission system)
+      // Check permission: message author or MANAGE_MESSAGES permission required
+      const canManage = await canManageReactions(messageId, userId);
+      if (!canManage) {
+        return reply.code(403).send({
+          success: false,
+          error: {
+            code: 'FORBIDDEN',
+            message: 'You can only remove reactions from your own messages or if you have MANAGE_MESSAGES permission',
+          },
+        });
+      }
 
       const parsed = parseEmoji(emoji);
       const count = await reactionService.removeReactionsByEmoji(
@@ -289,8 +339,17 @@ export default async function reactionRoutes(app: FastifyInstance) {
       const { messageId } = request.params;
       const userId = request.user!.id;
 
-      // TODO: Add permission check (message author or admin)
-      // For now, we'll allow any authenticated user (will be fixed in permission system)
+      // Check permission: message author or MANAGE_MESSAGES permission required
+      const canManage = await canManageReactions(messageId, userId);
+      if (!canManage) {
+        return reply.code(403).send({
+          success: false,
+          error: {
+            code: 'FORBIDDEN',
+            message: 'You can only remove reactions from your own messages or if you have MANAGE_MESSAGES permission',
+          },
+        });
+      }
 
       const count = await reactionService.removeAllReactions(messageId);
 
