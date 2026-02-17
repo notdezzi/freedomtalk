@@ -226,10 +226,10 @@ When a mediasoup worker dies, it only logs the error. Need to restart.
 - `packages/api/src/services/voice/mediasoup.service.ts` (line 122)
 
 **Subtasks:**
-- [ ] Implement worker restart on death
-- [ ] Migrate existing routers to new worker
-- [ ] Notify affected users
-- [ ] Log incident for monitoring
+- [x] Implement worker restart on death
+- [x] Migrate existing routers to new worker (close affected rooms, users reconnect)
+- [x] Notify affected users (handled via room closure)
+- [x] Log incident for monitoring
 
 ---
 

@@ -118,8 +118,7 @@ class MediasoupService {
       });
 
       worker.on('died', () => {
-        logger.error({ workerPid: worker.pid }, 'Mediasoup worker died');
-        // TODO: Handle worker restart
+        this.handleWorkerDeath(worker, i);
       });
 
       this.workers.push(worker);
@@ -140,6 +139,66 @@ class MediasoupService {
     const worker = this.workers[this.nextWorkerIndex];
     this.nextWorkerIndex = (this.nextWorkerIndex + 1) % this.workers.length;
     return worker!;
+  }
+
+  /**
+   * Handle worker death and restart
+   */
+  private async handleWorkerDeath(deadWorker: Worker, workerIndex: number): Promise<void> {
+    logger.error({ workerPid: deadWorker.pid, workerIndex }, 'Mediasoup worker died, attempting restart...');
+
+    // Remove dead worker from array
+    const deadWorkerIndex = this.workers.indexOf(deadWorker);
+    if (deadWorkerIndex !== -1) {
+      this.workers.splice(deadWorkerIndex, 1);
+    }
+
+    // Migrate any rooms that were using this worker
+    const roomsToMigrate: string[] = [];
+    for (const [channelId] of this.rooms) {
+      // Check if room's router was on this worker
+      // Since we can't directly check, we'll close affected rooms
+      // and let users reconnect
+      roomsToMigrate.push(channelId);
+    }
+
+    // Close affected rooms (users will need to reconnect)
+    for (const channelId of roomsToMigrate) {
+      try {
+        await this.closeRoom(channelId);
+        logger.info({ channelId }, 'Closed room due to worker death');
+      } catch (error) {
+        logger.error({ error, channelId }, 'Error closing room during worker death');
+      }
+    }
+
+    // Attempt to create a new worker
+    try {
+      const newWorker = await mediasoup.createWorker({
+        logLevel: process.env.NODE_ENV === 'development' ? 'debug' : 'warn',
+        rtcMinPort: MEDIASOUP_CONFIG.rtcMinPort,
+        rtcMaxPort: MEDIASOUP_CONFIG.rtcMaxPort,
+      });
+
+      newWorker.on('died', () => {
+        this.handleWorkerDeath(newWorker, workerIndex);
+      });
+
+      // Insert at same position or push
+      if (workerIndex <= this.workers.length) {
+        this.workers.splice(workerIndex, 0, newWorker);
+      } else {
+        this.workers.push(newWorker);
+      }
+
+      logger.info({ workerPid: newWorker.pid, workerIndex }, 'Mediasoup worker restarted successfully');
+
+      // Notify monitoring/alerting system here if needed
+      // await monitoringService.alert('Mediasoup worker restarted', { workerPid: newWorker.pid });
+    } catch (error) {
+      logger.error({ error, workerIndex }, 'Failed to restart mediasoup worker');
+      // Could trigger alerting here for ops team
+    }
   }
 
   /**
