@@ -10,6 +10,7 @@ import MemberSidebar from '@/components/app/MemberSidebar';
 import { DMSidebar } from '@/components/dm';
 import ConnectionStatus from '@/components/app/ConnectionStatus';
 import ContextMenuRenderer from '@/components/common/ContextMenuRenderer';
+import { ToastContainer } from '@/components/common';
 import { VoiceConnectedPanel } from '@/components/voice';
 import { useUIStore } from '@/stores/uiStore';
 import { useServerStore } from '@/stores/serverStore';
@@ -178,6 +179,9 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Context Menus */}
       <ContextMenuRenderer />
+
+      {/* Toast Notifications */}
+      <ToastContainer />
     </div>
   );
 }
