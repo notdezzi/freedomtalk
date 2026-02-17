@@ -15,6 +15,8 @@ import serverRoutes from './servers';
 import channelRoutes from './channels';
 import permissionRoutes from './permissions';
 import voiceRoutes from './voice';
+import searchRoutes from './search';
+import discoveryRoutes from './discovery';
 
 export default async function routes(app: FastifyInstance) {
   // API v1 routes
@@ -48,6 +50,12 @@ export default async function routes(app: FastifyInstance) {
 
     // Voice routes: /api/v1/voice/*
     await v1.register(voiceRoutes, { prefix: '/voice' });
+
+    // Search routes: /api/v1/search/*
+    await v1.register(searchRoutes, { prefix: '/search' });
+
+    // Discovery routes: /api/v1/discovery/*
+    await v1.register(discoveryRoutes, { prefix: '/discovery' });
 
     // WebSocket routes: /api/v1/websocket/*
     await v1.register(websocketRoutes, { prefix: '/websocket' });

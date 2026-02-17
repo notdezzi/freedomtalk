@@ -220,3 +220,25 @@ export const DEFAULTS = {
     MAX_USES: 0, // Unlimited
   },
 } as const;
+
+// Server Discovery Categories
+export const SERVER_CATEGORIES = [
+  'gaming',
+  'music',
+  'education',
+  'science_tech',
+  'entertainment',
+  'hobbies',
+  'community',
+  'finance',
+] as const;
+
+export type ServerCategory = typeof SERVER_CATEGORIES[number];
+
+// Search Constants
+export const SEARCH = {
+  MAX_QUERY_LENGTH: 500,
+  DEFAULT_LIMIT: 25,
+  MAX_LIMIT: 100,
+  AUTOCOMPLETE_LIMIT: 10,
+} as const;

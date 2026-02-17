@@ -76,6 +76,24 @@ services:
       timeout: 5s
       retries: 5
 
+  # Meilisearch (Full-text search engine)
+  meilisearch:
+    image: getmeili/meilisearch:v1.10
+    container_name: freedomtalk-meilisearch
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-masterKey}
+      MEILI_ENV: development
+    ports:
+      - '7700:7700'
+    volumes:
+      - meilisearch_data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:7700/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
     driver: local
@@ -84,6 +102,8 @@ volumes:
   rabbitmq_data:
     driver: local
   minio_data:
+    driver: local
+  meilisearch_data:
     driver: local
 
 networks:

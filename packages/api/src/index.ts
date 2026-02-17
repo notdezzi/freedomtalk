@@ -11,6 +11,7 @@ import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import routes from './routes/index.js';
 import { wsServer } from './services/websocket/websocket.server';
 import { registerHandlers } from './services/websocket/handlers';
+import { initializeMeilisearchIndices } from './services/search/meilisearch.client.js';
 
 /**
  * Main application entry point
@@ -172,6 +173,15 @@ async function initializeInfrastructure() {
     // Connect to Redis
     await connectRedis();
     app.log.info('Redis connection established');
+
+    // Initialize Meilisearch indices
+    try {
+      await initializeMeilisearchIndices();
+      app.log.info('Meilisearch indices initialized');
+    } catch (error) {
+      // Non-fatal: Search may not be available
+      app.log.warn({ err: error }, 'Meilisearch initialization failed (search may be unavailable)');
+    }
   } catch (error) {
     app.log.error({ err: error }, 'Failed to initialize infrastructure');
     throw error;
