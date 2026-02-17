@@ -10,6 +10,7 @@ const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: fals
 const CreateCategoryModal = dynamic(() => import('./CreateCategoryModal'), { ssr: false });
 const ServerSettingsModal = dynamic(() => import('./ServerSettingsModal'), { ssr: false });
 const UserSettingsModal = dynamic(() => import('@/components/user/UserSettingsModal'), { ssr: false });
+const SearchModal = dynamic(() => import('@/components/search/SearchModal'), { ssr: false });
 
 export default function ModalRenderer() {
   return (
@@ -21,6 +22,7 @@ export default function ModalRenderer() {
       <CreateCategoryModal />
       <ServerSettingsModal />
       <UserSettingsModal />
+      <SearchModal />
     </>
   );
 }

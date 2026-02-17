@@ -736,6 +736,28 @@ class ApiClient {
       body: JSON.stringify({ currentPassword, newPassword }),
     });
   }
+
+  // Search endpoints
+  async search(params: { query: string; type?: string; limit?: number }): Promise<ApiResponse<{ messages?: unknown[]; users?: unknown[]; servers?: unknown[] }>> {
+    const searchParams = new URLSearchParams();
+    searchParams.set('query', params.query);
+    if (params.type) searchParams.set('type', params.type);
+    if (params.limit) searchParams.set('limit', params.limit.toString());
+
+    return this.request<{ messages?: unknown[]; users?: unknown[]; servers?: unknown[] }>(`/api/v1/search?${searchParams.toString()}`);
+  }
+
+  // Discovery endpoints
+  async discoverServers(params?: { category?: string; query?: string; limit?: number; offset?: number }): Promise<ApiResponse<{ servers: unknown[]; total: number }>> {
+    const searchParams = new URLSearchParams();
+    if (params?.category) searchParams.set('category', params.category);
+    if (params?.query) searchParams.set('query', params.query);
+    if (params?.limit) searchParams.set('limit', params.limit.toString());
+    if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+    const query = searchParams.toString();
+    return this.request<{ servers: unknown[]; total: number }>(`/api/v1/discover/servers${query ? `?${query}` : ''}`);
+  }
 }
 
 // Export singleton instance
