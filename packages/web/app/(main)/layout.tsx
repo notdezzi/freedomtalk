@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useDMStore } from "@/stores/dm.store";
 import { useWebSocket } from "@/hooks";
 import { Avatar, Spinner } from "@/components/ui";
+import { CreateDMModal } from "@/components/chat";
 import api from "@/lib/api";
 import type { DMChannel } from "@/types";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,14 @@ export default function MainLayout({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showCreateDM, setShowCreateDM] = useState(false);
 
+  // Add app-layout class to body for overflow hidden
+  useEffect(() => {
+    document.body.classList.add("app-layout");
+    return () => {
+      document.body.classList.remove("app-layout");
+    };
+  }, []);
+
   // Initialize WebSocket
   useWebSocket({
     onConnect: () => {
@@ -33,15 +42,17 @@ export default function MainLayout({
     },
   });
 
-  // Fetch user on mount
+  // Check auth status on mount - always verify tokens on page load/refresh
   useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
-      fetchUser();
-    }
-  }, [isAuthenticated, isLoading, fetchUser]);
+    // Always call fetchUser to verify stored tokens are still valid
+    // fetchUser handles the case where tokens don't exist
+    fetchUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run on mount
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (after fetch attempt completes)
   useEffect(() => {
+    // Only redirect after we've finished loading and confirmed not authenticated
     if (!isAuthenticated && !isLoading) {
       router.push("/login");
     }
@@ -50,7 +61,13 @@ export default function MainLayout({
   // Fetch DM channels
   useEffect(() => {
     if (isAuthenticated) {
-      api.get<DMChannel[]>("/users/@me/channels").then(setChannels).catch(console.error);
+      api.get<DMChannel[]>("/users/@me/channels")
+        .then((channels) => {
+          if (Array.isArray(channels)) {
+            setChannels(channels);
+          }
+        })
+        .catch(console.error);
     }
   }, [isAuthenticated, setChannels]);
 
@@ -134,7 +151,7 @@ export default function MainLayout({
 
         {/* DM List */}
         <div className="flex-1 overflow-y-auto px-2 scrollbar-thin">
-          {channels.map((channel) => (
+          {(channels || []).map((channel) => (
             <Link
               key={channel.id}
               href={`/dm/${channel.id}`}
@@ -214,6 +231,12 @@ export default function MainLayout({
       <div className="flex-1 flex flex-col overflow-hidden">
         {children}
       </div>
+
+      {/* Create DM Modal */}
+      <CreateDMModal
+        isOpen={showCreateDM}
+        onClose={() => setShowCreateDM(false)}
+      />
     </div>
   );
 }

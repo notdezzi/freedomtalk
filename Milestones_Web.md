@@ -63,55 +63,47 @@ Complete Discord-faithful color system:
 
 ---
 
-## Milestone W2: DM & Messaging (Next)
+## Completed: DM & Messaging (Milestone W2) ✅
 
-### Status: 🔲 **PENDING**
+### Status: ✅ **COMPLETE** (Completed: 2026-02-17)
 
 ### Objective
 Build direct message channels, message display, and real-time messaging features.
 
-### Pages to Implement
+### Pages Implemented
 
-| Page | Route | Description |
-|------|-------|-------------|
-| DM List | `/dm` | List of DM channels |
-| DM Channel | `/dm/[channelId]` | Message view |
+| Page | Route | Status |
+|------|-------|--------|
+| DM List | `/dm` | ✅ Complete |
+| DM Channel | `/dm/[channelId]` | ✅ Complete |
 
-### Components to Build
+### Components Implemented
 
 **DM Components:**
-- `DMList` - Sidebar with DM channels
-- `DMListItem` - Single DM entry
-- `CreateDMModal` - Start new DM
-- `CreateGroupDMModal` - Create group DM
-- `GroupDMSettings` - Manage group
+- ✅ `CreateDMModal` - Start new DM with user search
+- ✅ `MarkdownRenderer` - Parse markdown with spoiler/mention support
+- ✅ `MessageReactions` - Reaction display with add/remove
+- ✅ `ReactionPicker` - Emoji picker using emoji-picker-react
+- ✅ `TypingIndicator` - Shows who's typing with animated dots
 
-**Message Components:**
-- `MessageList` - Virtualized message container
-- `Message` - Single message display
-- `MessageInput` - Rich input with formatting
-- `MessageEditor` - Edit mode
-- `MessageContextMenu` - Right-click actions
-- `MessageReactions` - Reaction display
-- `ReactionPicker` - Emoji picker
-- `SystemMessage` - System messages
+**Main Layout:**
+- ✅ Server list sidebar
+- ✅ Channel sidebar with DM list
+- ✅ User panel with status
+- ✅ User menu (settings, logout)
 
-**Attachment Components:**
-- `AttachmentPreview` - Upload progress
-- `AttachmentDisplay` - Render attachments
-- `ImageLightbox` - Full-screen images
+**WebSocket Integration:**
+- ✅ `useWebSocket` hook - Connection management
+- ✅ Room join/leave for channels
+- ✅ Event subscription system
+- ✅ Typing indicators (send/receive)
+- ✅ Real-time message updates
+- ✅ Reaction add/remove via WebSocket
 
-**Embed Components:**
-- `Embed` - Open Graph embeds
-- `LinkPreview` - Loading state
+**Zustand Store:**
+- ✅ `dm.store.ts` - Channels, messages, typing, unread counts
 
-**Markdown Components:**
-- `MarkdownRenderer` - Parse markdown
-- `CodeBlock` - Syntax highlighting
-- `SpoilerText` - Hidden text
-- `Mention` - @user, @role, #channel
-
-### Dependencies to Add
+### Dependencies Added
 ```json
 {
   "react-markdown": "^9.x",
@@ -123,18 +115,25 @@ Build direct message channels, message display, and real-time messaging features
 }
 ```
 
-### Deliverables
-- [ ] DM channel list with unread counts
-- [ ] Create new DM / Group DM
-- [ ] Message display with markdown
-- [ ] Message input with formatting
-- [ ] Message edit and delete
-- [ ] Reactions (add/remove)
+### Features Implemented
+- [x] DM channel list with sidebar
+- [x] Create new DM modal
+- [x] Message display with markdown
+- [x] Message input with Enter to send
+- [x] Reactions (add/remove)
+- [x] Typing indicators
+- [x] User presence display
+- [x] Message grouping (same author)
+- [x] Spoiler text support
+- [x] Mention highlighting (@user, @role, #channel)
+- [x] Code syntax highlighting
+
+### Remaining (Future)
 - [ ] File attachments
 - [ ] Link embeds
-- [ ] Typing indicators
-- [ ] User presence
-- [ ] Message pagination
+- [ ] Message edit/delete
+- [ ] Group DM management
+- [ ] Message pagination/infinite scroll
 
 ---
 
@@ -364,32 +363,49 @@ Build voice channel connection and video calling features.
 ```
 packages/web/
 ├── app/
-│   ├── (auth)/              # Auth pages
+│   ├── (auth)/              # Auth pages ✅
 │   │   ├── login/
 │   │   ├── register/
 │   │   ├── forgot-password/
 │   │   ├── reset-password/
 │   │   └── verify-email/
-│   ├── (main)/              # Main app (future)
+│   ├── (main)/              # Main app ✅
+│   │   ├── layout.tsx       # App shell with sidebar
+│   │   └── dm/              # DM pages ✅
+│   │       ├── page.tsx     # DM list
+│   │       └── [channelId]/ # DM channel view
 │   ├── layout.tsx
-│   ├── page.tsx             # Landing
-│   └── globals.css
+│   ├── page.tsx             # Landing ✅
+│   └── globals.css          # Theme system ✅
 ├── components/
 │   ├── ui/                  # Base components ✅
-│   ├── auth/                # Auth components
-│   ├── chat/                # Chat components
-│   ├── server/              # Server components
-│   ├── voice/               # Voice components
+│   │   ├── Button.tsx
+│   │   ├── Input.tsx
+│   │   ├── Checkbox.tsx
+│   │   ├── Avatar.tsx
+│   │   ├── Modal.tsx
+│   │   └── Spinner.tsx
+│   ├── chat/                # Chat components ✅
+│   │   ├── CreateDMModal.tsx
+│   │   ├── MarkdownRenderer.tsx
+│   │   ├── MessageReactions.tsx
+│   │   ├── ReactionPicker.tsx
+│   │   └── TypingIndicator.tsx
+│   ├── server/              # Server components (W3)
+│   ├── voice/               # Voice components (W5)
 │   └── layout/              # Layout components
 ├── stores/
-│   └── auth.store.ts        # Auth state ✅
+│   ├── auth.store.ts        # Auth state ✅
+│   └── dm.store.ts          # DM state ✅
 ├── lib/
 │   ├── api.ts               # API client ✅
 │   ├── query-provider.tsx   # React Query ✅
 │   └── utils.ts             # Utilities ✅
 ├── types/
 │   └── index.ts             # TypeScript types ✅
-└── hooks/                   # Custom hooks
+└── hooks/
+    ├── index.ts
+    └── useWebSocket.ts      # WebSocket hook ✅
 ```
 
 ---
@@ -411,8 +427,10 @@ npm run type-check --workspace=@freedomtalk/web
 
 ## Notes
 
-- Auth pages are complete and functional
+- Auth pages are complete and functional ✅
+- DM pages are complete with real-time messaging ✅
 - Backend API must be running on port 3001 (or set `NEXT_PUBLIC_API_URL`)
+- WebSocket must be running for real-time features (or set `NEXT_PUBLIC_WS_URL`)
 - OAuth flows redirect to backend endpoints
 - All components use CSS variables for theming
-- Socket.io integration pending for real-time features
+- Socket.io integration is complete for real-time features ✅

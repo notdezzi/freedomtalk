@@ -3,6 +3,38 @@ import type { ApiResponse } from "@/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+// Storage keys
+const ACCESS_TOKEN_KEY = "accessToken";
+const REFRESH_TOKEN_KEY = "refreshToken";
+
+// Helper to safely access localStorage
+function getStorageItem(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function setStorageItem(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function removeStorageItem(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 class ApiClient {
   private client: AxiosInstance;
 
@@ -18,11 +50,46 @@ class ApiClient {
     this.setupInterceptors();
   }
 
+  // Store tokens after login
+  setTokens(accessToken: string, refreshToken: string) {
+    setStorageItem(ACCESS_TOKEN_KEY, accessToken);
+    setStorageItem(REFRESH_TOKEN_KEY, refreshToken);
+  }
+
+  // Get stored access token
+  private getAccessToken(): string | null {
+    return getStorageItem(ACCESS_TOKEN_KEY);
+  }
+
+  // Get stored refresh token
+  private getRefreshToken(): string | null {
+    return getStorageItem(REFRESH_TOKEN_KEY);
+  }
+
+  // Update access token after refresh
+  private updateAccessToken(token: string) {
+    setStorageItem(ACCESS_TOKEN_KEY, token);
+  }
+
+  // Clear tokens on logout
+  clearTokens() {
+    removeStorageItem(ACCESS_TOKEN_KEY);
+    removeStorageItem(REFRESH_TOKEN_KEY);
+  }
+
+  // Check if user has tokens (for initial auth check)
+  hasTokens(): boolean {
+    return !!this.getAccessToken() && !!this.getRefreshToken();
+  }
+
   private setupInterceptors() {
-    // Request interceptor
+    // Request interceptor - add auth header
     this.client.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
-        // Cookies are automatically sent with withCredentials: true
+        const token = this.getAccessToken();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
         return config;
       },
       (error) => Promise.reject(error)
@@ -38,11 +105,33 @@ class ApiClient {
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
 
-          try {
-            await this.post("/auth/refresh", {});
-            return this.client(originalRequest);
-          } catch {
-            // Refresh failed - redirect to login
+          const storedRefreshToken = this.getRefreshToken();
+          if (storedRefreshToken) {
+            try {
+              const response = await this.client.post<ApiResponse<{ accessToken: string; refreshToken: string }>>(
+                "/auth/refresh",
+                { refresh_token: storedRefreshToken }
+              );
+
+              // Update stored tokens
+              if (response.data.data?.accessToken) {
+                this.updateAccessToken(response.data.data.accessToken);
+                if (response.data.data.refreshToken) {
+                  setStorageItem(REFRESH_TOKEN_KEY, response.data.data.refreshToken);
+                }
+              }
+
+              // Retry original request with new token
+              return this.client(originalRequest);
+            } catch {
+              // Refresh failed - clear tokens and redirect to login
+              this.clearTokens();
+              if (typeof window !== "undefined") {
+                window.location.href = "/login";
+              }
+            }
+          } else {
+            // No refresh token - redirect to login
             if (typeof window !== "undefined") {
               window.location.href = "/login";
             }

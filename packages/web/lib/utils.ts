@@ -49,9 +49,16 @@ export function formatRelativeTime(date: Date | string): string {
 
 /**
  * Format time (e.g., "3:45 PM")
+ * @param short - If true, returns only hour without minutes (e.g., "3 PM")
  */
-export function formatTime(date: Date | string): string {
+export function formatTime(date: Date | string, short = false): string {
   const then = typeof date === "string" ? new Date(date) : date;
+  if (short) {
+    return then.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      hour12: true,
+    });
+  }
   return then.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",

@@ -64,15 +64,15 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     };
   }, [isAuthenticated]);
 
-  const subscribe = useCallback((event: string, callback: (...args: unknown[]) => void) => {
+  const subscribe = useCallback(<T extends unknown[]>(event: string, callback: (...args: T) => void) => {
     if (socketRef.current) {
-      socketRef.current.on(event, callback);
+      socketRef.current.on(event, callback as (...args: unknown[]) => void);
     }
   }, []);
 
-  const unsubscribe = useCallback((event: string, callback?: (...args: unknown[]) => void) => {
+  const unsubscribe = useCallback(<T extends unknown[]>(event: string, callback?: (...args: T) => void) => {
     if (socketRef.current) {
-      socketRef.current.off(event, callback);
+      socketRef.current.off(event, callback as (...args: unknown[]) => void);
     }
   }, []);
 
