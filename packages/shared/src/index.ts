@@ -15,3 +15,6 @@ export * from './schemas';
 // Export utilities
 export * from './utils';
 
+// Export permissions
+export * from './permissions';
+

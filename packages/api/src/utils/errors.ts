@@ -7,6 +7,21 @@ import { ApiResponse } from '@freedomtalk/shared';
 import { ApiError, ApiErrorCode } from '../types/api.types';
 
 /**
+ * Custom App Error class
+ */
+export class AppError extends Error {
+  public statusCode: number;
+  public code: string;
+
+  constructor(statusCode: number, code: string, message: string) {
+    super(message);
+    this.statusCode = statusCode;
+    this.code = code;
+    this.name = 'AppError';
+  }
+}
+
+/**
  * Build success response
  */
 export function successResponse<T>(data: T, meta?: any): ApiResponse<T> {

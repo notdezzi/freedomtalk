@@ -11,6 +11,9 @@ import websocketRoutes from './websocket';
 import reactionRoutes from './reactions.routes';
 import attachmentRoutes from './attachments.routes';
 import dmRoutes from './dm.routes';
+import serverRoutes from './servers';
+import channelRoutes from './channels';
+import permissionRoutes from './permissions';
 
 export default async function routes(app: FastifyInstance) {
   // API v1 routes
@@ -32,6 +35,15 @@ export default async function routes(app: FastifyInstance) {
 
     // DM routes: /api/v1/users/@me/channels and /api/v1/channels/*
     await v1.register(dmRoutes);
+
+    // Server routes: /api/v1/servers/*
+    await v1.register(serverRoutes, { prefix: '/servers' });
+
+    // Channel routes: /api/v1/channels/* and /api/v1/servers/:serverId/channels/*
+    await v1.register(channelRoutes);
+
+    // Permission routes: /api/v1/channels/:channelId/permissions/*
+    await v1.register(permissionRoutes);
 
     // WebSocket routes: /api/v1/websocket/*
     await v1.register(websocketRoutes, { prefix: '/websocket' });
