@@ -1,0 +1,135 @@
+"use client";
+
+import { useEffect, useRef, useCallback, useState } from "react";
+import { io, Socket } from "socket.io-client";
+import { useAuthStore } from "@/stores/auth.store";
+
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+interface UseWebSocketOptions {
+  onConnect?: () => void;
+  onDisconnect?: () => void;
+  onError?: (error: Error) => void;
+}
+
+export function useWebSocket(options: UseWebSocketOptions = {}) {
+  const socketRef = useRef<Socket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const { isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        setIsConnected(false);
+      }
+      return;
+    }
+
+    // Initialize socket connection
+    socketRef.current = io(WS_URL, {
+      path: "/socket.io",
+      withCredentials: true,
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+    });
+
+    const socket = socketRef.current;
+
+    socket.on("connect", () => {
+      console.log("[WebSocket] Connected");
+      setIsConnected(true);
+      options.onConnect?.();
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("[WebSocket] Disconnected:", reason);
+      setIsConnected(false);
+      options.onDisconnect?.();
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("[WebSocket] Connection error:", error);
+      options.onError?.(error);
+    });
+
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+      setIsConnected(false);
+    };
+  }, [isAuthenticated]);
+
+  const subscribe = useCallback((event: string, callback: (...args: unknown[]) => void) => {
+    if (socketRef.current) {
+      socketRef.current.on(event, callback);
+    }
+  }, []);
+
+  const unsubscribe = useCallback((event: string, callback?: (...args: unknown[]) => void) => {
+    if (socketRef.current) {
+      socketRef.current.off(event, callback);
+    }
+  }, []);
+
+  const emit = useCallback((event: string, data: unknown) => {
+    if (socketRef.current && isConnected) {
+      socketRef.current.emit(event, data);
+    }
+  }, [isConnected]);
+
+  const joinRoom = useCallback((room: string) => {
+    if (socketRef.current && isConnected) {
+      socketRef.current.emit("room:join", { room });
+    }
+  }, [isConnected]);
+
+  const leaveRoom = useCallback((room: string) => {
+    if (socketRef.current && isConnected) {
+      socketRef.current.emit("room:leave", { room });
+    }
+  }, [isConnected]);
+
+  return {
+    socket: socketRef.current,
+    isConnected,
+    subscribe,
+    unsubscribe,
+    emit,
+    joinRoom,
+    leaveRoom,
+  };
+}
+
+// Singleton socket instance for use outside of React components
+let globalSocket: Socket | null = null;
+
+export function getSocket(): Socket | null {
+  return globalSocket;
+}
+
+export function initSocket(): Socket {
+  if (!globalSocket) {
+    globalSocket = io(WS_URL, {
+      path: "/socket.io",
+      withCredentials: true,
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+    });
+  }
+  return globalSocket;
+}
+
+export function disconnectSocket(): void {
+  if (globalSocket) {
+    globalSocket.disconnect();
+    globalSocket = null;
+  }
+}

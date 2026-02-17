@@ -14,6 +14,7 @@ import dmRoutes from './dm.routes';
 import serverRoutes from './servers';
 import channelRoutes from './channels';
 import permissionRoutes from './permissions';
+import voiceRoutes from './voice';
 
 export default async function routes(app: FastifyInstance) {
   // API v1 routes
@@ -44,6 +45,9 @@ export default async function routes(app: FastifyInstance) {
 
     // Permission routes: /api/v1/channels/:channelId/permissions/*
     await v1.register(permissionRoutes);
+
+    // Voice routes: /api/v1/voice/*
+    await v1.register(voiceRoutes, { prefix: '/voice' });
 
     // WebSocket routes: /api/v1/websocket/*
     await v1.register(websocketRoutes, { prefix: '/websocket' });

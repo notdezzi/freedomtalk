@@ -31,6 +31,7 @@ import {
   handleReactionRemoveEmoji,
 } from './reaction.handler';
 import { registerDMChannelHandlers } from './dm.handler';
+import { voiceHandler } from './voice.handler';
 
 /**
  * Register all WebSocket event handlers
@@ -74,6 +75,9 @@ export function registerHandlers(io: SocketIOServer): void {
 
     // DM Channel events
     registerDMChannelHandlers(socket);
+
+    // Voice events (WebRTC signaling)
+    voiceHandler.registerHandlers(socket);
   });
 
   logger.info('WebSocket event handlers registered');
