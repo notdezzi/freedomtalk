@@ -11,6 +11,18 @@ import {
   Image as ImageIcon,
   FileText,
   Loader2,
+  Bold,
+  Italic,
+  Underline,
+  Strikethrough,
+  Code,
+  Link2,
+  List,
+  ListOrdered,
+  CheckSquare,
+  Quote,
+  Heading1,
+  Eye,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
@@ -22,6 +34,7 @@ import { useServerStore } from '@/stores/serverStore';
 interface MessageInputProps {
   channelId: string;
   serverId?: string;
+  isDM?: boolean;
 }
 
 const EMOJI_CATEGORIES = [
@@ -32,7 +45,7 @@ const EMOJI_CATEGORIES = [
   ['👀', '🔥', '💯', '⚡', '💡', '📌', '🎯', '✅', '❌', '⚠️'],
 ];
 
-export default function MessageInput({ channelId, serverId }: MessageInputProps) {
+export default function MessageInput({ channelId, serverId, isDM = false }: MessageInputProps) {
   const { user } = useAuth();
   const { isConnected, sendMessage, sendTyping, stopTyping } = useSocket();
   const { editingMessageId, setEditingMessage, replyingTo, setReplyingTo, messages } =
@@ -48,6 +61,7 @@ export default function MessageInput({ channelId, serverId }: MessageInputProps)
   const [mentionFilter, setMentionFilter] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [slowmodeRemaining, setSlowmodeRemaining] = useState(0);
+  const [showFormatting, setShowFormatting] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -153,7 +167,7 @@ export default function MessageInput({ channelId, serverId }: MessageInputProps)
     try {
       if (isEditing && editingMessage) {
         // Update existing message via socket
-        sendMessage(channelId, content.trim(), editingMessage.referencedMessage?.id);
+        sendMessage(channelId, content.trim(), editingMessage.referencedMessage?.id, isDM);
         const { updateMessage } = useMessageStore.getState();
         updateMessage(channelId, editingMessage.id, {
           content: content.trim(),
@@ -163,7 +177,7 @@ export default function MessageInput({ channelId, serverId }: MessageInputProps)
       } else {
         // Send message via socket - the server will broadcast it back
         // Don't add optimistically to avoid duplicates
-        sendMessage(channelId, content.trim(), replyingTo?.id);
+        sendMessage(channelId, content.trim(), replyingTo?.id, isDM);
 
         // Set slowmode if channel has it
         if (channel?.rateLimitPerUser && channel.rateLimitPerUser > 0) {
@@ -230,6 +244,73 @@ export default function MessageInput({ channelId, serverId }: MessageInputProps)
   const maxChars = 2000;
   const isOverLimit = charCount > maxChars;
   const canSend = (content.trim() || attachments.length > 0) && !isOverLimit && !isSubmitting && slowmodeRemaining === 0;
+
+  // Rich text formatting functions
+  const insertFormatting = useCallback((prefix: string, suffix: string = prefix, placeholder: string = 'text') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+    const textToInsert = selectedText || placeholder;
+
+    const newContent = content.substring(0, start) + prefix + textToInsert + suffix + content.substring(end);
+    setContent(newContent);
+
+    // Set cursor position after the inserted text
+    setTimeout(() => {
+      const newCursorPos = start + prefix.length + textToInsert.length;
+      textarea.setSelectionRange(
+        selectedText ? newCursorPos : start + prefix.length,
+        selectedText ? newCursorPos : start + prefix.length + placeholder.length
+      );
+      textarea.focus();
+    }, 0);
+  }, [content]);
+
+  const insertLinePrefix = useCallback((prefix: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+
+    if (selectedText) {
+      // Add prefix to each line of selection
+      const lines = selectedText.split('\n');
+      const formattedLines = lines.map(line => prefix + line);
+      const newContent = content.substring(0, start) + formattedLines.join('\n') + content.substring(end);
+      setContent(newContent);
+    } else {
+      // Insert prefix at current line start
+      const lineStart = content.lastIndexOf('\n', start - 1) + 1;
+      const newContent = content.substring(0, lineStart) + prefix + content.substring(lineStart);
+      setContent(newContent);
+      setTimeout(() => {
+        textarea.setSelectionRange(start + prefix.length, start + prefix.length);
+        textarea.focus();
+      }, 0);
+    }
+  }, [content]);
+
+  const toggleSpoiler = useCallback(() => {
+    insertFormatting('||', '||', 'spoiler');
+  }, [insertFormatting]);
+
+  const formatBold = useCallback(() => insertFormatting('**', '**', 'bold text'), [insertFormatting]);
+  const formatItalic = useCallback(() => insertFormatting('*', '*', 'italic text'), [insertFormatting]);
+  const formatUnderline = useCallback(() => insertFormatting('__', '__', 'underlined'), [insertFormatting]);
+  const formatStrikethrough = useCallback(() => insertFormatting('~~', '~~', 'strikethrough'), [insertFormatting]);
+  const formatCode = useCallback(() => insertFormatting('`', '`', 'code'), [insertFormatting]);
+  const formatCodeBlock = useCallback(() => insertFormatting('```\n', '\n```', 'code block'), [insertFormatting]);
+  const formatLink = useCallback(() => insertFormatting('[', '](url)', 'link text'), [insertFormatting]);
+  const formatQuote = useCallback(() => insertLinePrefix('> '), [insertLinePrefix]);
+  const formatHeading = useCallback(() => insertLinePrefix('### '), [insertLinePrefix]);
+  const formatBulletList = useCallback(() => insertLinePrefix('- '), [insertLinePrefix]);
+  const formatNumberedList = useCallback(() => insertLinePrefix('1. '), [insertLinePrefix]);
+  const formatCheckbox = useCallback(() => insertLinePrefix('- [ ] '), [insertLinePrefix]);
 
   return (
     <div className="px-4 pb-6">
@@ -302,6 +383,17 @@ export default function MessageInput({ channelId, serverId }: MessageInputProps)
         >
           <PlusCircle className="w-5 h-5" />
         </button>
+
+        {/* Formatting toggle button */}
+        <button
+          type="button"
+          onClick={() => setShowFormatting(!showFormatting)}
+          className={`p-3 transition-colors ${showFormatting ? 'text-accent' : 'text-foreground-muted hover:text-foreground'}`}
+          title="Formatting"
+        >
+          <Code className="w-5 h-5" />
+        </button>
+
         <input
           ref={fileInputRef}
           type="file"
@@ -310,6 +402,111 @@ export default function MessageInput({ channelId, serverId }: MessageInputProps)
           className="hidden"
           accept="image/*,video/*,audio/*,.pdf,.txt,.doc,.docx"
         />
+
+        {/* Formatting toolbar */}
+        {showFormatting && (
+          <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border mb-1 flex-wrap">
+            <button
+              type="button"
+              onClick={formatBold}
+              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
+              title="Bold (Ctrl+B)"
+            >
+              <Bold className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={formatItalic}
+              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
+              title="Italic (Ctrl+I)"
+            >
+              <Italic className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={formatUnderline}
+              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
+              title="Underline"
+            >
+              <Underline className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={formatStrikethrough}
+              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
+              title="Strikethrough"
+            >
+              <Strikethrough className="w-4 h-4" />
+            </button>
+            <div className="w-px h-4 bg-border mx-1" />
+            <button
+              type="button"
+              onClick={formatCode}
+              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
+              title="Inline code"
+            >
+              <Code className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={formatLink}
+              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
+              title="Link"
+            >
+              <Link2 className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={toggleSpoiler}
+              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
+              title="Spoiler"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+            <div className="w-px h-4 bg-border mx-1" />
+            <button
+              type="button"
+              onClick={formatHeading}
+              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
+              title="Heading"
+            >
+              <Heading1 className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={formatQuote}
+              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
+              title="Quote"
+            >
+              <Quote className="w-4 h-4" />
+            </button>
+            <div className="w-px h-4 bg-border mx-1" />
+            <button
+              type="button"
+              onClick={formatBulletList}
+              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
+              title="Bullet list"
+            >
+              <List className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={formatNumberedList}
+              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
+              title="Numbered list"
+            >
+              <ListOrdered className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={formatCheckbox}
+              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
+              title="Checkbox"
+            >
+              <CheckSquare className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Textarea */}
         <div className="flex-1 relative py-2">

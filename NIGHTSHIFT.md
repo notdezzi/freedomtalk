@@ -613,11 +613,11 @@ Show "Playing...", "Listening to...", "Streaming..." status on users.
 - `packages/web/components/messaging/MessageInput.tsx`
 
 **Subtasks:**
-- [ ] Add list formatting (ordered, unordered)
-- [ ] Add checkbox/todo list support
-- [ ] Add spoiler toggle (||text||)
-- [ ] Add heading formatting
-- [ ] Add quote block formatting
+- [x] Add list formatting (ordered, unordered)
+- [x] Add checkbox/todo list support
+- [x] Add spoiler toggle (||text||)
+- [x] Add heading formatting
+- [x] Add quote block formatting
 
 ---
 
