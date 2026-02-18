@@ -666,10 +666,10 @@ Show "Playing...", "Listening to...", "Streaming..." status on users.
 - `packages/web/stores/voiceStore.ts`
 
 **Subtasks:**
-- [ ] Add mute other users functionality (server mute)
-- [ ] Add call duration timer
-- [ ] Add input/output device settings UI
-- [ ] Add server deafen functionality
+- [x] Add mute other users functionality (server mute)
+- [x] Add call duration timer
+- [x] Add input/output device settings UI
+- [x] Add server deafen functionality
 
 ---
 
