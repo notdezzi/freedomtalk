@@ -82,9 +82,6 @@ export default async function webhookRoutes(app: FastifyInstance) {
     '/servers/:serverId/webhooks',
     {
       onRequest: [requireAuth],
-      schema: {
-        params: serverIdParamSchema,
-      },
     },
     async (request: FastifyRequest<{ Params: z.infer<typeof serverIdParamSchema> }>) => {
       const { serverId } = request.params;
@@ -120,9 +117,6 @@ export default async function webhookRoutes(app: FastifyInstance) {
     '/channels/:channelId/webhooks',
     {
       onRequest: [requireAuth],
-      schema: {
-        params: channelIdParamSchema,
-      },
     },
     async (request: FastifyRequest<{ Params: z.infer<typeof channelIdParamSchema> }>) => {
       const { channelId } = request.params;
@@ -149,10 +143,6 @@ export default async function webhookRoutes(app: FastifyInstance) {
     '/servers/:serverId/webhooks',
     {
       onRequest: [requireAuth],
-      schema: {
-        params: serverIdParamSchema,
-        body: createWebhookSchema,
-      },
     },
     async (request: FastifyRequest<{ Params: z.infer<typeof serverIdParamSchema>; Body: z.infer<typeof createWebhookSchema> }>) => {
       const { serverId } = request.params;
@@ -194,9 +184,6 @@ export default async function webhookRoutes(app: FastifyInstance) {
     '/servers/:serverId/webhooks/:webhookId',
     {
       onRequest: [requireAuth],
-      schema: {
-        params: webhookIdParamSchema,
-      },
     },
     async (request: FastifyRequest<{ Params: z.infer<typeof webhookIdParamSchema> }>) => {
       const { serverId, webhookId } = request.params;
@@ -231,10 +218,6 @@ export default async function webhookRoutes(app: FastifyInstance) {
     '/servers/:serverId/webhooks/:webhookId',
     {
       onRequest: [requireAuth],
-      schema: {
-        params: webhookIdParamSchema,
-        body: updateWebhookSchema,
-      },
     },
     async (request: FastifyRequest<{ Params: z.infer<typeof webhookIdParamSchema>; Body: z.infer<typeof updateWebhookSchema> }>) => {
       const { serverId, webhookId } = request.params;
@@ -277,9 +260,6 @@ export default async function webhookRoutes(app: FastifyInstance) {
     '/servers/:serverId/webhooks/:webhookId',
     {
       onRequest: [requireAuth],
-      schema: {
-        params: webhookIdParamSchema,
-      },
     },
     async (request: FastifyRequest<{ Params: z.infer<typeof webhookIdParamSchema> }>) => {
       const { serverId, webhookId } = request.params;
@@ -308,9 +288,6 @@ export default async function webhookRoutes(app: FastifyInstance) {
     '/servers/:serverId/webhooks/:webhookId/regenerate',
     {
       onRequest: [requireAuth],
-      schema: {
-        params: webhookIdParamSchema,
-      },
     },
     async (request: FastifyRequest<{ Params: z.infer<typeof webhookIdParamSchema> }>) => {
       const { serverId, webhookId } = request.params;
@@ -337,11 +314,7 @@ export default async function webhookRoutes(app: FastifyInstance) {
   // Execute webhook (public endpoint - uses token for auth)
   app.post<{ Params: { webhookId: string; token: string }; Body: z.infer<typeof executeWebhookSchema> }>(
     '/webhooks/:webhookId/:token',
-    {
-      schema: {
-        body: executeWebhookSchema,
-      },
-    },
+    {},
     async (request: FastifyRequest<{ Params: { webhookId: string; token: string }; Body: z.infer<typeof executeWebhookSchema> }>) => {
       const { webhookId, token } = request.params;
       const { content, username, avatar_url, embeds } = request.body;

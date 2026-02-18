@@ -68,10 +68,6 @@ export default async function auditLogRoutes(app: FastifyInstance) {
     '/servers/:serverId/audit-logs',
     {
       onRequest: [requireAuth],
-      schema: {
-        params: serverIdParamSchema,
-        querystring: auditLogQuerySchema,
-      },
     },
     async (request: FastifyRequest<{ Params: z.infer<typeof serverIdParamSchema>; Querystring: z.infer<typeof auditLogQuerySchema> }>) => {
       const { serverId } = request.params;
