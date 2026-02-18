@@ -124,7 +124,7 @@ interface MessageState {
   error: string | null;
 
   // Actions
-  fetchMessages: (channelId: string, before?: string) => Promise<void>;
+  fetchMessages: (channelId: string, before?: string, isDM?: boolean) => Promise<void>;
   setMessages: (channelId: string, messages: Message[]) => void;
   prependMessages: (channelId: string, messages: Message[]) => void;
   addMessage: (channelId: string, message: Message) => void;
@@ -204,7 +204,7 @@ export const useMessageStore = create<MessageState>()(
       replyingTo: null,
       error: null,
 
-      fetchMessages: async (channelId: string, before?: string) => {
+      fetchMessages: async (channelId: string, before?: string, isDM?: boolean) => {
         // Skip fetching for temporary channel IDs
         if (channelId.startsWith('temp-')) {
           return;
@@ -215,11 +215,14 @@ export const useMessageStore = create<MessageState>()(
           error: null
         }));
 
-        const response = await apiClient.getMessages({
-          channelId,
-          before,
-          limit: 50,
-        });
+        // Use appropriate API based on channel type
+        const response = isDM
+          ? await apiClient.getDMMessages(channelId, { before, limit: 50 })
+          : await apiClient.getMessages({
+              channelId,
+              before,
+              limit: 50,
+            });
 
         if (response.success && response.data) {
           // Handle different response structures - cast through unknown for flexibility

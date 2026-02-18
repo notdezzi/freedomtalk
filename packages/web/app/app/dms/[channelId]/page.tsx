@@ -46,7 +46,7 @@ export default function DMChannelPage() {
       !messages[channelId]
     ) {
       fetchedMessagesRef.current.add(channelId);
-      fetchMessages(channelId);
+      fetchMessages(channelId, undefined, true); // isDM = true
     }
   }, [channel, channelId, loading, messages, fetchMessages]);
 

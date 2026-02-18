@@ -4,6 +4,7 @@ import { logger } from '../../../config/logger';
 import { WS_EVENTS, VALIDATION } from '@freedomtalk/shared';
 import { messageService } from '../../message/message.service';
 import { messageRouter } from '../message.router';
+import { dmChannelService } from '../../dm/dm-channel.service';
 
 /**
  * Message create data schema
@@ -163,16 +164,20 @@ export async function handleMessageUpdate(socket: Socket, data: unknown): Promis
       content: updatedMessage.content,
       authorId: updatedMessage.author_id,
       channelId: updatedMessage.channel_id,
+      dmChannelId: updatedMessage.dm_channel_id,
       createdAt: updatedMessage.created_at.toISOString(),
       updatedAt: updatedMessage.updated_at.toISOString(),
       isEdited: updatedMessage.is_edited,
       isDeleted: updatedMessage.is_deleted,
     };
 
-    // Broadcast update (use broadcastMessageUpdate, not routeMessage)
+    // Broadcast update to channel or DM participants
     if (updatedMessage.channel_id) {
       const { messageBroadcaster } = await import('../message.broadcaster');
       await messageBroadcaster.broadcastMessageUpdate(wsMessage);
+    } else if (updatedMessage.dm_channel_id) {
+      // For DM messages, route through the DM router
+      await messageRouter.routeMessage(wsMessage as any);
     }
 
     logger.info({ userId: user.id, messageId }, 'Message updated via WebSocket');
@@ -229,10 +234,20 @@ export async function handleMessageDelete(socket: Socket, data: unknown): Promis
     // Soft delete message
     await messageService.softDeleteMessage(messageId, user.id);
 
-    // Broadcast deletion (only if message has channelId)
+    // Broadcast deletion to channel or DM participants
     if (existingMessage.channel_id) {
       const { messageBroadcaster } = await import('../message.broadcaster');
       await messageBroadcaster.broadcastMessageDelete(messageId, existingMessage.channel_id);
+    } else if (existingMessage.dm_channel_id) {
+      // For DM messages, broadcast to DM participants
+      const { messageBroadcaster } = await import('../message.broadcaster');
+      const participantIds = await dmChannelService.getParticipantUserIds(existingMessage.dm_channel_id);
+      for (const participantId of participantIds) {
+        await messageBroadcaster.broadcastToUser(participantId, 'message:deleted', {
+          messageId,
+          dmChannelId: existingMessage.dm_channel_id,
+        });
+      }
     }
 
     logger.info({ userId: user.id, messageId }, 'Message deleted via WebSocket');

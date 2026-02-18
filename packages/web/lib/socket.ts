@@ -287,19 +287,35 @@ class SocketService {
 
   private handleMessageUpdated(data: unknown): void {
     console.log('[Socket] Message updated:', data);
-    const { channelId, messageId, updates } = data as {
-      channelId: string;
-      messageId: string;
-      updates: Record<string, unknown>;
-    };
-    if (channelId && messageId) {
+    const message = data as Record<string, unknown>;
+    // For server channels, use channelId; for DMs, use dmChannelId
+    const channelId = (message?.channelId || message?.dmChannelId) as string | undefined;
+    const messageId = message?.messageId as string | undefined;
+    const updates = message?.updates as Record<string, unknown> | undefined;
+
+    // If this is a full message object (from DM routing), use the message properties directly
+    if (message?.id && !messageId) {
+      // This is a full message object, treat it as an update with the whole message
+      const fullMessageId = message.id as string;
+      const content = message.content as string;
+      if (channelId && fullMessageId) {
+        useMessageStore.getState().updateMessage(channelId, fullMessageId, {
+          content,
+          editedAt: message.updatedAt as string,
+          editedTimestamp: message.updatedAt as string,
+        });
+      }
+    } else if (channelId && messageId && updates) {
       useMessageStore.getState().updateMessage(channelId, messageId, updates);
     }
   }
 
   private handleMessageDeleted(data: unknown): void {
     console.log('[Socket] Message deleted:', data);
-    const { channelId, messageId } = data as { channelId: string; messageId: string };
+    const message = data as Record<string, unknown>;
+    // For server channels, use channelId; for DMs, use dmChannelId
+    const channelId = (message?.channelId || message?.dmChannelId) as string | undefined;
+    const messageId = message?.messageId as string | undefined;
     if (channelId && messageId) {
       useMessageStore.getState().deleteMessage(channelId, messageId);
     }
