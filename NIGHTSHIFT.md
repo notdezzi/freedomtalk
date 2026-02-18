@@ -519,11 +519,11 @@ Several utility components from milestones are missing from the codebase.
 - `packages/web/components/ui/Divider.tsx`
 
 **Subtasks:**
-- [ ] Create Dropdown/Select component with keyboard navigation
-- [ ] Create Tooltip component with positioning
-- [ ] Create Card component for content sections
-- [ ] Create Divider component
-- [ ] Add exports to index.ts
+- [x] Create Dropdown/Select component with keyboard navigation
+- [x] Create Tooltip component with positioning
+- [x] Create Card component for content sections
+- [x] Create Divider component
+- [x] Add exports to index.ts
 
 ---
 
