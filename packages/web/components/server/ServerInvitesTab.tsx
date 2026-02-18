@@ -50,17 +50,19 @@ export default function ServerInvitesTab({ serverId }: ServerInvitesTabProps) {
       const invitesArray = Array.isArray(response.data)
         ? response.data
         : (response.data as { invites?: InviteResponse[] }).invites || [];
-      // Map snake_case to camelCase
-      const mappedInvites = invitesArray.map((invite: any) => ({
-        id: invite.id,
-        code: invite.code,
-        serverId: invite.serverId || invite.server_id,
-        createdBy: invite.createdBy || invite.inviter_id,
-        maxUses: invite.maxUses ?? invite.max_uses ?? 0,
-        uses: invite.uses ?? 0,
-        expiresAt: invite.expiresAt || invite.expires_at,
-        createdAt: invite.createdAt || invite.created_at,
-      }));
+      // Map snake_case to camelCase and filter out invalid invites
+      const mappedInvites = invitesArray
+        .filter((invite: any) => invite && (invite.id || invite.code))
+        .map((invite: any) => ({
+          id: invite.id,
+          code: invite.code,
+          serverId: invite.serverId || invite.server_id,
+          createdBy: invite.createdBy || invite.inviter_id,
+          maxUses: invite.maxUses ?? invite.max_uses ?? 0,
+          uses: invite.uses ?? 0,
+          expiresAt: invite.expiresAt || invite.expires_at,
+          createdAt: invite.createdAt || invite.created_at,
+        }));
       setInvites(mappedInvites);
     }
     setLoading(false);
@@ -215,14 +217,16 @@ export default function ServerInvitesTab({ serverId }: ServerInvitesTabProps) {
 
       {/* Invites List */}
       <div className="space-y-2">
-        {invites.map((invite) => {
+        {invites.map((invite, index) => {
+          // Use index as ultimate fallback for key
+          const key = invite.id || invite.code || `invite-${index}`;
           const expired = isExpired(invite);
           const exhausted = isExhausted(invite);
           const disabled = expired || exhausted;
 
           return (
             <div
-              key={invite.id || invite.code}
+              key={key}
               className={`flex items-center gap-4 p-4 bg-background-surface rounded-lg border border-border ${
                 disabled ? 'opacity-50' : ''
               }`}
