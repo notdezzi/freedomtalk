@@ -14,6 +14,7 @@ import AuditLogsTab from './AuditLogsTab';
 
 interface ServerSettingsModalProps {
   serverId: string;
+  initialTab?: string;
   onClose: () => void;
 }
 
@@ -29,9 +30,13 @@ const tabs: { id: TabType; label: string; icon: typeof Settings }[] = [
   { id: 'bans', label: 'Bans', icon: Ban },
 ];
 
-export default function ServerSettingsModal({ serverId, onClose }: ServerSettingsModalProps) {
+const isValidTab = (tab: string | undefined): tab is TabType => {
+  return tabs.some(t => t.id === tab);
+};
+
+export default function ServerSettingsModal({ serverId, initialTab, onClose }: ServerSettingsModalProps) {
   const { servers, updateServer } = useServerStore();
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>(isValidTab(initialTab) ? initialTab : 'overview');
   const [isOwner, setIsOwner] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 

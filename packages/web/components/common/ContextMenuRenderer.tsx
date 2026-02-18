@@ -56,7 +56,7 @@ export default function ContextMenuRenderer() {
     };
 
     const handleInvite = () => {
-      // TODO: Create invite modal
+      openModal('server-settings', { serverId, tab: 'invites' });
       closeContextMenu();
     };
 
