@@ -434,3 +434,209 @@ select:focus-visible,
   clip: auto;
   white-space: normal;
 }
+
+/* ============================================
+   Message Animations
+   ============================================ */
+
+/* Message appear animation */
+@keyframes message-appear {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-appear {
+  animation: message-appear 0.2s ease-out forwards;
+}
+
+/* Message delete animation */
+@keyframes message-delete {
+  from {
+    opacity: 1;
+    transform: scale(1);
+    max-height: 200px;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.message-delete {
+  animation: message-delete 0.3s ease-out forwards;
+  overflow: hidden;
+}
+
+/* Message edit highlight */
+@keyframes edit-highlight {
+  0% {
+    background-color: var(--accent-muted);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.message-edited {
+  animation: edit-highlight 2s ease-out;
+  border-radius: 0.25rem;
+}
+
+/* Reaction pop animation */
+@keyframes reaction-pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.reaction-pop {
+  animation: reaction-pop 0.3s ease-out;
+}
+
+/* Typing indicator dots */
+@keyframes typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
+  }
+}
+
+.typing-dot {
+  animation: typing-bounce 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* New message indicator pulse */
+@keyframes new-message-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--accent-glow);
+  }
+  50% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+
+.new-message-pulse {
+  animation: new-message-pulse 2s ease-in-out infinite;
+}
+
+/* User join/leave animation */
+@keyframes user-join {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.user-join {
+  animation: user-join 0.3s ease-out forwards;
+}
+
+@keyframes user-leave {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+
+.user-leave {
+  animation: user-leave 0.3s ease-out forwards;
+}
+
+/* Voice channel join sound wave */
+@keyframes voice-wave {
+  0%, 100% {
+    height: 4px;
+  }
+  50% {
+    height: 12px;
+  }
+}
+
+.voice-wave-bar {
+  animation: voice-wave 0.5s ease-in-out infinite;
+}
+
+.voice-wave-bar:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.voice-wave-bar:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.voice-wave-bar:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.voice-wave-bar:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+/* Notification badge bounce */
+@keyframes badge-bounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+.badge-bounce {
+  animation: badge-bounce 0.3s ease-out;
+}
+
+/* Server hover effect */
+@keyframes server-hover {
+  from {
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+  }
+  to {
+    width: 8px;
+    height: 50%;
+    border-radius: 0 4px 4px 0;
+  }
+}
+
+.server-indicator {
+  animation: server-hover 0.2s ease-out forwards;
+}
