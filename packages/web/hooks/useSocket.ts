@@ -78,6 +78,16 @@ export function useSocket() {
     socketService.removeReaction(channelId, messageId, emoji);
   }, []);
 
+  // Edit a message
+  const editMessage = useCallback((messageId: string, content: string) => {
+    socketService.editMessage(messageId, content);
+  }, []);
+
+  // Delete a message
+  const deleteMessage = useCallback((messageId: string) => {
+    socketService.deleteMessage(messageId);
+  }, []);
+
   // Update status
   const updateStatus = useCallback((status: 'online' | 'idle' | 'dnd' | 'invisible') => {
     socketService.updateStatus(status);
@@ -126,6 +136,8 @@ export function useSocket() {
     sendMessage,
     addReaction,
     removeReaction,
+    editMessage,
+    deleteMessage,
     updateStatus,
     joinVoiceChannel,
     leaveVoiceChannel,

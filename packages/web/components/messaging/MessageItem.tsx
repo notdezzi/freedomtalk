@@ -62,9 +62,9 @@ export default function MessageItem({
   onReply,
 }: MessageItemProps) {
   const { user } = useAuth();
-  const { setEditingMessage, setReplyingTo, deleteMessage, addReaction, removeReaction } = useMessageStore();
+  const { setEditingMessage, setReplyingTo, addReaction, removeReaction } = useMessageStore();
   const { openContextMenu, closeContextMenu, contextMenu } = useUIStore();
-  const { addReaction: socketAddReaction, removeReaction: socketRemoveReaction } = useSocket();
+  const { addReaction: socketAddReaction, removeReaction: socketRemoveReaction, deleteMessage: socketDeleteMessage } = useSocket();
   const [showActions, setShowActions] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
@@ -101,7 +101,8 @@ export default function MessageItem({
   };
 
   const handleDelete = () => {
-    deleteMessage(message.channelId, message.id);
+    // Send delete request via socket (will update store when confirmation received)
+    socketDeleteMessage(message.id);
     closeContextMenu();
   };
 

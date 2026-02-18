@@ -615,6 +615,28 @@ class SocketService {
   }
 
   /**
+   * Edit a message
+   */
+  editMessage(messageId: string, content: string): void {
+    if (this.socket?.connected) {
+      this.socket.emit(WS_EVENTS.MESSAGE_UPDATE, { messageId, content });
+    } else {
+      console.warn('[Socket] Cannot edit message: not connected');
+    }
+  }
+
+  /**
+   * Delete a message
+   */
+  deleteMessage(messageId: string): void {
+    if (this.socket?.connected) {
+      this.socket.emit(WS_EVENTS.MESSAGE_DELETE, { messageId });
+    } else {
+      console.warn('[Socket] Cannot delete message: not connected');
+    }
+  }
+
+  /**
    * Update user status
    */
   updateStatus(status: 'online' | 'idle' | 'dnd' | 'invisible'): void {

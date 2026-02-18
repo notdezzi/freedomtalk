@@ -48,7 +48,7 @@ const EMOJI_CATEGORIES = [
 
 export default function MessageInput({ channelId, serverId, isDM = false }: MessageInputProps) {
   const { user } = useAuth();
-  const { isConnected, sendMessage, sendTyping, stopTyping } = useSocket();
+  const { isConnected, sendMessage, sendTyping, stopTyping, editMessage } = useSocket();
   const { editingMessageId, setEditingMessage, replyingTo, setReplyingTo, messages } =
     useMessageStore();
   const { channels } = useChannelStore();
@@ -168,12 +168,14 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
 
     try {
       if (isEditing && editingMessage) {
-        // Update existing message via socket
-        sendMessage(channelId, content.trim(), editingMessage.referencedMessage?.id, isDM);
+        // Edit existing message via socket
+        editMessage(editingMessage.id, content.trim());
+        // Optimistically update the local store
         const { updateMessage } = useMessageStore.getState();
         updateMessage(channelId, editingMessage.id, {
           content: content.trim(),
           editedAt: new Date().toISOString(),
+          editedTimestamp: new Date().toISOString(),
         });
         setEditingMessage(null);
       } else {
@@ -198,7 +200,7 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
     } finally {
       setIsSubmitting(false);
     }
-  }, [content, attachments, user, slowmodeRemaining, isEditing, editingMessage, channelId, channel, setEditingMessage, setReplyingTo, replyingTo, sendMessage, stopTyping]);
+  }, [content, attachments, user, slowmodeRemaining, isEditing, editingMessage, channelId, channel, setEditingMessage, setReplyingTo, replyingTo, sendMessage, editMessage, stopTyping]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
