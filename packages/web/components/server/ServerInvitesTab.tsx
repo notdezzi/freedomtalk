@@ -222,7 +222,7 @@ export default function ServerInvitesTab({ serverId }: ServerInvitesTabProps) {
 
           return (
             <div
-              key={invite.id}
+              key={invite.id || invite.code}
               className={`flex items-center gap-4 p-4 bg-background-surface rounded-lg border border-border ${
                 disabled ? 'opacity-50' : ''
               }`}
