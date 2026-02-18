@@ -381,8 +381,8 @@ Several types are defined in API/Web but should be in shared package.
 **Estimated Complexity:** Medium
 
 **Subtasks:**
-- [ ] Create webhooks table
-- [ ] Add webhook_tokens table
+- [x] Create webhooks table
+- [x] Add webhook_tokens table (included in webhooks table + webhook_events for tracking)
 
 ---
 
@@ -392,9 +392,9 @@ Several types are defined in API/Web but should be in shared package.
 **Dependencies:** Task 6.1
 
 **Subtasks:**
-- [ ] CRUD endpoints for webhooks
-- [ ] Execute webhook endpoint
-- [ ] Token validation
+- [x] CRUD endpoints for webhooks
+- [x] Execute webhook endpoint
+- [x] Token validation
 
 ---
 

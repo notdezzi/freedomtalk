@@ -411,6 +411,35 @@ export interface Presence {
 }
 
 // ============================================
+// Webhook types
+// ============================================
+export interface Webhook {
+  id: string;
+  serverId: string;
+  channelId: string;
+  name: string;
+  avatar?: string;
+  token: string;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface WebhookEvent {
+  id: string;
+  webhookId: string;
+  eventType: string;
+  payload: Record<string, unknown>;
+  status: 'pending' | 'success' | 'failed';
+  responseCode?: number;
+  errorMessage?: string;
+  executedAt?: Date;
+  createdAt: Date;
+}
+
+export type WebhookEventType = 'message' | 'message_update' | 'message_delete' | 'member_join' | 'member_leave';
+
+// ============================================
 // API Error types
 // ============================================
 export enum ApiErrorCode {
