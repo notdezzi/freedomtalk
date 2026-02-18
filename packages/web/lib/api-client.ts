@@ -22,6 +22,7 @@ export interface LoginResponse {
     username: string;
     email: string;
     emailVerified: boolean;
+    onboardingComplete?: boolean;
   };
   mfaRequired?: boolean;
   sessionId?: string;

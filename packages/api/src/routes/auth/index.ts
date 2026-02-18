@@ -252,6 +252,9 @@ export default async function authRoutes(app: FastifyInstance) {
       const accessToken = jwtService.generateAccessToken(user.id);
       const refreshToken = jwtService.generateRefreshToken(user.id, sessionId);
 
+      // Get user profile for onboarding status
+      const profile = await db('user_profiles').where({ user_id: user.id }).first();
+
       logger.info({ userId: user.id, sessionId }, 'User logged in successfully');
 
       // Return standardized response
@@ -264,6 +267,7 @@ export default async function authRoutes(app: FastifyInstance) {
             username: user.username,
             email: user.email,
             emailVerified: user.email_verified,
+            onboardingComplete: !!profile?.onboarding_completed_at,
           },
         })
       );
@@ -326,6 +330,9 @@ export default async function authRoutes(app: FastifyInstance) {
         const accessToken = jwtService.generateAccessToken(user.id, { sessionId });
         const refreshToken = jwtService.generateRefreshToken(user.id, sessionId);
 
+        // Get user profile for onboarding status
+        const profile = await db('user_profiles').where({ user_id: user.id }).first();
+
         logger.info({ userId: user.id, sessionId }, 'MFA verified successfully');
 
         // Return tokens
@@ -338,6 +345,7 @@ export default async function authRoutes(app: FastifyInstance) {
               username: user.username,
               email: user.email,
               emailVerified: user.email_verified,
+              onboardingComplete: !!profile?.onboarding_completed_at,
             },
           })
         );

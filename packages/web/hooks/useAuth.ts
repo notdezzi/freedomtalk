@@ -177,11 +177,16 @@ export function useAuth() {
       };
 
       storeLogin(user);
+
+      // Set onboarding status from login response
+      const onboardingComplete = data!.user.onboardingComplete ?? false;
+      setOnboardingComplete(onboardingComplete);
+
       // Mark session as checked since we just logged in
       isSessionChecked = true;
 
-      // Redirect based on onboarding status
-      if (!isOnboardingComplete) {
+      // Redirect based on onboarding status from API
+      if (!onboardingComplete) {
         router.push('/onboarding');
       } else {
         router.push('/app');
@@ -198,7 +203,7 @@ export function useAuth() {
     } finally {
       setLoading(false);
     }
-  }, [storeLogin, setLoading, isOnboardingComplete, router]);
+  }, [storeLogin, setLoading, setOnboardingComplete, router]);
 
   const verifyMfa = useCallback(async (sessionId: string, code: string) => {
     setLoading(true);
@@ -227,11 +232,16 @@ export function useAuth() {
       };
 
       storeLogin(user);
+
+      // Set onboarding status from MFA verification response
+      const onboardingComplete = data!.user.onboardingComplete ?? false;
+      setOnboardingComplete(onboardingComplete);
+
       // Mark session as checked since we just verified MFA
       isSessionChecked = true;
 
-      // Redirect based on onboarding status
-      if (!isOnboardingComplete) {
+      // Redirect based on onboarding status from API
+      if (!onboardingComplete) {
         router.push('/onboarding');
       } else {
         router.push('/app');
@@ -247,7 +257,7 @@ export function useAuth() {
     } finally {
       setLoading(false);
     }
-  }, [storeLogin, setLoading, isOnboardingComplete, router]);
+  }, [storeLogin, setLoading, setOnboardingComplete, router]);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
     setLoading(true);
