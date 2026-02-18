@@ -10,3 +10,4 @@ export {
   LoadingOverlay,
   LoadingCard,
 } from './Loading';
+export { default as LazyImage, LazyBackground } from './LazyImage';
