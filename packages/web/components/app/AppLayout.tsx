@@ -158,8 +158,8 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Determine if we're on a DM route
-  const isDMRoute = pathname.startsWith('/app/dms') || pathname === '/app';
+  // Determine if we're on a DM route or discover route (show DM sidebar instead of channel sidebar)
+  const isDMRoute = pathname.startsWith('/app/dms') || pathname === '/app' || pathname.startsWith('/app/discover');
 
   return (
     <div className="h-screen flex overflow-hidden bg-background">
