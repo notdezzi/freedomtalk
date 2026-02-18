@@ -61,22 +61,33 @@ interface MemberState {
 }
 
 // Convert API response to local type
-function mapMemberResponse(response: MemberResponse): ServerMember {
+function mapMemberResponse(response: any): ServerMember {
+  // Handle both direct fields and nested user object from API
+  const username = response.username || response.user?.username || 'Unknown User';
+  const displayName = response.displayName || response.nickname || response.user?.displayName || null;
+  const avatar = response.avatar || response.avatar_url || response.user?.avatar || null;
+
+  // Handle roles - can be array of strings or array of objects
+  let roles: string[] = [];
+  if (response.roles && Array.isArray(response.roles)) {
+    roles = response.roles.map((r: any) => typeof r === 'string' ? r : r.name);
+  }
+
   return {
     id: response.id,
-    serverId: response.serverId,
-    userId: response.userId,
-    username: response.username,
-    displayName: response.displayName,
-    avatar: response.avatar,
+    serverId: response.serverId || response.server_id,
+    userId: response.userId || response.user_id,
+    username,
+    displayName,
+    avatar,
     banner: response.banner,
     bio: response.bio,
     status: (response.status as UserStatus) || 'offline',
     customStatus: response.customStatus,
-    roles: response.roles || [],
-    joinedAt: response.joinedAt,
-    isOwner: response.isOwner,
-    isOnline: response.isOnline ?? (response.status === 'online'),
+    roles,
+    joinedAt: response.joinedAt || response.joined_at,
+    isOwner: response.isOwner || response.is_owner || false,
+    isOnline: response.isOnline !== undefined ? response.isOnline : response.status === 'online',
   };
 }
 
