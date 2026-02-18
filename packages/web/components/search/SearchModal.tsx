@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Search, X, Hash, User, Server, MessageCircle, Loader2, Clock, Calendar, Paperclip, Filter } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
+import { useServerStore } from '@/stores/serverStore';
 import { apiClient } from '@/lib/api-client';
 import { useRouter } from 'next/navigation';
 
@@ -111,6 +112,7 @@ function getSuggestions(query: string): string[] {
 
 export default function SearchModal() {
   const { activeModal, closeModal } = useUIStore();
+  const { servers } = useServerStore();
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -199,17 +201,21 @@ export default function SearchModal() {
             });
           }
 
-          // Add servers
+          // Add servers - only show servers the user has joined
           if (data.servers) {
+            const joinedServerIds = new Set(servers.map(s => s.id));
             (data.servers as unknown[]).forEach((server: unknown) => {
               const s = server as Record<string, unknown>;
-              searchResults.push({
-                type: 'server',
-                id: String(s.id),
-                title: String(s.name),
-                subtitle: `${s.memberCount} members`,
-                icon: s.icon as string | undefined,
-              });
+              // Only include servers that the user has joined
+              if (joinedServerIds.has(String(s.id))) {
+                searchResults.push({
+                  type: 'server',
+                  id: String(s.id),
+                  title: String(s.name),
+                  subtitle: `${s.memberCount} members`,
+                  icon: s.icon as string | undefined,
+                });
+              }
             });
           }
 
@@ -223,7 +229,7 @@ export default function SearchModal() {
 
     const debounce = setTimeout(search, 300);
     return () => clearTimeout(debounce);
-  }, [parsedQuery]);
+  }, [parsedQuery, servers]);
 
   // Keyboard navigation
   useEffect(() => {
