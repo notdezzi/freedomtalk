@@ -9,6 +9,7 @@ export interface Friend {
   avatarUrl: string | null;
   customStatus: string | null;
   friendSince: string;
+  status?: 'online' | 'idle' | 'dnd' | 'offline';
 }
 
 export interface PendingFriendRequest {

@@ -193,8 +193,9 @@ function FriendsPageContent() {
     }
   };
 
-  // Filter online friends (placeholder - would need presence data)
-  const onlineFriends = friends; // For now, show all friends
+  // Filter online friends based on status
+  const onlineFriends = friends.filter(friend => friend.status === 'online' || friend.status === 'idle' || friend.status === 'dnd');
+  const offlineFriends = friends.filter(friend => !friend.status || friend.status === 'offline');
   const totalPending = incomingRequests.length + outgoingRequests.length;
 
   if (authLoading || !isAuthenticated) {
@@ -414,9 +415,6 @@ function FriendsPageContent() {
             {/* All Friends */}
             {activeTab === 'all' && !searchQuery && (
               <div className="p-4">
-                <h3 className="text-xs font-semibold text-foreground-muted uppercase mb-2">
-                  All Friends — {friends.length}
-                </h3>
                 {friends.length === 0 ? (
                   <div className="text-center py-12">
                     <div className="w-16 h-16 rounded-full bg-background-surface flex items-center justify-center mx-auto mb-4">
@@ -435,12 +433,36 @@ function FriendsPageContent() {
                     </button>
                   </div>
                 ) : (
-                  <FriendList
-                    friends={friends}
-                    onMessage={handleStartDM}
-                    onRemove={handleRemoveFriend}
-                    onBlock={handleBlockUser}
-                  />
+                  <>
+                    {/* Online Friends */}
+                    {onlineFriends.length > 0 && (
+                      <>
+                        <h3 className="text-xs font-semibold text-foreground-muted uppercase mb-2">
+                          Online — {onlineFriends.length}
+                        </h3>
+                        <FriendList
+                          friends={onlineFriends}
+                          onMessage={handleStartDM}
+                          onRemove={handleRemoveFriend}
+                          onBlock={handleBlockUser}
+                        />
+                      </>
+                    )}
+                    {/* Offline Friends */}
+                    {offlineFriends.length > 0 && (
+                      <>
+                        <h3 className="text-xs font-semibold text-foreground-muted uppercase mb-2 mt-4">
+                          Offline — {offlineFriends.length}
+                        </h3>
+                        <FriendList
+                          friends={offlineFriends}
+                          onMessage={handleStartDM}
+                          onRemove={handleRemoveFriend}
+                          onBlock={handleBlockUser}
+                        />
+                      </>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -549,6 +571,19 @@ function FriendList({
 }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'online':
+        return 'bg-success';
+      case 'idle':
+        return 'bg-warning';
+      case 'dnd':
+        return 'bg-error';
+      default:
+        return 'bg-foreground-muted';
+    }
+  };
+
   return (
     <div className="space-y-1">
       {friends.map((friend) => (
@@ -557,12 +592,19 @@ function FriendList({
           className="flex items-center justify-between p-2 rounded hover:bg-background-surface group"
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-sm font-bold text-background">
-              {friend.avatarUrl ? (
-                <img src={friend.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
-              ) : (
-                friend.username.charAt(0).toUpperCase()
-              )}
+            <div className="relative">
+              <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-sm font-bold text-background">
+                {friend.avatarUrl ? (
+                  <img src={friend.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                ) : (
+                  friend.username.charAt(0).toUpperCase()
+                )}
+              </div>
+              {/* Status indicator */}
+              <div
+                className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background ${getStatusColor(friend.status)}`}
+                title={friend.status || 'offline'}
+              />
             </div>
             <div>
               <p className="font-medium">{friend.displayName || friend.username}</p>
