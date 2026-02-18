@@ -13,6 +13,21 @@ const passwordRequirements = [
   { label: 'One number', test: (p: string) => /[0-9]/.test(p) },
 ];
 
+function getPasswordStrength(password: string): { score: number; label: string; color: string } {
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  if (score <= 2) return { score, label: 'Weak', color: 'bg-error' };
+  if (score <= 4) return { score, label: 'Fair', color: 'bg-warning' };
+  if (score <= 5) return { score, label: 'Good', color: 'bg-secondary' };
+  return { score, label: 'Strong', color: 'bg-accent' };
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const { register } = useAuth();
@@ -172,30 +187,54 @@ export default function RegisterPage() {
 
           {/* Password requirements */}
           {formData.password && (
-            <div className="mt-3 space-y-2">
-              {passwordRequirements.map((req) => (
-                <div
-                  key={req.label}
-                  className={`flex items-center gap-2 text-sm transition-colors ${
-                    req.test(formData.password)
-                      ? 'text-accent'
-                      : 'text-foreground-subtle'
-                  }`}
-                >
+            <div className="mt-3 space-y-3">
+              {/* Strength meter */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-foreground-muted">Password strength</span>
+                  <span className={`text-xs font-medium ${
+                    getPasswordStrength(formData.password).color === 'bg-error' ? 'text-error' :
+                    getPasswordStrength(formData.password).color === 'bg-warning' ? 'text-warning' :
+                    getPasswordStrength(formData.password).color === 'bg-secondary' ? 'text-secondary' :
+                    'text-accent'
+                  }`}>
+                    {getPasswordStrength(formData.password).label}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-background-surface rounded-full overflow-hidden">
                   <div
-                    className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                    className={`h-full transition-all duration-300 ${getPasswordStrength(formData.password).color}`}
+                    style={{ width: `${(getPasswordStrength(formData.password).score / 6) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Requirements list */}
+              <div className="space-y-2">
+                {passwordRequirements.map((req) => (
+                  <div
+                    key={req.label}
+                    className={`flex items-center gap-2 text-sm transition-colors ${
                       req.test(formData.password)
-                        ? 'border-accent bg-accent-muted'
-                        : 'border-border'
+                        ? 'text-accent'
+                        : 'text-foreground-subtle'
                     }`}
                   >
-                    {req.test(formData.password) && (
-                      <Check className="w-3 h-3" />
-                    )}
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                        req.test(formData.password)
+                          ? 'border-accent bg-accent-muted'
+                          : 'border-border'
+                      }`}
+                    >
+                      {req.test(formData.password) && (
+                        <Check className="w-3 h-3" />
+                      )}
+                    </div>
+                    {req.label}
                   </div>
-                  {req.label}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </div>
