@@ -596,11 +596,11 @@ Show "Playing...", "Listening to...", "Streaming..." status on users.
 - `packages/web/components/messaging/MessageContent.tsx`
 
 **Subtasks:**
-- [ ] Add sticker picker button to message input
-- [ ] Create StickerPicker component
-- [ ] Display stickers in messages
-- [ ] Support sticker packs
-- [ ] Add recently used stickers
+- [x] Add sticker picker button to message input
+- [x] Create StickerPicker component
+- [x] Display stickers in messages
+- [x] Support sticker packs
+- [x] Add recently used stickers
 
 ---
 

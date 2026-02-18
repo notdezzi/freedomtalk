@@ -30,6 +30,7 @@ import { useMessageStore } from '@/stores/messageStore';
 import { useChannelStore } from '@/stores/channelStore';
 import { useMemberStore } from '@/stores/memberStore';
 import { useServerStore } from '@/stores/serverStore';
+import StickerPicker from './StickerPicker';
 
 interface MessageInputProps {
   channelId: string;
@@ -57,6 +58,7 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -229,6 +231,14 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
     setContent((prev) => prev + emoji);
     setShowEmojiPicker(false);
     textareaRef.current?.focus();
+  };
+
+  const handleStickerSelect = (sticker: { id: string; name: string; url: string }) => {
+    // Send sticker as a special message format
+    if (user) {
+      sendMessage(channelId, `:sticker:${sticker.id}:${sticker.name}`, undefined, isDM);
+    }
+    setShowStickerPicker(false);
   };
 
   const cancelEdit = () => {
@@ -598,6 +608,16 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
               </div>
             </div>
           )}
+
+          {/* Sticker picker */}
+          {showStickerPicker && (
+            <div className="absolute bottom-full right-0 mb-2">
+              <StickerPicker
+                onStickerSelect={handleStickerSelect}
+                onClose={() => setShowStickerPicker(false)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Action buttons */}
@@ -610,7 +630,8 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
             <Smile className="w-5 h-5" />
           </button>
           <button
-            className="p-1.5 rounded text-foreground-muted hover:text-foreground transition-colors"
+            onClick={() => setShowStickerPicker(!showStickerPicker)}
+            className={`p-1.5 rounded transition-colors ${showStickerPicker ? 'text-accent' : 'text-foreground-muted hover:text-foreground'}`}
             title="Stickers"
           >
             <Sticker className="w-5 h-5" />
