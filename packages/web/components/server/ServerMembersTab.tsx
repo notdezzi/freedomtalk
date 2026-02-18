@@ -62,13 +62,13 @@ export default function ServerMembersTab({ serverId, isOwner }: ServerMembersTab
     const query = searchQuery.toLowerCase();
     return serverMembers.filter(
       (m) =>
-        m.username.toLowerCase().includes(query) ||
-        m.displayName?.toLowerCase().includes(query)
+        (m.username || '').toLowerCase().includes(query) ||
+        (m.displayName || '').toLowerCase().includes(query)
     );
   }, [serverMembers, searchQuery]);
 
   const handleKick = async (member: ServerMember) => {
-    if (!confirm(`Kick ${member.displayName || member.username}?`)) return;
+    if (!confirm(`Kick ${member.displayName || member.username || 'Unknown User'}?`)) return;
 
     setActionLoading(member.userId);
     const response = await apiClient.kickMember(serverId, member.userId);
@@ -82,7 +82,7 @@ export default function ServerMembersTab({ serverId, isOwner }: ServerMembersTab
   };
 
   const handleBan = async (member: ServerMember) => {
-    if (!confirm(`Ban ${member.displayName || member.username}?`)) return;
+    if (!confirm(`Ban ${member.displayName || member.username || 'Unknown User'}?`)) return;
 
     setActionLoading(member.userId);
     const response = await apiClient.banMember(serverId, member.userId);
@@ -153,7 +153,7 @@ export default function ServerMembersTab({ serverId, isOwner }: ServerMembersTab
                     <img src={member.avatar} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-sm font-bold text-background">
-                      {(member.displayName || member.username).charAt(0).toUpperCase()}
+                      {(member.displayName || member.username || '?').charAt(0).toUpperCase()}
                     </span>
                   )}
                 </div>
@@ -167,7 +167,7 @@ export default function ServerMembersTab({ serverId, isOwner }: ServerMembersTab
                 <div className="flex items-center gap-2">
                   {member.isOwner && <Crown className="w-3 h-3 text-warning" />}
                   <span className="font-medium truncate">
-                    {member.displayName || member.username}
+                    {member.displayName || member.username || 'Unknown User'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-foreground-muted">
