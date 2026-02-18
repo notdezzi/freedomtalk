@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Camera, Loader2, Trash2, AlertTriangle } from 'lucide-react';
+import { Camera, Loader2, Trash2, AlertTriangle, ImagePlus } from 'lucide-react';
 import { useServerStore, Server } from '@/stores/serverStore';
 import { apiClient } from '@/lib/api-client';
 import { useRouter } from 'next/navigation';
@@ -22,6 +22,7 @@ export default function ServerOverviewTab({ server, isOwner, onClose }: ServerOv
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = async () => {
     if (!isOwner) return;
@@ -58,12 +59,39 @@ export default function ServerOverviewTab({ server, isOwner, onClose }: ServerOv
     reader.onload = async () => {
       const iconUrl = reader.result as string;
 
-      const response = await apiClient.updateServer(server.id, { icon: iconUrl });
+      const response = await apiClient.updateServer(server.id, { iconUrl });
 
       if (response.success && response.data) {
-        updateServer(server.id, { icon: response.data.icon });
+        const data = response.data as { icon_url?: string };
+        updateServer(server.id, { icon: data.icon_url });
       } else {
         setError(response.error?.message || 'Failed to update icon');
+      }
+
+      setSaving(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !isOwner) return;
+
+    setSaving(true);
+    setError(null);
+
+    // Convert to base64 data URL
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const bannerUrl = reader.result as string;
+
+      const response = await apiClient.updateServer(server.id, { bannerUrl });
+
+      if (response.success && response.data) {
+        const data = response.data as { banner_url?: string };
+        updateServer(server.id, { banner: data.banner_url });
+      } else {
+        setError(response.error?.message || 'Failed to update banner');
       }
 
       setSaving(false);
@@ -150,6 +178,44 @@ export default function ServerOverviewTab({ server, isOwner, onClose }: ServerOv
             Created {new Date(server.createdAt).toLocaleDateString()}
           </p>
         </div>
+      </div>
+
+      {/* Server Banner */}
+      <div>
+        <label className="block text-sm font-medium mb-2">Server Banner</label>
+        <div className="relative group rounded-lg overflow-hidden bg-background-surface border border-border">
+          {server.banner ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={server.banner}
+              alt="Server banner"
+              className="w-full h-32 object-cover"
+            />
+          ) : (
+            <div className="w-full h-32 flex items-center justify-center bg-gradient-to-r from-background-surface to-background">
+              <span className="text-sm text-foreground-muted">No banner set</span>
+            </div>
+          )}
+          {isOwner && (
+            <button
+              onClick={() => bannerInputRef.current?.click()}
+              className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <ImagePlus className="w-8 h-8 text-white" />
+              <span className="ml-2 text-white font-medium">Change Banner</span>
+            </button>
+          )}
+          <input
+            ref={bannerInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleBannerChange}
+            className="hidden"
+          />
+        </div>
+        <p className="text-xs text-foreground-muted mt-1">
+          Recommended: 960x540 pixels (16:9 aspect ratio)
+        </p>
       </div>
 
       {/* Server Name */}

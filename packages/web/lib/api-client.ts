@@ -479,7 +479,7 @@ class ApiClient {
     });
   }
 
-  async updateServer(serverId: string, data: Partial<{ name: string; description: string; icon: string; banner: string }>): Promise<ApiResponse<ServerResponse>> {
+  async updateServer(serverId: string, data: Partial<{ name: string; description: string; iconUrl: string | null; bannerUrl: string | null }>): Promise<ApiResponse<ServerResponse>> {
     return this.request<ServerResponse>(`/api/v1/servers/${serverId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
