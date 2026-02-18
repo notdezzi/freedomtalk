@@ -13,11 +13,29 @@ import {
   User,
   FolderPlus,
 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useServerStore } from '@/stores/serverStore';
 import { useChannelStore, Channel, Category } from '@/stores/channelStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useVoiceStore } from '@/stores/voiceStore';
-import { VoiceChannelUsers, VoiceJoinButton } from '@/components/voice';
+import { VoiceChannelUsers } from '@/components/voice';
+import { apiClient } from '@/lib/api-client';
 
 function ChannelIcon({ type }: { type: Channel['type'] }) {
   switch (type) {
@@ -30,7 +48,7 @@ function ChannelIcon({ type }: { type: Channel['type'] }) {
   }
 }
 
-interface ChannelItemProps {
+interface SortableChannelItemProps {
   channel: Channel;
   isSelected: boolean;
   onClick: () => void;
@@ -38,16 +56,32 @@ interface ChannelItemProps {
   serverId: string;
 }
 
-function ChannelItem({ channel, isSelected, onClick, onSettingsClick, serverId }: ChannelItemProps) {
+function SortableChannelItem({ channel, isSelected, onClick, onSettingsClick, serverId }: SortableChannelItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: channel.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : undefined,
+  };
+
   const hasUnread = channel.unreadCount && channel.unreadCount > 0;
   const { isConnected, currentChannelId, getUsersByChannel } = useVoiceStore();
   const voiceUsers = channel.type === 'voice' ? getUsersByChannel(channel.id) : [];
   const isInVoiceChannel = isConnected && currentChannelId === channel.id;
 
-  // For voice channels, show users and join button
+  // For voice channels, show users - click navigates to voice view
   if (channel.type === 'voice') {
     return (
-      <div className="w-full">
+      <div ref={setNodeRef} style={style} className="w-full">
         <div
           onClick={onClick}
           onContextMenu={(e) => {
@@ -59,9 +93,14 @@ function ChannelItem({ channel, isSelected, onClick, onSettingsClick, serverId }
               ? 'bg-accent-muted text-accent'
               : 'text-foreground-muted hover:bg-background-surface hover:text-foreground'
           }`}
+          {...attributes}
+          {...listeners}
         >
           <ChannelIcon type={channel.type} />
           <span className="truncate flex-1 text-left">{channel.name}</span>
+          {isInVoiceChannel && (
+            <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+          )}
           <div className="hidden group-hover:flex items-center gap-0.5">
             <button
               onClick={(e) => {
@@ -76,14 +115,9 @@ function ChannelItem({ channel, isSelected, onClick, onSettingsClick, serverId }
           </div>
         </div>
 
-        {/* Voice users in this channel */}
+        {/* Voice users in this channel - avatar stack */}
         {voiceUsers.length > 0 && (
           <VoiceChannelUsers channelId={channel.id} />
-        )}
-
-        {/* Join button if not connected */}
-        {!isInVoiceChannel && (
-          <VoiceJoinButton channelId={channel.id} serverId={serverId} />
         )}
       </div>
     );
@@ -92,19 +126,13 @@ function ChannelItem({ channel, isSelected, onClick, onSettingsClick, serverId }
   // Text channels
   return (
     <div
+      ref={setNodeRef}
+      style={style}
       onClick={onClick}
       onContextMenu={(e) => {
         e.preventDefault();
         onSettingsClick();
       }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      role="button"
-      tabIndex={0}
       className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-sm group transition-colors cursor-pointer ${
         isSelected
           ? 'bg-accent-muted text-accent'
@@ -113,6 +141,8 @@ function ChannelItem({ channel, isSelected, onClick, onSettingsClick, serverId }
           : 'text-foreground-muted hover:bg-background-surface hover:text-foreground'
       }`}
       aria-current={isSelected ? 'page' : undefined}
+      {...attributes}
+      {...listeners}
     >
       <ChannelIcon type={channel.type} />
       <span className="truncate flex-1 text-left">{channel.name}</span>
@@ -154,6 +184,7 @@ interface CategorySectionProps {
   serverId: string;
   onChannelClick: (channel: Channel) => void;
   onChannelSettings: (channel: Channel) => void;
+  onDragEnd: (event: DragEndEvent, categoryId: string) => void;
 }
 
 function CategorySection({
@@ -163,11 +194,25 @@ function CategorySection({
   serverId,
   onChannelClick,
   onChannelSettings,
+  onDragEnd,
 }: CategorySectionProps) {
   const { toggleCategoryCollapse } = useChannelStore();
   const { openCreateChannelModal } = useUIStore();
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   if (channels.length === 0) return null;
+
+  const channelIds = channels.map((c) => c.id);
 
   return (
     <div className="mb-2">
@@ -195,18 +240,26 @@ function CategorySection({
       </button>
 
       {!category.isCollapsed && (
-        <div className="space-y-0.5">
-          {channels.map((channel) => (
-            <ChannelItem
-              key={channel.id}
-              channel={channel}
-              isSelected={currentChannelId === channel.id}
-              onClick={() => onChannelClick(channel)}
-              onSettingsClick={() => onChannelSettings(channel)}
-              serverId={serverId}
-            />
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event) => onDragEnd(event, category.id)}
+        >
+          <SortableContext items={channelIds} strategy={verticalListSortingStrategy}>
+            <div className="space-y-0.5">
+              {channels.map((channel) => (
+                <SortableChannelItem
+                  key={channel.id}
+                  channel={channel}
+                  isSelected={currentChannelId === channel.id}
+                  onClick={() => onChannelClick(channel)}
+                  onSettingsClick={() => onChannelSettings(channel)}
+                  serverId={serverId}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   );
@@ -235,9 +288,9 @@ export default function ChannelSidebar() {
     (channel: Channel) => {
       setCurrentChannel(channel.id);
       clearChannelUnread(channel.id);
-      if (channel.type === 'text') {
-        router.push(`/app/servers/${currentServerId}/channels/${channel.id}`);
-      }
+      // Navigate for both text and voice channels
+      // Voice channels will render VoiceChannelView which handles joining
+      router.push(`/app/servers/${currentServerId}/channels/${channel.id}`);
     },
     [setCurrentChannel, clearChannelUnread, router, currentServerId]
   );
@@ -247,6 +300,34 @@ export default function ChannelSidebar() {
       openEditChannelModal({ channel });
     },
     [openEditChannelModal]
+  );
+
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent, categoryId: string) => {
+      const { active, over } = event;
+
+      if (over && active.id !== over.id && currentServerId) {
+        const categoryChannels = getChannelsForCategory(categoryId);
+        const channelIds = categoryChannels.map((c) => c.id);
+        const oldIndex = channelIds.indexOf(active.id as string);
+        const newIndex = channelIds.indexOf(over.id as string);
+
+        const newOrder = arrayMove(channelIds, oldIndex, newIndex);
+
+        // Persist to backend
+        try {
+          const positions = newOrder.map((id, index) => ({
+            id,
+            position: index,
+            categoryId: categoryId || null,
+          }));
+          await apiClient.updateChannelPositions(currentServerId, positions);
+        } catch (error) {
+          console.error('Failed to update channel positions:', error);
+        }
+      }
+    },
+    [currentServerId, channels]
   );
 
   if (!isChannelSidebarOpen) return null;
@@ -293,11 +374,11 @@ export default function ChannelSidebar() {
           </div>
         ) : (
           <>
-            {/* Uncategorized channels */}
+            {/* Uncategorized channels - not sortable for simplicity */}
             {getChannelsForCategory(null).length > 0 && (
               <div className="space-y-0.5 mb-2">
                 {getChannelsForCategory(null).map((channel) => (
-                  <ChannelItem
+                  <SortableChannelItem
                     key={channel.id}
                     channel={channel}
                     isSelected={currentChannelId === channel.id}
@@ -309,7 +390,7 @@ export default function ChannelSidebar() {
               </div>
             )}
 
-            {/* Categories */}
+            {/* Categories with sortable channels */}
             {categories
               .sort((a, b) => a.position - b.position)
               .map((category) => (
@@ -321,6 +402,7 @@ export default function ChannelSidebar() {
                   serverId={currentServerId}
                   onChannelClick={handleChannelClick}
                   onChannelSettings={handleChannelSettings}
+                  onDragEnd={handleDragEnd}
                 />
               ))}
 

@@ -13,6 +13,10 @@ export interface VoiceUser {
   selfStream: boolean;
   suppress: boolean;
   isSpeaking: boolean;
+  // Remote streams for this user
+  audioStream?: MediaStream;
+  videoStream?: MediaStream;
+  screenStream?: MediaStream;
 }
 
 export interface VoiceChannel {
@@ -33,6 +37,11 @@ interface VoiceState {
   selfDeaf: boolean;
   selfVideo: boolean;
   selfStream: boolean;
+
+  // Local streams (what we're producing)
+  localAudioStream: MediaStream | null;
+  localVideoStream: MediaStream | null;
+  localScreenStream: MediaStream | null;
 
   // Users in current channel
   users: VoiceUser[];
@@ -57,11 +66,20 @@ interface VoiceState {
   setSelfVideo: (video: boolean) => void;
   setSelfStream: (stream: boolean) => void;
 
+  // Local stream management
+  setLocalAudioStream: (stream: MediaStream | null) => void;
+  setLocalVideoStream: (stream: MediaStream | null) => void;
+  setLocalScreenStream: (stream: MediaStream | null) => void;
+
   // User management
   setUsers: (channelId: string, users: VoiceUser[]) => void;
   addUser: (channelId: string, user: VoiceUser) => void;
-  removeUser: (channelId: string, userId: string) => void;
-  updateUser: (channelId: string, userId: string, updates: Partial<VoiceUser>) => void;
+  removeUser: (channelId: string, sessionId: string) => void;
+  updateUser: (channelId: string, sessionId: string, updates: Partial<VoiceUser>) => void;
+
+  // Remote stream management
+  updateUserStream: (sessionId: string, kind: 'audio' | 'video' | 'screen', stream: MediaStream | null) => void;
+  clearUserStreams: (sessionId: string) => void;
 
   // Device management
   setAudioInput: (deviceId: string | null) => void;
@@ -71,6 +89,7 @@ interface VoiceState {
   // Helpers
   getUsersByChannel: (channelId: string) => VoiceUser[];
   isUserInChannel: (channelId: string, userId: string) => boolean;
+  getUserBySessionId: (sessionId: string) => VoiceUser | undefined;
 
   // Error handling
   setError: (error: string | null) => void;
@@ -86,6 +105,9 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   selfDeaf: false,
   selfVideo: false,
   selfStream: false,
+  localAudioStream: null,
+  localVideoStream: null,
+  localScreenStream: null,
   users: [],
   channelStates: {},
   audioInput: null,
@@ -122,6 +144,9 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
         selfDeaf: false,
         selfVideo: false,
         selfStream: false,
+        localAudioStream: null,
+        localVideoStream: null,
+        localScreenStream: null,
         users: [],
         channelStates: newChannelStates,
       };
@@ -129,17 +154,14 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
 
   setSelfMute: (mute) => {
     set({ selfMute: mute });
-    // Also update the user in the channel states
     const state = get();
     if (state.currentChannelId && state.sessionId) {
       state.updateUser(state.currentChannelId, state.sessionId, { selfMute: mute });
     }
   },
   setSelfDeaf: (deaf) => {
-    // When deafened, also mute
     const newMute = deaf ? true : get().selfMute;
     set({ selfDeaf: deaf, selfMute: newMute });
-    // Also update the user in the channel states
     const state = get();
     if (state.currentChannelId && state.sessionId) {
       state.updateUser(state.currentChannelId, state.sessionId, { selfDeaf: deaf, selfMute: newMute });
@@ -147,7 +169,6 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   },
   setSelfVideo: (video) => {
     set({ selfVideo: video });
-    // Also update the user in the channel states
     const state = get();
     if (state.currentChannelId && state.sessionId) {
       state.updateUser(state.currentChannelId, state.sessionId, { selfVideo: video });
@@ -155,12 +176,15 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   },
   setSelfStream: (stream) => {
     set({ selfStream: stream });
-    // Also update the user in the channel states
     const state = get();
     if (state.currentChannelId && state.sessionId) {
       state.updateUser(state.currentChannelId, state.sessionId, { selfStream: stream });
     }
   },
+
+  setLocalAudioStream: (stream) => set({ localAudioStream: stream }),
+  setLocalVideoStream: (stream) => set({ localVideoStream: stream }),
+  setLocalScreenStream: (stream) => set({ localScreenStream: stream }),
 
   setUsers: (channelId, users) =>
     set((state) => ({
@@ -168,7 +192,6 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
         ...state.channelStates,
         [channelId]: users,
       },
-      // Update current channel users if this is the current channel
       users: state.currentChannelId === channelId ? users : state.users,
     })),
 
@@ -186,10 +209,10 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
       };
     }),
 
-  removeUser: (channelId, userId) =>
+  removeUser: (channelId, sessionId) =>
     set((state) => {
       const channelUsers = state.channelStates[channelId] || [];
-      const newUsers = channelUsers.filter((u) => u.userId !== userId);
+      const newUsers = channelUsers.filter((u) => u.sessionId !== sessionId);
 
       return {
         channelStates: {
@@ -200,11 +223,11 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
       };
     }),
 
-  updateUser: (channelId, userId, updates) =>
+  updateUser: (channelId, sessionId, updates) =>
     set((state) => {
       const channelUsers = state.channelStates[channelId] || [];
       const newUsers = channelUsers.map((u) =>
-        u.userId === userId || u.sessionId === userId ? { ...u, ...updates } : u
+        u.sessionId === sessionId ? { ...u, ...updates } : u
       );
 
       return {
@@ -213,6 +236,56 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
           [channelId]: newUsers,
         },
         users: state.currentChannelId === channelId ? newUsers : state.users,
+      };
+    }),
+
+  updateUserStream: (sessionId, kind, stream) =>
+    set((state) => {
+      const channelId = state.currentChannelId;
+      if (!channelId) return state;
+
+      const channelUsers = state.channelStates[channelId] || [];
+      const newUsers = channelUsers.map((u) => {
+        if (u.sessionId === sessionId) {
+          if (kind === 'audio') {
+            return { ...u, audioStream: stream || undefined };
+          } else if (kind === 'video') {
+            return { ...u, videoStream: stream || undefined };
+          } else if (kind === 'screen') {
+            return { ...u, screenStream: stream || undefined };
+          }
+        }
+        return u;
+      });
+
+      return {
+        channelStates: {
+          ...state.channelStates,
+          [channelId]: newUsers,
+        },
+        users: newUsers,
+      };
+    }),
+
+  clearUserStreams: (sessionId) =>
+    set((state) => {
+      const channelId = state.currentChannelId;
+      if (!channelId) return state;
+
+      const channelUsers = state.channelStates[channelId] || [];
+      const newUsers = channelUsers.map((u) => {
+        if (u.sessionId === sessionId) {
+          return { ...u, audioStream: undefined, videoStream: undefined, screenStream: undefined };
+        }
+        return u;
+      });
+
+      return {
+        channelStates: {
+          ...state.channelStates,
+          [channelId]: newUsers,
+        },
+        users: newUsers,
       };
     }),
 
@@ -227,6 +300,10 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   isUserInChannel: (channelId, userId) => {
     const users = get().channelStates[channelId] || [];
     return users.some((u) => u.userId === userId);
+  },
+
+  getUserBySessionId: (sessionId) => {
+    return get().users.find((u) => u.sessionId === sessionId);
   },
 
   setError: (error) => set({ error, isConnecting: false }),

@@ -21,6 +21,11 @@ import { apiClient } from '@/lib/api-client';
 import { useSocket } from '@/hooks/useSocket';
 import { getVoiceClient } from '@/lib/voice-client';
 
+// Helper to get or create voice client
+function getOrCreateVoiceClient() {
+  return getVoiceClient();
+}
+
 interface DeviceOption {
   deviceId: string;
   label: string;
@@ -149,7 +154,7 @@ export default function VoiceConnectedPanel() {
     setSelfMute(newMute);
 
     // Update WebRTC producer
-    const voiceClient = getVoiceClient();
+    const voiceClient = getOrCreateVoiceClient();
     if (voiceClient) {
       voiceClient.setMuted(newMute);
     }
@@ -171,7 +176,7 @@ export default function VoiceConnectedPanel() {
   };
 
   const handleToggleVideo = async () => {
-    const voiceClient = getVoiceClient();
+    const voiceClient = getOrCreateVoiceClient();
     if (!voiceClient) return;
 
     const newVideo = !selfVideo;
@@ -180,8 +185,13 @@ export default function VoiceConnectedPanel() {
     try {
       if (newVideo) {
         await voiceClient.startVideo();
+        // Update store with local video stream
+        const stream = voiceClient.getLocalVideoStream();
+        useVoiceStore.getState().setLocalVideoStream(stream);
       } else {
         await voiceClient.stopVideo();
+        // Clear local video stream from store
+        useVoiceStore.getState().setLocalVideoStream(null);
       }
 
       if (sessionId) {
@@ -195,7 +205,7 @@ export default function VoiceConnectedPanel() {
   };
 
   const handleToggleStream = async () => {
-    const voiceClient = getVoiceClient();
+    const voiceClient = getOrCreateVoiceClient();
     if (!voiceClient) return;
 
     const newStream = !selfStream;
@@ -204,8 +214,13 @@ export default function VoiceConnectedPanel() {
     try {
       if (newStream) {
         await voiceClient.startScreenShare();
+        // Update store with local screen stream
+        const stream = voiceClient.getLocalScreenStream();
+        useVoiceStore.getState().setLocalScreenStream(stream);
       } else {
         await voiceClient.stopScreenShare();
+        // Clear local screen stream from store
+        useVoiceStore.getState().setLocalScreenStream(null);
       }
 
       if (sessionId) {
@@ -219,7 +234,7 @@ export default function VoiceConnectedPanel() {
   };
 
   const handleDisconnect = async () => {
-    const voiceClient = getVoiceClient();
+    const voiceClient = getOrCreateVoiceClient();
     if (voiceClient) {
       await voiceClient.leaveChannel();
     }
@@ -227,6 +242,11 @@ export default function VoiceConnectedPanel() {
     if (currentChannelId) {
       await apiClient.leaveVoiceChannel(currentChannelId);
     }
+
+    // Clear local streams from store
+    useVoiceStore.getState().setLocalAudioStream(null);
+    useVoiceStore.getState().setLocalVideoStream(null);
+    useVoiceStore.getState().setLocalScreenStream(null);
 
     disconnectFromChannel();
   };

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { MessageList, MessageInput } from '@/components/messaging';
+import VoiceChannelView from '@/components/voice/VoiceChannelView';
 import { useChannelStore } from '@/stores/channelStore';
 import { useServerStore } from '@/stores/serverStore';
 
@@ -42,6 +43,14 @@ export default function ChannelPage() {
     );
   }
 
+  // Type-based routing: Voice channels render VoiceChannelView
+  if (channel.type === 'voice') {
+    return (
+      <VoiceChannelView channelId={channelId} serverId={serverId} />
+    );
+  }
+
+  // Text channels render MessageList + MessageInput
   return (
     <div className="flex-1 flex flex-col">
       <MessageList channelId={channelId} serverId={serverId} />

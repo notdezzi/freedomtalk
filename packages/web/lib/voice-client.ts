@@ -1,6 +1,7 @@
 /**
  * Voice Client Service
  * Handles WebRTC communication with mediasoup server
+ * Refactored to follow SFU debug page patterns
  */
 
 import { Device } from 'mediasoup-client';
@@ -13,11 +14,17 @@ interface TransportOptions {
   dtlsParameters: any;
 }
 
-interface ProducerData {
+interface ProducerInfo {
   producerId: string;
   kind: 'audio' | 'video';
   sessionId: string;
   appData?: any;
+}
+
+interface RemoteStream {
+  audio?: MediaStream;
+  video?: MediaStream;
+  screen?: MediaStream;
 }
 
 export class VoiceClient {
@@ -27,13 +34,28 @@ export class VoiceClient {
   private device: Device | null = null;
   private sendTransport: any = null;
   private recvTransport: any = null;
+
+  // Producers
   private audioProducer: any = null;
   private videoProducer: any = null;
   private screenProducer: any = null;
-  private consumers: Map<string, any> = new Map();
-  private localStream: MediaStream | null = null;
-  private screenStream: MediaStream | null = null;
+
+  // Consumers mapped by consumerId, with sessionId tracking
+  private consumers: Map<string, { consumer: any; sessionId: string }> = new Map();
+
+  // Local streams
+  private _localAudioStream: MediaStream | null = null;
+  private _localVideoStream: MediaStream | null = null;
+  private _localScreenStream: MediaStream | null = null;
+
+  // RTP capabilities
   private rtpCapabilities: any = null;
+
+  // State guards
+  private isJoining: boolean = false;
+  private socketHandlersSetup: boolean = false;
+  private isConsuming: boolean = false;
+  private pendingProducers: ProducerInfo[] = [];
 
   // Callbacks
   public onProducerCreated?: (producerId: string, kind: 'audio' | 'video', sessionId: string) => void;
@@ -45,6 +67,7 @@ export class VoiceClient {
   public onError?: (error: string) => void;
   public onConnected?: () => void;
   public onDisconnected?: () => void;
+  public onRemoteStreamChanged?: (sessionId: string, kind: 'audio' | 'video' | 'screen', stream: MediaStream | null) => void;
 
   constructor(socket: Socket) {
     this.socket = socket;
@@ -55,11 +78,26 @@ export class VoiceClient {
    * Setup socket event handlers for voice events
    */
   private setupSocketHandlers(): void {
+    if (this.socketHandlersSetup) return;
+    this.socketHandlersSetup = true;
+
+    // Heartbeat handler - critical for keeping connection alive
+    this.socket.on('ping', () => {
+      this.socket.emit('pong', { timestamp: Date.now() });
+    });
+
     this.socket.on('voice:user_joined', (data: { userId: string; sessionId: string }) => {
       this.onUserJoined?.(data.userId, data.sessionId);
     });
 
     this.socket.on('voice:user_left', (data: { sessionId: string }) => {
+      // Clean up consumers for this session
+      for (const [consumerId, { consumer, sessionId }] of this.consumers) {
+        if (sessionId === data.sessionId) {
+          consumer.close();
+          this.consumers.delete(consumerId);
+        }
+      }
       this.onUserLeft?.(data.sessionId);
     });
 
@@ -71,21 +109,43 @@ export class VoiceClient {
       this.onUserSpeaking?.(data.sessionId, data.speaking);
     });
 
-    this.socket.on('voice:new_producer', async (data: ProducerData) => {
-      await this.consumeProducer(data.producerId, data.kind, data.sessionId);
+    this.socket.on('voice:new_producer', async (data: ProducerInfo) => {
+      if (this.isConsuming && this.recvTransport) {
+        await this.consumeProducer(data.producerId, data.kind, data.sessionId, data.appData);
+      } else {
+        // Queue for later consumption
+        this.pendingProducers.push(data);
+      }
       this.onProducerCreated?.(data.producerId, data.kind, data.sessionId);
     });
   }
 
   /**
-   * Join a voice channel
+   * Join a voice channel with auto-setup
    */
   async joinChannel(channelId: string): Promise<void> {
+    if (this.isJoining) {
+      console.log('VoiceClient: Already joining a channel, skipping duplicate call');
+      return;
+    }
+
+    if (this.channelId && this.channelId !== channelId) {
+      console.log('VoiceClient: Leaving previous channel before joining new one');
+      await this.leaveChannel();
+    }
+
+    if (this.channelId === channelId && this.device) {
+      console.log('VoiceClient: Already in this channel');
+      return;
+    }
+
+    this.isJoining = true;
     this.channelId = channelId;
 
     return new Promise((resolve, reject) => {
       this.socket.emit('voice:join', { channelId }, async (response: any) => {
         if (!response.success) {
+          this.isJoining = false;
           this.onError?.(response.error || 'Failed to join voice channel');
           reject(new Error(response.error));
           return;
@@ -95,25 +155,48 @@ export class VoiceClient {
           this.sessionId = response.data.sessionId;
           this.rtpCapabilities = response.data.rtpCapabilities;
 
-          // Create mediasoup device
+          // Step 2: Create Device
           this.device = new Device();
           await this.device.load({ routerRtpCapabilities: this.rtpCapabilities });
 
-          // Create send transport
+          // Step 3: Create Send Transport
           await this.createSendTransport();
 
-          // Create receive transport
+          // Step 4: Create Recv Transport
           await this.createRecvTransport();
 
-          // Consume existing producers
-          for (const producer of response.data.producers || []) {
-            await this.consumeProducer(producer.producerId, producer.kind, producer.sessionId);
+          // Step 5: Start Consuming existing producers
+          this.isConsuming = true;
+          const existingProducers = response.data.producers || [];
+          for (const producer of existingProducers) {
+            await this.consumeProducer(
+              producer.producerId,
+              producer.kind,
+              producer.sessionId,
+              producer.appData
+            );
           }
 
+          // Consume any pending producers that came in during setup
+          for (const producer of this.pendingProducers) {
+            await this.consumeProducer(
+              producer.producerId,
+              producer.kind,
+              producer.sessionId,
+              producer.appData
+            );
+          }
+          this.pendingProducers = [];
+
+          // Step 6-7: Auto get local audio and produce
+          await this.startAudio();
+
           this.onConnected?.();
+          this.isJoining = false;
           resolve();
         } catch (error: any) {
           console.error('Error initializing voice:', error);
+          this.isJoining = false;
           this.onError?.(error.message || 'Failed to initialize voice');
           reject(error);
         }
@@ -125,8 +208,11 @@ export class VoiceClient {
    * Leave the current voice channel
    */
   async leaveChannel(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.socket.emit('voice:leave', async (response: any) => {
+    this.isJoining = false;
+    this.isConsuming = false;
+
+    return new Promise((resolve) => {
+      this.socket.emit('voice:leave', async (_response: any) => {
         await this.cleanup();
         this.onDisconnected?.();
         resolve();
@@ -173,7 +259,7 @@ export class VoiceClient {
 
         this.sendTransport.on('produce', async ({ kind, rtpParameters, appData }: any, callback: any, errback: any) => {
           try {
-            const resp = await new Promise<any>((res, rej) => {
+            const resp = await new Promise<any>((res) => {
               this.socket.emit('voice:produce', {
                 kind,
                 rtpParameters,
@@ -209,6 +295,11 @@ export class VoiceClient {
 
         const transportOptions: TransportOptions = response.data.transport;
 
+        if (!transportOptions || !transportOptions.id) {
+          reject(new Error('Invalid transport options: missing id'));
+          return;
+        }
+
         this.recvTransport = this.device!.createRecvTransport({
           id: transportOptions.id,
           iceParameters: transportOptions.iceParameters,
@@ -239,17 +330,92 @@ export class VoiceClient {
   }
 
   /**
+   * Consume a producer from another participant
+   * Key fix: Map consumerId to id for mediasoup-client
+   */
+  private async consumeProducer(
+    producerId: string,
+    kind: 'audio' | 'video',
+    sessionId: string,
+    appData?: any
+  ): Promise<void> {
+    if (!this.recvTransport || !this.device) {
+      console.warn('Cannot consume: recvTransport or device not ready');
+      return;
+    }
+
+    try {
+      const response = await new Promise<any>((resolve) => {
+        this.socket.emit('voice:consume', {
+          producerId,
+          rtpCapabilities: this.device!.rtpCapabilities,
+        }, (r: any) => resolve(r));
+      });
+
+      if (!response.success) {
+        console.error('Failed to consume:', response);
+        return;
+      }
+
+      const { consumerId, kind: respKind, rtpParameters } = response.data;
+
+      // Critical fix: Map consumerId to id for mediasoup-client
+      const consumer = await this.recvTransport.consume({
+        id: consumerId,  // This is the key fix!
+        producerId,
+        kind: respKind,
+        rtpParameters,
+      });
+
+      // Store consumer with sessionId for stream mapping
+      this.consumers.set(consumer.id, { consumer, sessionId });
+
+      // Resume the consumer via server
+      await new Promise<void>((resolve, reject) => {
+        this.socket.emit('voice:resume_consumer', { consumerId: consumer.id }, (resp: any) => {
+          if (resp.success) resolve();
+          else reject(new Error(resp.error));
+        });
+      });
+
+      await consumer.resume();
+
+      // Create stream and notify
+      const stream = new MediaStream([consumer.track]);
+      const streamKind = appData?.type === 'screen' ? 'screen' : respKind;
+      this.onRemoteStreamChanged?.(sessionId, streamKind, stream);
+
+      consumer.on('transportclose', () => {
+        this.consumers.delete(consumer.id);
+        this.onRemoteStreamChanged?.(sessionId, streamKind, null);
+      });
+
+      consumer.on('trackended', () => {
+        this.consumers.delete(consumer.id);
+        this.onRemoteStreamChanged?.(sessionId, streamKind, null);
+      });
+
+    } catch (error: any) {
+      console.error('Error consuming producer:', error);
+    }
+  }
+
+  /**
    * Start producing audio from microphone
    */
   async startAudio(deviceId?: string): Promise<void> {
     if (!this.sendTransport || this.audioProducer) return;
 
     try {
-      this.localStream = await navigator.mediaDevices.getUserMedia({
-        audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+      this._localAudioStream = await navigator.mediaDevices.getUserMedia({
+        audio: deviceId ? { deviceId: { exact: deviceId } } : {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
       });
 
-      const audioTrack = this.localStream.getAudioTracks()[0];
+      const audioTrack = this._localAudioStream.getAudioTracks()[0];
       if (!audioTrack) throw new Error('No audio track available');
 
       this.audioProducer = await this.sendTransport.produce({
@@ -283,9 +449,9 @@ export class VoiceClient {
       this.audioProducer = null;
     }
 
-    if (this.localStream) {
-      this.localStream.getAudioTracks().forEach(track => track.stop());
-      this.localStream = null;
+    if (this._localAudioStream) {
+      this._localAudioStream.getAudioTracks().forEach(track => track.stop());
+      this._localAudioStream = null;
     }
   }
 
@@ -296,11 +462,11 @@ export class VoiceClient {
     if (!this.sendTransport || this.videoProducer) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      this._localVideoStream = await navigator.mediaDevices.getUserMedia({
         video: deviceId ? { deviceId: { exact: deviceId } } : { width: 1280, height: 720 },
       });
 
-      const videoTrack = stream.getVideoTracks()[0];
+      const videoTrack = this._localVideoStream.getVideoTracks()[0];
       if (!videoTrack) throw new Error('No video track available');
 
       this.videoProducer = await this.sendTransport.produce({
@@ -332,6 +498,11 @@ export class VoiceClient {
       this.videoProducer.close();
       this.videoProducer = null;
     }
+
+    if (this._localVideoStream) {
+      this._localVideoStream.getVideoTracks().forEach(track => track.stop());
+      this._localVideoStream = null;
+    }
   }
 
   /**
@@ -341,12 +512,12 @@ export class VoiceClient {
     if (!this.sendTransport || this.screenProducer) return;
 
     try {
-      this.screenStream = await navigator.mediaDevices.getDisplayMedia({
+      this._localScreenStream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: true,
       });
 
-      const videoTrack = this.screenStream.getVideoTracks()[0];
+      const videoTrack = this._localScreenStream.getVideoTracks()[0];
       if (!videoTrack) throw new Error('No screen video track available');
 
       this.screenProducer = await this.sendTransport.produce({
@@ -363,9 +534,8 @@ export class VoiceClient {
       });
 
       // Also produce audio if available
-      const audioTrack = this.screenStream.getAudioTracks()[0];
+      const audioTrack = this._localScreenStream.getAudioTracks()[0];
       if (audioTrack) {
-        // Screen audio uses a separate producer marked as screen audio
         await this.sendTransport.produce({
           track: audioTrack,
           appData: { type: 'screen-audio' },
@@ -387,9 +557,9 @@ export class VoiceClient {
       this.screenProducer = null;
     }
 
-    if (this.screenStream) {
-      this.screenStream.getTracks().forEach(track => track.stop());
-      this.screenStream = null;
+    if (this._localScreenStream) {
+      this._localScreenStream.getTracks().forEach(track => track.stop());
+      this._localScreenStream = null;
     }
   }
 
@@ -405,64 +575,52 @@ export class VoiceClient {
       }
     }
 
-    // Update server state
     this.socket.emit('voice:state_update', { selfMute: muted });
   }
 
   /**
-   * Consume a producer from another participant
+   * Get local audio stream
    */
-  private async consumeProducer(producerId: string, kind: 'audio' | 'video', _sessionId: string): Promise<void> {
-    if (!this.recvTransport || !this.device) return;
-
-    try {
-      const consumer = await this.recvTransport.consume({
-        producerId,
-        rtpCapabilities: this.device.rtpCapabilities,
-        paused: true,
-      });
-
-      this.consumers.set(consumer.id, consumer);
-
-      // Resume the consumer
-      await new Promise<void>((resolve, reject) => {
-        this.socket.emit('voice:resume_consumer', { consumerId: consumer.id }, (response: any) => {
-          if (response.success) resolve();
-          else reject(new Error(response.error));
-        });
-      });
-
-      await consumer.resume();
-
-      consumer.on('transportclose', () => {
-        this.consumers.delete(consumer.id);
-      });
-
-      consumer.on('trackended', () => {
-        this.consumers.delete(consumer.id);
-      });
-    } catch (error: any) {
-      console.error('Error consuming producer:', error);
-    }
+  getLocalAudioStream(): MediaStream | null {
+    return this._localAudioStream;
   }
 
   /**
-   * Get consumer track for audio/video element
+   * Get local video stream
    */
-  getConsumerTrack(consumerId: string): MediaStreamTrack | null {
-    const consumer = this.consumers.get(consumerId);
-    return consumer?.track || null;
+  getLocalVideoStream(): MediaStream | null {
+    return this._localVideoStream;
   }
 
   /**
-   * Get all consumer streams
+   * Get local screen stream
    */
-  getConsumerStreams(): Map<string, MediaStream> {
-    const streams = new Map<string, MediaStream>();
+  getLocalScreenStream(): MediaStream | null {
+    return this._localScreenStream;
+  }
 
-    for (const [id, consumer] of this.consumers) {
+  /**
+   * Get remote streams mapped by sessionId
+   */
+  getRemoteStreams(): Map<string, RemoteStream> {
+    const streams = new Map<string, RemoteStream>();
+
+    for (const { consumer, sessionId } of this.consumers.values()) {
       const stream = new MediaStream([consumer.track]);
-      streams.set(id, stream);
+      const kind = consumer.appData?.type === 'screen' ? 'screen' : consumer.kind;
+
+      if (!streams.has(sessionId)) {
+        streams.set(sessionId, {});
+      }
+
+      const userStreams = streams.get(sessionId)!;
+      if (kind === 'audio') {
+        userStreams.audio = stream;
+      } else if (kind === 'video') {
+        userStreams.video = stream;
+      } else if (kind === 'screen') {
+        userStreams.screen = stream;
+      }
     }
 
     return streams;
@@ -478,10 +636,11 @@ export class VoiceClient {
     await this.stopScreenShare();
 
     // Close consumers
-    for (const consumer of this.consumers.values()) {
+    for (const { consumer } of this.consumers.values()) {
       consumer.close();
     }
     this.consumers.clear();
+    this.pendingProducers = [];
 
     // Close transports
     if (this.sendTransport) {
@@ -499,6 +658,8 @@ export class VoiceClient {
     this.channelId = null;
     this.sessionId = null;
     this.rtpCapabilities = null;
+    this.isJoining = false;
+    this.isConsuming = false;
   }
 
   /**
@@ -506,6 +667,13 @@ export class VoiceClient {
    */
   getChannelId(): string | null {
     return this.channelId;
+  }
+
+  /**
+   * Get current session ID
+   */
+  getSessionId(): string | null {
+    return this.sessionId;
   }
 
   /**
