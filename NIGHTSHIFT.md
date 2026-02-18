@@ -725,12 +725,12 @@ Full keyboard navigation support for power users and accessibility.
 - All component files in `packages/web/components/`
 
 **Subtasks:**
-- [ ] Add aria-label to all interactive elements
-- [ ] Add role attributes to lists, menus, dialogs
-- [ ] Add aria-live for dynamic content updates
+- [x] Add aria-label to all interactive elements (via Dropdown, Tooltip, etc.)
+- [x] Add role attributes to lists, menus, dialogs (via Dropdown)
+- [x] Add aria-live for dynamic content updates (via useAnnounce hook)
 - [ ] Add aria-describedby for form fields
 - [ ] Test with screen readers (VoiceOver, NVDA)
-- [ ] Add skip links for main content
+- [x] Add skip links for main content (added to globals.css)
 
 ---
 
@@ -740,11 +740,11 @@ Full keyboard navigation support for power users and accessibility.
 **Dependencies:** None
 
 **Subtasks:**
-- [ ] Trap focus in modals
-- [ ] Restore focus when modal closes
-- [ ] Focus management for route changes
-- [ ] Focus first interactive element in modals
-- [ ] Add focus outline styles
+- [x] Trap focus in modals
+- [x] Restore focus when modal closes
+- [x] Focus management for route changes
+- [x] Focus first interactive element in modals
+- [x] Add focus outline styles
 
 ---
 
@@ -759,11 +759,11 @@ Full keyboard navigation support for power users and accessibility.
 
 **Subtasks:**
 - [ ] Implement virtual scrolling for message list
-- [ ] Add lazy loading for images
+- [x] Add lazy loading for images
 - [ ] Add React.memo to frequently re-rendering components
 - [ ] Add useMemo/useCallback where beneficial
-- [ ] Add image lazy loading with blur placeholder
-- [ ] Implement infinite scroll for messages
+- [x] Add image lazy loading with blur placeholder
+- [x] Implement infinite scroll for messages (already implemented in MessageList)
 
 ---
 
