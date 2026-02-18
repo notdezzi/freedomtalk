@@ -29,6 +29,8 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
     localAudioStream,
     localVideoStream,
     localScreenStream,
+    lastTextChannelId,
+    lastTextChannelServerId,
     connectToChannel,
     disconnectFromChannel,
     setUsers,
@@ -50,6 +52,7 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
   // Use a ref to prevent double-joining (React StrictMode safe)
   const joinInitiatedRef = useRef(false);
   const mountedRef = useRef(true);
+  const joiningRef = useRef(false);
 
   // Check if we're already in this channel
   const isInThisChannel = isConnected && currentChannelId === channelId;
@@ -62,20 +65,38 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
     };
   }, []);
 
-  // Reset join flag when channel changes
-  useEffect(() => {
-    joinInitiatedRef.current = false;
-  }, [channelId]);
-
   // Setup voice client and join channel
   useEffect(() => {
     if (!user || !channelId || !serverId) return;
     if (isInThisChannel) return; // Already connected
-    if (joinInitiatedRef.current) return; // Already initiated
 
+    // StrictMode-safe: Check if we're already in the process of joining THIS channel
+    // Use both the ref and the VoiceClient's internal state
+    const existingClient = getVoiceClient();
+    if (joiningRef.current) {
+      console.log('[VoiceChannelView] Join already in progress for this component, skipping');
+      return;
+    }
+    // Check if VoiceClient is already in this channel (handles StrictMode remount)
+    if (existingClient && existingClient.getChannelId() === channelId && existingClient.getSessionId()) {
+      console.log('[VoiceChannelView] Already joined this channel in VoiceClient, updating store');
+      // Update store with existing session
+      connectToChannel(channelId, serverId, existingClient.getSessionId()!);
+      const audioStream = existingClient.getLocalAudioStream();
+      if (audioStream) {
+        setLocalAudioStream(audioStream);
+      }
+      return;
+    }
+
+    joiningRef.current = true;
     joinInitiatedRef.current = true;
     setLoading(true);
     setError(null);
+
+    // Create abort controller for cleanup
+    let aborted = false;
+    let voiceClient: ReturnType<typeof createVoiceClient> | null = null;
 
     const joinVoiceChannel = async () => {
       try {
@@ -84,18 +105,18 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
           throw new Error('WebSocket not connected');
         }
 
-        // Create voice client and setup callbacks
-        const voiceClient = createVoiceClient(socket);
+        // Get or create voice client (don't reset - let it manage its own state)
+        voiceClient = createVoiceClient(socket);
 
         // Setup callbacks for remote streams
         voiceClient.onRemoteStreamChanged = (remoteSessionId, kind, stream) => {
-          if (mountedRef.current) {
+          if (!aborted && mountedRef.current) {
             updateUserStream(remoteSessionId, kind, stream);
           }
         };
 
         voiceClient.onUserJoined = (userId, joinedSessionId) => {
-          if (!mountedRef.current) return;
+          if (aborted || !mountedRef.current) return;
           const voiceUser: VoiceUser = {
             userId,
             username: '',
@@ -112,42 +133,53 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
         };
 
         voiceClient.onUserLeft = (leftSessionId) => {
-          if (!mountedRef.current) return;
+          if (aborted || !mountedRef.current) return;
           clearUserStreams(leftSessionId);
           removeUser(channelId, leftSessionId);
         };
 
         voiceClient.onUserStateChange = (changedSessionId, state) => {
-          if (!mountedRef.current) return;
+          if (aborted || !mountedRef.current) return;
           updateUser(channelId, changedSessionId, state);
         };
 
         voiceClient.onUserSpeaking = (speakingSessionId, speaking) => {
-          if (!mountedRef.current) return;
+          if (aborted || !mountedRef.current) return;
           updateUser(channelId, speakingSessionId, { isSpeaking: speaking });
         };
 
         voiceClient.onError = (err) => {
-          if (mountedRef.current) {
+          if (!aborted && mountedRef.current) {
             setError(err);
             setLoading(false);
             joinInitiatedRef.current = false;
+            joiningRef.current = false;
           }
         };
 
         voiceClient.onDisconnected = () => {
-          if (mountedRef.current) {
+          if (!aborted && mountedRef.current) {
             disconnectFromChannel();
             joinInitiatedRef.current = false;
+            joiningRef.current = false;
           }
         };
 
         // Join the channel (auto-creates device, transports, and starts audio)
         await voiceClient.joinChannel(channelId);
 
+        // Check if aborted during async join
+        if (aborted) {
+          console.log('[VoiceChannelView] Join aborted, cleaning up');
+          await voiceClient.leaveChannel();
+          resetVoiceClient();
+          return;
+        }
+
         if (!mountedRef.current) {
           // Component unmounted during join, clean up
           await voiceClient.leaveChannel();
+          resetVoiceClient();
           return;
         }
 
@@ -188,7 +220,7 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
 
         // Fetch current users in channel
         const usersResponse = await apiClient.getVoiceChannelUsers(channelId);
-        if (usersResponse.success && usersResponse.data && mountedRef.current) {
+        if (!aborted && usersResponse.success && usersResponse.data && mountedRef.current) {
           const usersArray = Array.isArray(usersResponse.data)
             ? usersResponse.data
             : (usersResponse.data as { users?: unknown[] }).users || [];
@@ -216,20 +248,37 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
 
       } catch (err) {
         console.error('Voice join error:', err);
-        if (mountedRef.current) {
+        if (!aborted && mountedRef.current) {
           // Reset voice client on failure so we can retry fresh
           resetVoiceClient();
           setError('Failed to join voice channel');
           joinInitiatedRef.current = false;
+          joiningRef.current = false;
         }
       } finally {
-        if (mountedRef.current) {
+        if (!aborted && mountedRef.current) {
           setLoading(false);
         }
       }
     };
 
     joinVoiceChannel();
+
+    // Cleanup function - critical for React StrictMode
+    return () => {
+      console.log('[VoiceChannelView] Effect cleanup - aborting join');
+      aborted = true;
+      joiningRef.current = false;
+      joinInitiatedRef.current = false;
+
+      // Only clean up if this component initiated the join and we have a client
+      // Don't reset the singleton - let the VoiceClient manage its own state
+      // The VoiceClient handles duplicate joins gracefully with isJoining flag
+      if (voiceClient && voiceClient.getSessionId()) {
+        // We were connected, leave properly
+        voiceClient.leaveChannel().catch(console.error);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, channelId, serverId, isInThisChannel]);
 
@@ -254,11 +303,16 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
       disconnectFromChannel();
       resetVoiceClient();
       joinInitiatedRef.current = false;
+      joiningRef.current = false;
 
-      // Navigate away from voice view
-      router.push(`/app/servers/${serverId}`);
+      // Navigate to last text channel or /app if none
+      if (lastTextChannelId && lastTextChannelServerId) {
+        router.push(`/app/servers/${lastTextChannelServerId}/channels/${lastTextChannelId}`);
+      } else {
+        router.push('/app');
+      }
     }
-  }, [disconnectFromChannel, router, serverId, setLocalAudioStream, setLocalVideoStream, setLocalScreenStream, currentChannelId]);
+  }, [disconnectFromChannel, router, setLocalAudioStream, setLocalVideoStream, setLocalScreenStream, currentChannelId, lastTextChannelId, lastTextChannelServerId]);
 
   // Loading state
   if (loading || !isInThisChannel) {
