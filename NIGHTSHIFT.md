@@ -537,9 +537,9 @@ Several utility components from milestones are missing from the codebase.
 - `packages/web/app/auth/login/page.tsx`
 
 **Subtasks:**
-- [ ] Add password strength indicator to registration
-- [ ] Add "Remember me" checkbox to login
-- [ ] Improve form validation feedback
+- [x] Add password strength indicator to registration
+- [x] Add "Remember me" checkbox to login
+- [x] Improve form validation feedback
 
 ---
 
