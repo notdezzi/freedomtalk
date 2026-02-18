@@ -22,6 +22,7 @@ export interface ServerMemberWithUser {
   communication_disabled_until: string | null;
   created_at: Date;
   updated_at: Date;
+  is_owner?: boolean;
   user?: {
     id: string;
     username: string;
@@ -157,6 +158,10 @@ class ServerMemberService {
 
     if (!member) return null;
 
+    // Get server to check owner
+    const server = await db('servers').where('id', serverId).first();
+    const isOwner = server?.owner_id === userId;
+
     // Get user info with profile
     const user = await db('users')
       .where('users.id', userId)
@@ -174,6 +179,7 @@ class ServerMemberService {
 
     return {
       ...member,
+      is_owner: isOwner,
       user: user || undefined,
       roles: roles || [],
     };
@@ -189,6 +195,9 @@ class ServerMemberService {
   }): Promise<{ members: ServerMemberWithUser[]; total: number }> {
     const limit = options?.limit || 100;
     const offset = options?.offset || 0;
+
+    // Get server to check owner
+    const server = await db('servers').where('id', serverId).first();
 
     let query = db('server_members')
       .where('server_members.server_id', serverId)
@@ -253,6 +262,7 @@ class ServerMemberService {
       communication_disabled_until: m.communication_disabled_until,
       created_at: m.created_at,
       updated_at: m.updated_at,
+      is_owner: server?.owner_id === m.user_id,
       user: {
         id: m.user_id,
         username: m.user_username,
