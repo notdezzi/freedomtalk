@@ -10,7 +10,7 @@ import { ServerMember } from '@/stores/memberStore';
 
 export default function ContextMenuRenderer() {
   const { contextMenu, closeContextMenu, openModal } = useUIStore();
-  const { servers, removeServer } = useServerStore();
+  const { servers, removeServer, toggleServerMute } = useServerStore();
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +61,7 @@ export default function ContextMenuRenderer() {
     };
 
     const handleMute = async () => {
-      // TODO: Implement mute functionality
+      toggleServerMute(serverId);
       closeContextMenu();
     };
 
@@ -113,8 +113,8 @@ export default function ContextMenuRenderer() {
           onClick={handleMute}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground-muted hover:text-foreground hover:bg-background-surface"
         >
-          <BellOff className="w-4 h-4" />
-          Mute Server
+          {server.muted ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+          {server.muted ? 'Unmute Server' : 'Mute Server'}
         </button>
         <div className="my-1 border-t border-border" />
         {server.isOwner ? (

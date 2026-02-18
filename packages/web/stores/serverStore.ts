@@ -15,6 +15,7 @@ export interface Server {
   isOwner: boolean;
   unreadCount?: number;
   hasNotification?: boolean;
+  muted?: boolean;
 }
 
 export interface ServerFolder {
@@ -41,6 +42,7 @@ interface ServerState {
   setCurrentServer: (serverId: string | null) => void;
   setServerUnread: (serverId: string, count: number) => void;
   clearServerUnread: (serverId: string) => void;
+  toggleServerMute: (serverId: string) => void;
 
   // Folders
   addFolder: (folder: ServerFolder) => void;
@@ -133,6 +135,12 @@ export const useServerStore = create<ServerState>()(
       clearServerUnread: (serverId) => set((state) => ({
         servers: state.servers.map((s) =>
           s.id === serverId ? { ...s, unreadCount: 0, hasNotification: false } : s
+        ),
+      })),
+
+      toggleServerMute: (serverId) => set((state) => ({
+        servers: state.servers.map((s) =>
+          s.id === serverId ? { ...s, muted: !s.muted } : s
         ),
       })),
 
