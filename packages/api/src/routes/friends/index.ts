@@ -234,7 +234,7 @@ export default async function friendRoutes(app: FastifyInstance) {
 
   /**
    * GET /api/v1/friends/search
-   * Search for users to add as friend
+   * Search for users to add as friend (searches all users)
    */
   app.get(
     '/search',
@@ -244,6 +244,21 @@ export default async function friendRoutes(app: FastifyInstance) {
 
       const results = await friendService.searchUsers(userId, q);
       return reply.send(successResponse({ results }));
+    }
+  );
+
+  /**
+   * GET /api/v1/friends/search-list
+   * Search within user's friends list only
+   */
+  app.get(
+    '/search-list',
+    async (request: FastifyRequest<{ Querystring: { q: string } }>, reply: FastifyReply) => {
+      const userId = request.user!.id;
+      const { q } = request.query;
+
+      const friends = await friendService.searchFriendsList(userId, q);
+      return reply.send(successResponse({ friends }));
     }
   );
 

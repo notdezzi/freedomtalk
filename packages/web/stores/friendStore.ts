@@ -272,10 +272,20 @@ export const useFriendStore = create<FriendState>()(
           return [];
         }
 
-        const response = await apiClient.searchFriendUsers(query);
+        // Use the new endpoint that only searches within friends
+        const response = await apiClient.searchWithinFriends(query);
 
         if (response.success && response.data) {
-          return response.data.results;
+          // Map the friends response to SearchedUser format
+          return response.data.friends.map(friend => ({
+            id: friend.id,
+            username: friend.username,
+            displayName: friend.displayName,
+            avatarUrl: friend.avatarUrl,
+            isFriend: true,
+            hasPendingRequest: false,
+            isBlocked: false,
+          }));
         }
 
         return [];

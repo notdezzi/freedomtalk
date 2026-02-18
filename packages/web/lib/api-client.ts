@@ -919,6 +919,10 @@ class ApiClient {
     return this.request<{ results: { id: string; username: string; displayName: string | null; avatarUrl: string | null; isFriend: boolean; hasPendingRequest: boolean; isBlocked: boolean }[] }>(`/api/v1/friends/search?q=${encodeURIComponent(query)}`);
   }
 
+  async searchWithinFriends(query: string): Promise<ApiResponse<{ friends: { id: string; username: string; displayName: string | null; avatarUrl: string | null; customStatus: string | null; friendSince: string }[] }>> {
+    return this.request<{ friends: { id: string; username: string; displayName: string | null; avatarUrl: string | null; customStatus: string | null; friendSince: string }[] }>(`/api/v1/friends/search-list?q=${encodeURIComponent(query)}`);
+  }
+
   async getFriendshipStatus(targetUserId: string): Promise<ApiResponse<{ isFriend: boolean; hasIncomingRequest: boolean; hasOutgoingRequest: boolean; isBlocked: boolean }>> {
     return this.request<{ isFriend: boolean; hasIncomingRequest: boolean; hasOutgoingRequest: boolean; isBlocked: boolean }>(`/api/v1/friends/status/${targetUserId}`);
   }

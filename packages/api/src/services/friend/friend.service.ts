@@ -526,6 +526,57 @@ class FriendService {
   }
 
   /**
+   * Search within user's friends list only
+   */
+  async searchFriendsList(userId: string, query: string): Promise<FriendWithProfile[]> {
+    if (!query || query.length < 1) {
+      // Return all friends if no query
+      return this.getFriends(userId);
+    }
+
+    // Get all friend connections
+    const connections = await db('user_connections')
+      .where({
+        user_id: userId,
+        connection_type: 'friend',
+        status: 'active'
+      });
+
+    if (connections.length === 0) {
+      return [];
+    }
+
+    const friendIds = connections.map(c => c.connected_user_id);
+
+    // Search within friends by username or display name
+    const profiles = await db('user_profiles')
+      .leftJoin('users', 'user_profiles.user_id', 'users.id')
+      .whereIn('user_profiles.user_id', friendIds)
+      .where(function() {
+        this.whereRaw('users.username ILIKE ?', [`%${query}%`])
+          .orWhereRaw('user_profiles.display_name ILIKE ?', [`%${query}%`]);
+      })
+      .select(
+        'users.id',
+        'users.username',
+        'user_profiles.display_name',
+        'user_profiles.avatar_url',
+        'user_profiles.custom_status'
+      );
+
+    const connectionMap = new Map(connections.map(c => [c.connected_user_id, c.created_at]));
+
+    return profiles.map(p => ({
+      id: p.id,
+      username: p.username,
+      displayName: p.display_name,
+      avatarUrl: p.avatar_url,
+      customStatus: p.custom_status,
+      friendSince: connectionMap.get(p.id)!,
+    }));
+  }
+
+  /**
    * Search for users by username or display name
    */
   async searchUsers(userId: string, query: string): Promise<SearchResult[]> {
