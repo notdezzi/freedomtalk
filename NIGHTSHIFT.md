@@ -630,12 +630,12 @@ Show "Playing...", "Listening to...", "Streaming..." status on users.
 - `packages/web/components/search/SearchModal.tsx`
 
 **Subtasks:**
-- [ ] Add date range filter
-- [ ] Add user filter (from:@username)
-- [ ] Add has:attachment filter
-- [ ] Highlight search terms in results
-- [ ] Add search suggestions
-- [ ] Show result context
+- [x] Add date range filter
+- [x] Add user filter (from:@username)
+- [x] Add has:attachment filter
+- [x] Highlight search terms in results
+- [x] Add search suggestions
+- [x] Show result context
 
 ---
 
