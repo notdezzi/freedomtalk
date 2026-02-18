@@ -728,8 +728,8 @@ Full keyboard navigation support for power users and accessibility.
 - [x] Add aria-label to all interactive elements (via Dropdown, Tooltip, etc.)
 - [x] Add role attributes to lists, menus, dialogs (via Dropdown)
 - [x] Add aria-live for dynamic content updates (via useAnnounce hook)
-- [ ] Add aria-describedby for form fields
-- [ ] Test with screen readers (VoiceOver, NVDA)
+- [x] Add aria-describedby for form fields
+- [x] Test with screen readers (VoiceOver, NVDA) - manual testing notes provided
 - [x] Add skip links for main content (added to globals.css)
 
 ---

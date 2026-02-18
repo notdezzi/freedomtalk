@@ -108,7 +108,7 @@ function LoginForm() {
         </div>
 
         {mfaError && (
-          <div className="mb-6 p-4 rounded-lg bg-error/10 border border-error/20 flex items-start gap-3">
+          <div id="mfa-error" className="mb-6 p-4 rounded-lg bg-error/10 border border-error/20 flex items-start gap-3" role="alert">
             <AlertCircle className="w-5 h-5 text-error shrink-0 mt-0.5" />
             <p className="text-sm text-error">{mfaError}</p>
           </div>
@@ -128,6 +128,8 @@ function LoginForm() {
               onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(6))}
               maxLength={6}
               required
+              aria-describedby={mfaError ? 'mfa-error' : undefined}
+              aria-invalid={!!mfaError}
             />
           </div>
 
@@ -195,7 +197,7 @@ function LoginForm() {
 
       {/* Error message */}
       {error && (
-        <div className="mb-6 p-4 rounded-lg bg-error/10 border border-error/20 flex items-start gap-3">
+        <div id="login-error" className="mb-6 p-4 rounded-lg bg-error/10 border border-error/20 flex items-start gap-3" role="alert">
           <AlertCircle className="w-5 h-5 text-error shrink-0 mt-0.5" />
           <p className="text-sm text-error">{error}</p>
         </div>
@@ -216,6 +218,8 @@ function LoginForm() {
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             required
             disabled={isLoading}
+            aria-describedby={error ? 'login-error' : undefined}
+            aria-invalid={!!error}
           />
         </div>
 
@@ -233,6 +237,8 @@ function LoginForm() {
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required
               disabled={isLoading}
+              aria-describedby={error ? 'login-error' : undefined}
+              aria-invalid={!!error}
             />
             <button
               type="button"

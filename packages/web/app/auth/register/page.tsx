@@ -100,7 +100,7 @@ export default function RegisterPage() {
 
       {/* Error message */}
       {error && (
-        <div className="mb-6 p-4 rounded-lg bg-error/10 border border-error/20 flex items-start gap-3">
+        <div id="register-error" className="mb-6 p-4 rounded-lg bg-error/10 border border-error/20 flex items-start gap-3" role="alert">
           <AlertCircle className="w-5 h-5 text-error shrink-0 mt-0.5" />
           <p className="text-sm text-error">{error}</p>
         </div>
@@ -130,9 +130,10 @@ export default function RegisterPage() {
               maxLength={32}
               pattern="[a-z0-9_]+"
               disabled={isLoading}
+              aria-describedby="username-hint"
             />
           </div>
-          <p className="mt-1 text-xs text-foreground-subtle">
+          <p id="username-hint" className="mt-1 text-xs text-foreground-subtle">
             3-32 characters, letters, numbers, and underscores only
           </p>
         </div>
@@ -150,6 +151,8 @@ export default function RegisterPage() {
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             required
             disabled={isLoading}
+            aria-describedby={error ? 'register-error' : undefined}
+            aria-invalid={!!error}
           />
         </div>
 
@@ -170,6 +173,7 @@ export default function RegisterPage() {
               required
               minLength={8}
               disabled={isLoading}
+              aria-describedby="password-strength"
             />
             <button
               type="button"
@@ -187,7 +191,7 @@ export default function RegisterPage() {
 
           {/* Password requirements */}
           {formData.password && (
-            <div className="mt-3 space-y-3">
+            <div id="password-strength" className="mt-3 space-y-3">
               {/* Strength meter */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
