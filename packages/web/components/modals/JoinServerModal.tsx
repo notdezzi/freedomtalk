@@ -9,7 +9,7 @@ import { apiClient } from '@/lib/api-client';
 
 interface InvitePreview {
   invite: { code: string; expiresAt: string | null; maxUses: number | null; uses: number };
-  server: { id: string; name: string; icon_url: string | null; member_count: number; online_count: number } | null;
+  server: { id: string; name: string; icon_url: string | null; member_count: number; online_count?: number } | null;
   channel: { id: string; name: string; type: string } | null;
   inviter: { id: string; username: string; avatar: string | null } | null;
 }
@@ -197,7 +197,7 @@ export default function JoinServerModal() {
                     </div>
                     <div className="flex items-center gap-1">
                       <Wifi className="w-3.5 h-3.5 text-success" />
-                      <span className="text-success">{preview.server.online_count.toLocaleString()}</span>
+                      <span className="text-success">{(preview.server.online_count ?? 0).toLocaleString()}</span>
                     </div>
                   </div>
                   {preview.channel && (
