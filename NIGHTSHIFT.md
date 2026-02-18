@@ -419,8 +419,8 @@ Several types are defined in API/Web but should be in shared package.
 **Estimated Complexity:** Medium
 
 **Subtasks:**
-- [ ] Create audit_logs table
-- [ ] Add audit log entry on admin actions
+- [x] Create audit_logs table
+- [x] Add audit log entry on admin actions
 
 ---
 
@@ -430,9 +430,9 @@ Several types are defined in API/Web but should be in shared package.
 **Dependencies:** Task 7.1
 
 **Subtasks:**
-- [ ] GET /servers/:serverId/audit-logs
-- [ ] Filtering by action type, user, date
-- [ ] Pagination
+- [x] GET /servers/:serverId/audit-logs
+- [x] Filtering by action type, user, date
+- [x] Pagination
 
 ---
 
@@ -442,11 +442,11 @@ Several types are defined in API/Web but should be in shared package.
 **Dependencies:** Task 7.2
 
 **Subtasks:**
-- [ ] Audit log tab in server settings
-- [ ] Action type icons
-- [ ] User who performed action
-- [ ] Target info
-- [ ] Changes diff view
+- [x] Audit log tab in server settings
+- [x] Action type icons
+- [x] User who performed action
+- [x] Target info
+- [x] Changes diff view
 
 ---
 

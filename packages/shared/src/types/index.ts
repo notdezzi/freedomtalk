@@ -440,6 +440,67 @@ export interface WebhookEvent {
 export type WebhookEventType = 'message' | 'message_update' | 'message_delete' | 'member_join' | 'member_leave';
 
 // ============================================
+// Audit Log types
+// ============================================
+export type AuditLogActionType =
+  // Server actions
+  | 'SERVER_UPDATE'
+  | 'SERVER_DELETE'
+  // Channel actions
+  | 'CHANNEL_CREATE'
+  | 'CHANNEL_UPDATE'
+  | 'CHANNEL_DELETE'
+  | 'CHANNEL_OVERWRITE_CREATE'
+  | 'CHANNEL_OVERWRITE_UPDATE'
+  | 'CHANNEL_OVERWRITE_DELETE'
+  // Role actions
+  | 'ROLE_CREATE'
+  | 'ROLE_UPDATE'
+  | 'ROLE_DELETE'
+  // Member actions
+  | 'MEMBER_KICK'
+  | 'MEMBER_BAN_ADD'
+  | 'MEMBER_BAN_REMOVE'
+  | 'MEMBER_UPDATE'
+  | 'MEMBER_ROLE_UPDATE'
+  | 'MEMBER_MOVE'
+  | 'MEMBER_DISCONNECT'
+  // Message actions
+  | 'MESSAGE_DELETE'
+  | 'MESSAGE_BULK_DELETE'
+  | 'MESSAGE_PIN'
+  | 'MESSAGE_UNPIN'
+  // Invite actions
+  | 'INVITE_CREATE'
+  | 'INVITE_DELETE'
+  // Webhook actions
+  | 'WEBHOOK_CREATE'
+  | 'WEBHOOK_UPDATE'
+  | 'WEBHOOK_DELETE'
+  // Emoji actions
+  | 'EMOJI_CREATE'
+  | 'EMOJI_UPDATE'
+  | 'EMOJI_DELETE';
+
+export type AuditLogTargetType = 'SERVER' | 'CHANNEL' | 'ROLE' | 'MEMBER' | 'MESSAGE' | 'INVITE' | 'WEBHOOK' | 'EMOJI' | 'USER';
+
+export interface AuditLogEntry {
+  id: string;
+  serverId: string;
+  userId: string;
+  actionType: AuditLogActionType;
+  targetType?: AuditLogTargetType;
+  targetId?: string;
+  changes?: {
+    before?: Record<string, unknown>;
+    after?: Record<string, unknown>;
+  };
+  reason?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: Date;
+}
+
+// ============================================
 // API Error types
 // ============================================
 export enum ApiErrorCode {

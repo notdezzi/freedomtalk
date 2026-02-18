@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Settings, Users, Shield, Link2, Trash2, Ban, Webhook } from 'lucide-react';
+import { X, Settings, Users, Shield, Link2, Trash2, Ban, Webhook, ScrollText } from 'lucide-react';
 import { useServerStore } from '@/stores/serverStore';
 import { apiClient } from '@/lib/api-client';
 import ServerOverviewTab from './ServerOverviewTab';
@@ -10,13 +10,14 @@ import ServerRolesTab from './ServerRolesTab';
 import ServerInvitesTab from './ServerInvitesTab';
 import ServerBansTab from './ServerBansTab';
 import WebhooksTab from './WebhooksTab';
+import AuditLogsTab from './AuditLogsTab';
 
 interface ServerSettingsModalProps {
   serverId: string;
   onClose: () => void;
 }
 
-type TabType = 'overview' | 'members' | 'roles' | 'invites' | 'webhooks' | 'bans';
+type TabType = 'overview' | 'members' | 'roles' | 'invites' | 'webhooks' | 'audit' | 'bans';
 
 const tabs: { id: TabType; label: string; icon: typeof Settings }[] = [
   { id: 'overview', label: 'Overview', icon: Settings },
@@ -24,6 +25,7 @@ const tabs: { id: TabType; label: string; icon: typeof Settings }[] = [
   { id: 'roles', label: 'Roles', icon: Shield },
   { id: 'invites', label: 'Invites', icon: Link2 },
   { id: 'webhooks', label: 'Webhooks', icon: Webhook },
+  { id: 'audit', label: 'Audit Logs', icon: ScrollText },
   { id: 'bans', label: 'Bans', icon: Ban },
 ];
 
@@ -141,6 +143,9 @@ export default function ServerSettingsModal({ serverId, onClose }: ServerSetting
             )}
             {activeTab === 'webhooks' && (
               <WebhooksTab serverId={serverId} />
+            )}
+            {activeTab === 'audit' && (
+              <AuditLogsTab serverId={serverId} />
             )}
             {activeTab === 'bans' && (
               <ServerBansTab serverId={serverId} />

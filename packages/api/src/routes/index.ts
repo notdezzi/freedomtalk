@@ -19,6 +19,7 @@ import searchRoutes from './search';
 import discoveryRoutes from './discovery';
 import friendRoutes from './friends';
 import webhookRoutes from './webhooks.routes';
+import auditLogRoutes from './audit-logs.routes';
 
 export default async function routes(app: FastifyInstance) {
   // API v1 routes
@@ -64,6 +65,9 @@ export default async function routes(app: FastifyInstance) {
 
     // Webhook routes: /api/v1/servers/:serverId/webhooks/* and /api/v1/webhooks/*
     await v1.register(webhookRoutes);
+
+    // Audit log routes: /api/v1/servers/:serverId/audit-logs
+    await v1.register(auditLogRoutes);
 
     // WebSocket routes: /api/v1/websocket/*
     await v1.register(websocketRoutes, { prefix: '/websocket' });
