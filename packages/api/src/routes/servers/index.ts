@@ -495,7 +495,7 @@ export default async function serverRoutes(app: FastifyInstance) {
       // Get online member count
       let onlineCount = 0;
       if (invite.server_id) {
-        const { presenceManager } = await import('../services/websocket/presence.manager');
+        const { presenceManager } = await import('../../services/websocket/presence.manager');
         onlineCount = await presenceManager.getServerOnlineCount(invite.server_id);
       }
 

@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { Loader2, Users, Wifi, Hash, User, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useServerStore, Server } from '@/stores/serverStore';
-import { useUIStore } from '@/stores/uiStore';
 import { apiClient } from '@/lib/api-client';
 
 interface InvitePreview {
@@ -39,7 +38,6 @@ export default function InvitePage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const { addServer, setCurrentServer, servers } = useServerStore();
-  const { openModal } = useUIStore();
 
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
@@ -91,8 +89,8 @@ export default function InvitePage() {
 
   const handleJoin = async () => {
     if (!user) {
-      // Not logged in - redirect to login with return URL
-      openModal('login');
+      // Not logged in - redirect to login page with return URL
+      router.push(`/login?redirect=/invite/${code}`);
       return;
     }
 
