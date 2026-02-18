@@ -24,6 +24,7 @@
     "backup:list": "npm run backup:list --workspace=@freedomtalk/scripts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^22.10.5",
     "@typescript-eslint/eslint-plugin": "^8.20.0",
     "@typescript-eslint/parser": "^8.20.0",
@@ -31,6 +32,7 @@
     "eslint-config-next": "^15.1.6",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
+    "playwright": "^1.58.2",
     "prettier": "^3.4.2",
     "typescript": "^5.7.3"
   },
@@ -52,4 +54,3 @@
   "author": "",
   "license": "MIT"
 }
-

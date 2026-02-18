@@ -1,0 +1,156 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Playwright Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg16
+        env:
+          POSTGRES_DB: freedomtalk_test
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup test environment
+        run: |
+          cp packages/api/.env.example packages/api/.env
+          sed -i 's/DATABASE_URL=.*/DATABASE_URL=postgresql:\/\/test:test@localhost:5432\/freedomtalk_test/' packages/api/.env
+          sed -i 's/REDIS_URL=.*/REDIS_URL=redis:\/\/localhost:6379/' packages/api/.env
+
+      - name: Run database migrations
+        run: npm run migrate:latest --workspace=@freedomtalk/api
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/freedomtalk_test
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        if: github.ref != 'refs/heads/main'
+
+      - name: Install Playwright browsers (all)
+        run: npx playwright install --with-deps chromium firefox
+        if: github.ref == 'refs/heads/main'
+
+      - name: Run API tests
+        run: npx playwright test --project=api
+        env:
+          CI: true
+          API_BASE_URL: http://localhost:3001
+          DATABASE_URL: postgresql://test:test@localhost:5432/freedomtalk_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Start API server
+        run: npm run start --workspace=@freedomtalk/api &
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://test:test@localhost:5432/freedomtalk_test
+          REDIS_URL: redis://localhost:6379
+          PORT: 3001
+
+      - name: Start Web server
+        run: npm run start --workspace=@freedomtalk/web &
+        env:
+          NODE_ENV: test
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+          PORT: 3000
+
+      - name: Wait for servers
+        run: |
+          npx wait-on http://localhost:3001/health -t 60000
+          npx wait-on http://localhost:3000 -t 60000
+
+      - name: Run E2E tests (Chromium)
+        run: npx playwright test --project=e2e-chromium
+        env:
+          CI: true
+          E2E_BASE_URL: http://localhost:3000
+          API_BASE_URL: http://localhost:3001
+
+      - name: Run E2E tests (Firefox)
+        run: npx playwright test --project=e2e-firefox
+        if: github.ref == 'refs/heads/main'
+        env:
+          CI: true
+          E2E_BASE_URL: http://localhost:3000
+          API_BASE_URL: http://localhost:3001
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-html-report
+          path: test-results/html/
+          retention-days: 7
+
+      - name: Comment PR with results
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request' && always()
+        with:
+          script: |
+            const fs = require('fs');
+            let report = '## Playwright Test Results\n\n';
+
+            try {
+              const results = JSON.parse(fs.readFileSync('test-results/results.json', 'utf8'));
+              report += `- Total tests: ${results.stats.total}\n`;
+              report += `- Passed: ${results.stats.passed}\n`;
+              report += `- Failed: ${results.stats.failed}\n`;
+              report += `- Skipped: ${results.stats.skipped}\n`;
+            } catch (e) {
+              report += 'Results file not found or invalid.\n';
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });

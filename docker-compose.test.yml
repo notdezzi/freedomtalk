@@ -1,0 +1,67 @@
+# Docker Compose for Test Environment
+# Use with: docker compose -f docker-compose.test.yml up -d
+
+services:
+  test-db:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_DB: freedomtalk_test
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d freedomtalk_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  test-redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API server for testing
+  test-api:
+    build:
+      context: ./packages/api
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3001"
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://test:test@test-db:5432/freedomtalk_test
+      REDIS_URL: redis://test-redis:6379
+      PORT: 3001
+    depends_on:
+      test-db:
+        condition: service_healthy
+      test-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Web server for testing
+  test-web:
+    build:
+      context: ./packages/web
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3000"
+    environment:
+      NODE_ENV: test
+      NEXT_PUBLIC_API_URL: http://localhost:3002
+    depends_on:
+      test-api:
+        condition: service_healthy
