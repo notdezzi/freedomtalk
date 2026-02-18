@@ -59,7 +59,7 @@ export default function VoiceChannelUsers({ channelId }: VoiceChannelUsersProps)
   return (
     <div className="py-1">
       {users.map((user) => (
-        <UserItem key={user.sessionId} user={user} />
+        <UserItem key={user.sessionId || user.userId} user={user} />
       ))}
     </div>
   );

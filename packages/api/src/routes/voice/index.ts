@@ -24,7 +24,7 @@ const updateStateSchema = z.object({
 });
 
 const moveUserSchema = z.object({
-  targetChannelId: z.string().length(20),
+  targetChannelId: z.string().min(18).max(20),
 });
 
 // Permission check helper
@@ -173,23 +173,28 @@ export default async function voiceRoutes(app: FastifyInstance) {
       },
     },
     async (request: FastifyRequest<{ Params: { channelId: string } }>, reply: FastifyReply) => {
-      const { channelId } = request.params;
-      const userId = request.user!.id;
+      try {
+        const { channelId } = request.params;
+        const userId = request.user!.id;
 
-      // Get channel to check server membership
-      const channel = await channelService.getChannel(channelId);
-      if (!channel) {
-        return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Channel not found' } });
+        // Get channel to check server membership
+        const channel = await channelService.getChannel(channelId);
+        if (!channel) {
+          return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Channel not found' } });
+        }
+
+        // Check if member
+        const isMember = await serverService.isMember(channel.server_id, userId);
+        if (!isMember) {
+          return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'Not a member of this server' } });
+        }
+
+        const states = await voiceStateService.getChannelVoiceStates(channelId);
+        return reply.send(successResponse({ users: states }));
+      } catch (error) {
+        request.log.error(error);
+        return reply.code(500).send({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to get voice channel users' } });
       }
-
-      // Check if member
-      const isMember = await serverService.isMember(channel.server_id, userId);
-      if (!isMember) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'Not a member of this server' } });
-      }
-
-      const states = await voiceStateService.getChannelVoiceStates(channelId);
-      return reply.send(successResponse(states));
     }
   );
 

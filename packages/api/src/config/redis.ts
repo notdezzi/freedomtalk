@@ -49,17 +49,17 @@ redisClient.on('reconnecting', () => {
 
 // Connect to Redis
 export const connectRedis = async (): Promise<void> => {
-  console.log('[DEBUG] connectRedis() called:', {
-    isOpen: redisClient.isOpen,
-    isReady: redisClient.isReady,
-    timestamp: new Date().toISOString()
-  });
+  //console.log('[DEBUG] connectRedis() called:', {
+  //  isOpen: redisClient.isOpen,
+  //  isReady: redisClient.isReady,
+  //  timestamp: new Date().toISOString()
+  //});
 
   if (!redisClient.isOpen) {
     await redisClient.connect();
     console.log('[DEBUG] Redis client connected successfully');
   } else {
-    console.log('[DEBUG] Redis client already open, skipping connect');
+   // console.log('[DEBUG] Redis client already open, skipping connect');
   }
 };
 
@@ -91,15 +91,15 @@ export const getRedisClient = async (): Promise<RedisClientType> => {
     await redisClient.connect();
     console.log('[DEBUG] Redis client connected successfully');
   } else {
-    console.log('[DEBUG] Redis client already open, skipping connect');
+    //console.log('[DEBUG] Redis client already open, skipping connect');
   }
   // Debug logging to track Redis client state
-  console.log('[DEBUG] getRedisClient() called:', {
-    isOpen: redisClient.isOpen,
-    isReady: redisClient.isReady,
-    clientId: (redisClient as any)._socket?.remoteAddress || 'no-socket',
-    timestamp: new Date().toISOString()
-  });
+  //console.log('[DEBUG] getRedisClient() called:', {
+  //  isOpen: redisClient.isOpen,
+  //  isReady: redisClient.isReady,
+  //  clientId: (redisClient as any)._socket?.remoteAddress || 'no-socket',
+  //  timestamp: new Date().toISOString()
+  //});
 
   if (!redisClient.isOpen) {
     console.error('[ERROR] Redis client is NOT open when getRedisClient() was called');

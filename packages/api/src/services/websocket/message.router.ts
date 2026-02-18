@@ -12,6 +12,7 @@ interface Message {
   content: string;
   authorId: string;
   channelId: string | null;
+  dmChannelId?: string | null;
   createdAt: string;
   updatedAt: string;
   isEdited: boolean;
@@ -48,12 +49,14 @@ class MessageRouter {
       // Determine message type and route accordingly
       if (message.channelId) {
         await this.routeChannelMessage(message);
-      } else {
-        // DM messages (channelId is null)
+      } else if (message.dmChannelId) {
+        // DM messages (channelId is null, dmChannelId has the DM channel ID)
         await this.routeDM(message);
+      } else {
+        logger.warn({ messageId: message.id }, 'Message has no channelId or dmChannelId');
       }
 
-      logger.debug({ messageId: message.id, channelId: message.channelId }, 'Message routed');
+      logger.debug({ messageId: message.id, channelId: message.channelId, dmChannelId: message.dmChannelId }, 'Message routed');
     } catch (error) {
       logger.error({ error, messageId: message.id }, 'Error routing message');
       throw error;
@@ -148,24 +151,24 @@ class MessageRouter {
    */
   async routeDM(message: Message): Promise<void> {
     try {
-      // For DM messages, channelId contains the DM channel ID
+      // For DM messages, dmChannelId contains the DM channel ID
       // We need to query the dm_channel_participants table to find all recipients
-      if (!message.channelId) {
-        logger.warn({ messageId: message.id }, 'DM message has no channelId');
+      if (!message.dmChannelId) {
+        logger.warn({ messageId: message.id }, 'DM message has no dmChannelId');
         return;
       }
 
       // Get all active participants in the DM channel
-      const participantIds = await dmChannelService.getParticipantUserIds(message.channelId);
+      const participantIds = await dmChannelService.getParticipantUserIds(message.dmChannelId);
 
       if (participantIds.length === 0) {
-        logger.warn({ messageId: message.id, dmChannelId: message.channelId }, 'No active participants found for DM');
+        logger.warn({ messageId: message.id, dmChannelId: message.dmChannelId }, 'No active participants found for DM');
         return;
       }
 
       logger.info({
         messageId: message.id,
-        dmChannelId: message.channelId,
+        dmChannelId: message.dmChannelId,
         participantCount: participantIds.length,
       }, 'Routing DM message to participants');
 
@@ -178,7 +181,7 @@ class MessageRouter {
 
       logger.debug({
         messageId: message.id,
-        dmChannelId: message.channelId,
+        dmChannelId: message.dmChannelId,
         participants: participantIds,
       }, 'DM message routed successfully');
     } catch (error) {

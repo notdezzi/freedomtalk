@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { apiClient, type DMChannelResponse } from '@/lib/api-client';
+import { useAuthStore } from './authStore';
 
 export interface DMChannel {
   id: string;
@@ -52,11 +53,11 @@ function mapDMChannelResponse(response: DMChannelResponse): DMChannel {
     name: response.name,
     iconUrl: response.iconUrl,
     ownerId: response.ownerId,
-    recipients: response.recipients.map((r) => ({
+    recipients: (response.recipients || []).map((r) => ({
       id: r.id,
-      username: r.username,
-      displayName: r.displayName,
-      avatar: r.avatar,
+      username: r.username || 'Unknown User',
+      displayName: r.displayName || undefined,
+      avatar: r.avatar || undefined,
     })),
     lastMessageId: response.lastMessageId,
     lastMessageAt: response.lastMessageAt,
@@ -128,9 +129,21 @@ export const useDMStore = create<DMState>()(
         }
 
         // For DMs, show the other user's name
-        const currentUserId = localStorage.getItem('freedomtalk_user_id');
-        const otherRecipient = channel.recipients.find((r) => r.id !== currentUserId);
-        return otherRecipient?.displayName || otherRecipient?.username || 'Unknown User';
+        // Get current user ID from auth store
+        const currentUserId = useAuthStore.getState().user?.id;
+
+        // If we have recipients, find the other one
+        if (channel.recipients && channel.recipients.length > 0) {
+          const otherRecipient = currentUserId
+            ? channel.recipients.find((r) => r.id !== currentUserId)
+            : channel.recipients[0];
+
+          if (otherRecipient) {
+            return otherRecipient.displayName || otherRecipient.username || 'Unknown User';
+          }
+        }
+
+        return 'Unknown User';
       },
 
       getChannelIcon: (channel) => {
@@ -139,9 +152,18 @@ export const useDMStore = create<DMState>()(
         }
 
         // For DMs, show the other user's avatar
-        const currentUserId = localStorage.getItem('freedomtalk_user_id');
-        const otherRecipient = channel.recipients.find((r) => r.id !== currentUserId);
-        return otherRecipient?.avatar;
+        // Get current user ID from auth store
+        const currentUserId = useAuthStore.getState().user?.id;
+
+        if (channel.recipients && channel.recipients.length > 0) {
+          const otherRecipient = currentUserId
+            ? channel.recipients.find((r) => r.id !== currentUserId)
+            : channel.recipients[0];
+
+          return otherRecipient?.avatar;
+        }
+
+        return undefined;
       },
 
       clearError: () => set({ error: null }),

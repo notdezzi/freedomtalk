@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { MessageSquarePlus, Users, AtSign, Search, X } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useDMStore } from '@/stores/dmStore';
+import { useFriendStore } from '@/stores/friendStore';
 import { useAuth } from '@/hooks/useAuth';
 import CreateDMModal from './CreateDMModal';
 
@@ -12,17 +13,26 @@ export default function DMSidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
   const { channels, currentChannelId, fetchChannels, setCurrentChannel, getChannelName, getChannelIcon } = useDMStore();
+  const friendStore = useFriendStore();
+  const incomingRequests = friendStore?.incomingRequests ?? [];
+  const fetchPendingRequests = friendStore?.fetchPendingRequests;
   const [showCreateDM, setShowCreateDM] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (user) {
       fetchChannels();
+      if (fetchPendingRequests) {
+        fetchPendingRequests();
+      }
     }
-  }, [user, fetchChannels]);
+  }, [user, fetchChannels, fetchPendingRequests]);
 
   const handleChannelClick = (channelId: string) => {
     setCurrentChannel(channelId);
+    // Clear server selection when navigating to DMs
+    const { setCurrentServer } = require('@/stores/serverStore').useServerStore.getState();
+    setCurrentServer(null);
     router.push(`/app/dms/${channelId}`);
   };
 
@@ -33,9 +43,9 @@ export default function DMSidebar() {
   });
 
   return (
-    <div className="w-60 bg-background-elevated flex flex-col h-full border-r border-border">
+    <>
       {/* Header */}
-      <div className="p-3 flex items-center justify-between border-b border-border">
+      <div className="p-3 flex items-center justify-between border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2">
           <AtSign className="w-5 h-5 text-foreground-muted" />
           <span className="font-semibold">Direct Messages</span>
@@ -50,7 +60,7 @@ export default function DMSidebar() {
       </div>
 
       {/* Search */}
-      <div className="p-2">
+      <div className="p-2 flex-shrink-0">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-muted" />
           <input
@@ -84,6 +94,11 @@ export default function DMSidebar() {
             <Users className="w-4 h-4 text-accent" />
           </div>
           <span className="text-sm font-medium">Friends</span>
+          {incomingRequests.length > 0 && (
+            <span className="ml-auto w-5 h-5 rounded-full bg-accent text-background text-xs flex items-center justify-center">
+              {incomingRequests.length > 9 ? '9+' : incomingRequests.length}
+            </span>
+          )}
         </button>
 
         <div className="mt-2">
@@ -162,6 +177,6 @@ export default function DMSidebar() {
       {showCreateDM && (
         <CreateDMModal onClose={() => setShowCreateDM(false)} />
       )}
-    </div>
+    </>
   );
 }

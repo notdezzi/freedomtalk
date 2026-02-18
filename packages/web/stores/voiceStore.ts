@@ -127,13 +127,40 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
       };
     }),
 
-  setSelfMute: (mute) => set({ selfMute: mute }),
+  setSelfMute: (mute) => {
+    set({ selfMute: mute });
+    // Also update the user in the channel states
+    const state = get();
+    if (state.currentChannelId && state.sessionId) {
+      state.updateUser(state.currentChannelId, state.sessionId, { selfMute: mute });
+    }
+  },
   setSelfDeaf: (deaf) => {
     // When deafened, also mute
-    set({ selfDeaf: deaf, selfMute: deaf ? true : get().selfMute });
+    const newMute = deaf ? true : get().selfMute;
+    set({ selfDeaf: deaf, selfMute: newMute });
+    // Also update the user in the channel states
+    const state = get();
+    if (state.currentChannelId && state.sessionId) {
+      state.updateUser(state.currentChannelId, state.sessionId, { selfDeaf: deaf, selfMute: newMute });
+    }
   },
-  setSelfVideo: (video) => set({ selfVideo: video }),
-  setSelfStream: (stream) => set({ selfStream: stream }),
+  setSelfVideo: (video) => {
+    set({ selfVideo: video });
+    // Also update the user in the channel states
+    const state = get();
+    if (state.currentChannelId && state.sessionId) {
+      state.updateUser(state.currentChannelId, state.sessionId, { selfVideo: video });
+    }
+  },
+  setSelfStream: (stream) => {
+    set({ selfStream: stream });
+    // Also update the user in the channel states
+    const state = get();
+    if (state.currentChannelId && state.sessionId) {
+      state.updateUser(state.currentChannelId, state.sessionId, { selfStream: stream });
+    }
+  },
 
   setUsers: (channelId, users) =>
     set((state) => ({
@@ -177,7 +204,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
     set((state) => {
       const channelUsers = state.channelStates[channelId] || [];
       const newUsers = channelUsers.map((u) =>
-        u.userId === userId ? { ...u, ...updates } : u
+        u.userId === userId || u.sessionId === userId ? { ...u, ...updates } : u
       );
 
       return {

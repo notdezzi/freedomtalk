@@ -141,6 +141,15 @@ class SocketService {
     // Reaction events
     this.socket.on('reaction:added', this.handleReactionAdded.bind(this));
     this.socket.on('reaction:removed', this.handleReactionRemoved.bind(this));
+
+    // Friend events
+    this.socket.on(WS_EVENTS.FRIEND_REQUEST_RECEIVED, this.handleFriendRequestReceived.bind(this));
+    this.socket.on(WS_EVENTS.FRIEND_REQUEST_ACCEPTED, this.handleFriendRequestAccepted.bind(this));
+    this.socket.on(WS_EVENTS.FRIEND_REQUEST_REJECTED, this.handleFriendRequestRejected.bind(this));
+    this.socket.on(WS_EVENTS.FRIEND_REQUEST_CANCELLED, this.handleFriendRequestCancelled.bind(this));
+    this.socket.on(WS_EVENTS.FRIEND_REMOVED, this.handleFriendRemoved.bind(this));
+    this.socket.on(WS_EVENTS.USER_BLOCKED, this.handleUserBlocked.bind(this));
+    this.socket.on(WS_EVENTS.USER_UNBLOCKED, this.handleUserUnblocked.bind(this));
   }
 
   // Connection handlers
@@ -240,7 +249,8 @@ class SocketService {
   private handleMessageCreated(data: unknown): void {
     console.log('[Socket] Message created:', data);
     const message = data as Record<string, unknown>;
-    const channelId = message?.channelId as string | undefined;
+    // For server channels, use channelId; for DMs, use dmChannelId
+    const channelId = (message?.channelId || message?.dmChannelId) as string | undefined;
     if (channelId) {
       // Import the mapper function and use it
       const { useMessageStore } = require('@/stores/messageStore');
@@ -425,6 +435,70 @@ class SocketService {
     }
   }
 
+  // Friend handlers
+  private handleFriendRequestReceived(data: unknown): void {
+    console.log('[Socket] Friend request received:', data);
+    const { useFriendStore } = require('@/stores/friendStore');
+    const { request } = data as { request: any };
+    if (request) {
+      useFriendStore.getState().addIncomingRequest(request);
+    }
+  }
+
+  private handleFriendRequestAccepted(data: unknown): void {
+    console.log('[Socket] Friend request accepted:', data);
+    const { useFriendStore } = require('@/stores/friendStore');
+    const { friend } = data as { friend: any };
+    if (friend) {
+      useFriendStore.getState().addFriend(friend);
+    }
+  }
+
+  private handleFriendRequestRejected(data: unknown): void {
+    console.log('[Socket] Friend request rejected:', data);
+    const { useFriendStore } = require('@/stores/friendStore');
+    const { userId } = data as { userId: string };
+    if (userId) {
+      useFriendStore.getState().removeOutgoingRequest(userId);
+    }
+  }
+
+  private handleFriendRequestCancelled(data: unknown): void {
+    console.log('[Socket] Friend request cancelled:', data);
+    const { useFriendStore } = require('@/stores/friendStore');
+    const { userId } = data as { userId: string };
+    if (userId) {
+      useFriendStore.getState().removeIncomingRequest(userId);
+    }
+  }
+
+  private handleFriendRemoved(data: unknown): void {
+    console.log('[Socket] Friend removed:', data);
+    const { useFriendStore } = require('@/stores/friendStore');
+    const { friendId } = data as { friendId: string };
+    if (friendId) {
+      useFriendStore.getState().removeFriendFromList(friendId);
+    }
+  }
+
+  private handleUserBlocked(data: unknown): void {
+    console.log('[Socket] User blocked:', data);
+    const { useFriendStore } = require('@/stores/friendStore');
+    const { user } = data as { user: any };
+    if (user) {
+      useFriendStore.getState().addBlockedUser(user);
+    }
+  }
+
+  private handleUserUnblocked(data: unknown): void {
+    console.log('[Socket] User unblocked:', data);
+    const { useFriendStore } = require('@/stores/friendStore');
+    const { userId } = data as { userId: string };
+    if (userId) {
+      useFriendStore.getState().removeBlockedUserFromList(userId);
+    }
+  }
+
   // Queue processing
   private processQueue(): void {
     const queuedMessages = useWebSocketStore.getState().processQueue();
@@ -469,14 +543,16 @@ class SocketService {
   }
 
   /**
-   * Send a message
+   * Send a message to a channel (server or DM)
+   * @param channelId - The channel ID (server channel or DM channel)
+   * @param content - The message content
+   * @param referencedMessageId - Optional ID of message being replied to
+   * @param isDM - Whether this is a DM channel (default: false)
    */
-  sendMessage(channelId: string, content: string, referencedMessageId?: string): void {
-    const data = {
-      channelId,
-      content,
-      referencedMessageId,
-    };
+  sendMessage(channelId: string, content: string, referencedMessageId?: string, isDM?: boolean): void {
+    const data = isDM
+      ? { dmChannelId: channelId, content, referencedMessageId }
+      : { channelId, content, referencedMessageId };
 
     if (this.socket?.connected) {
       this.socket.emit(WS_EVENTS.MESSAGE_CREATE, data);

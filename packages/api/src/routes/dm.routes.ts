@@ -14,8 +14,8 @@ import { logger } from '../config/logger';
 
 // Validation schemas
 const createDMSchema = z.object({
-  recipient_id: z.string().length(20).optional(),
-  recipients: z.array(z.string().length(20)).min(1).max(9).optional(),
+  recipient_id: z.string().min(18).max(20).optional(),
+  recipients: z.array(z.string().min(18).max(20)).min(1).max(9).optional(),
   name: z.string().min(1).max(100).optional(),
   icon_url: z.string().url().max(500).optional(),
 }).refine(
@@ -34,8 +34,8 @@ const paginationSchema = z.object({
 });
 
 const messagePaginationSchema = z.object({
-  before: z.string().length(20).optional(),
-  after: z.string().length(20).optional(),
+  before: z.string().min(18).max(20).optional(),
+  after: z.string().min(18).max(20).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
@@ -84,7 +84,7 @@ export default async function dmRoutes(app: FastifyInstance) {
       // Single DM (recipient_id)
       if (body.recipient_id && !body.recipients) {
         const dmChannel = await dmChannelService.createDM(userId, body.recipient_id);
-        return reply.status(200).send(toDMChannelResponse(dmChannel, dmChannel.participants));
+        return reply.status(200).send(await toDMChannelResponse(dmChannel, dmChannel.participants));
       }
 
       // Group DM (recipients array)
@@ -95,7 +95,7 @@ export default async function dmRoutes(app: FastifyInstance) {
           body.name,
           body.icon_url
         );
-        return reply.status(200).send(toDMChannelResponse(groupDM, groupDM.participants));
+        return reply.status(200).send(await toDMChannelResponse(groupDM, groupDM.participants));
       }
 
       return reply.status(400).send({ error: 'Invalid request: provide recipient_id or recipients' });
@@ -123,8 +123,8 @@ export default async function dmRoutes(app: FastifyInstance) {
     try {
       const result = await dmChannelService.getDMsByUser(userId, limit, offset);
 
-      const dmChannels = result.dmChannels.map((dm) =>
-        toDMChannelResponse(dm, dm.participants)
+      const dmChannels = await Promise.all(
+        result.dmChannels.map((dm) => toDMChannelResponse(dm, dm.participants))
       );
 
       return reply.status(200).send({
@@ -157,7 +157,7 @@ export default async function dmRoutes(app: FastifyInstance) {
         return reply.status(403).send({ error: 'You are not a participant in this DM' });
       }
 
-      return reply.status(200).send(toDMChannelResponse(dmChannel, dmChannel.participants));
+      return reply.status(200).send(await toDMChannelResponse(dmChannel, dmChannel.participants));
     } catch (error: unknown) {
       const err = error as Error;
       logger.error({ error, channelId, userId }, 'Error fetching DM channel');
@@ -184,7 +184,7 @@ export default async function dmRoutes(app: FastifyInstance) {
 
     try {
       const dmChannel = await dmChannelService.updateGroupDM(channelId, updates, userId);
-      return reply.status(200).send(toDMChannelResponse(dmChannel, dmChannel.participants));
+      return reply.status(200).send(await toDMChannelResponse(dmChannel, dmChannel.participants));
     } catch (error: unknown) {
       const err = error as Error;
       logger.error({ error, channelId, userId }, 'Error updating group DM');
@@ -234,7 +234,7 @@ export default async function dmRoutes(app: FastifyInstance) {
 
     try {
       const dmChannel = await dmChannelService.addParticipant(channelId, userId, requesterId);
-      return reply.status(200).send(toDMChannelResponse(dmChannel, dmChannel.participants));
+      return reply.status(200).send(await toDMChannelResponse(dmChannel, dmChannel.participants));
     } catch (error: unknown) {
       const err = error as Error;
       logger.error({ error, channelId, userId, requesterId }, 'Error adding participant');
@@ -262,7 +262,7 @@ export default async function dmRoutes(app: FastifyInstance) {
 
     try {
       const dmChannel = await dmChannelService.removeParticipant(channelId, userId, requesterId);
-      return reply.status(200).send(toDMChannelResponse(dmChannel, dmChannel.participants));
+      return reply.status(200).send(await toDMChannelResponse(dmChannel, dmChannel.participants));
     } catch (error: unknown) {
       const err = error as Error;
       logger.error({ error, channelId, userId, requesterId }, 'Error removing participant');
@@ -294,11 +294,11 @@ export default async function dmRoutes(app: FastifyInstance) {
         return reply.status(403).send({ error: 'You are not a participant in this DM' });
       }
 
-      // Create message with DM channel ID stored in metadata
+      // Create message with DM channel ID
       const message = await messageService.createMessage({
         content,
         authorId: userId,
-        channelId,
+        dmChannelId: channelId,
         embeds,
       });
 
@@ -346,7 +346,7 @@ export default async function dmRoutes(app: FastifyInstance) {
       // Get messages for this DM channel
       const result = await messageService.getMessages(
         { before, after, limit },
-        { channelId }
+        { dmChannelId: channelId }
       );
 
       const messages = result.messages.map((msg) => ({

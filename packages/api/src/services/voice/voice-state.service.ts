@@ -189,11 +189,24 @@ class VoiceStateService {
       .where({ channel_id: channelId })
       .orderBy('joined_at', 'asc');
 
-    // Get user info for each state
+    // If no states, return empty array
+    if (states.length === 0) {
+      return [];
+    }
+
+    // Get user info for each state (join with user_profiles for avatar)
     const userIds = states.map(s => s.user_id);
-    const users = await db('users')
-      .whereIn('id', userIds)
-      .select('id', 'username', 'avatar');
+    const users = userIds.length > 0
+      ? await db('users')
+          .leftJoin('user_profiles', 'users.id', 'user_profiles.user_id')
+          .whereIn('users.id', userIds)
+          .select(
+            'users.id',
+            'users.username',
+            'user_profiles.avatar_url as avatar',
+            'user_profiles.display_name'
+          )
+      : [];
 
     const userMap = new Map(users.map(u => [u.id, u]));
 
@@ -203,6 +216,7 @@ class VoiceStateService {
         id: state.user_id,
         username: userMap.get(state.user_id)!.username,
         avatar: userMap.get(state.user_id)!.avatar,
+        displayName: userMap.get(state.user_id)!.display_name,
       } : undefined,
     }));
   }

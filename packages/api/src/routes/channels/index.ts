@@ -18,7 +18,7 @@ import { VALIDATION, PERMISSION_FLAGS, Permissions } from '@freedomtalk/shared';
 const createChannelSchema = z.object({
   name: z.string().min(VALIDATION.CHANNEL_NAME.MIN_LENGTH).max(VALIDATION.CHANNEL_NAME.MAX_LENGTH),
   type: z.enum(['text', 'voice', 'announcement']),
-  categoryId: z.string().length(20).optional(),
+  categoryId: z.string().min(18).max(20).optional(),
   topic: z.string().max(VALIDATION.CHANNEL_TOPIC.MAX_LENGTH).optional(),
   position: z.number().int().min(0).optional(),
   nsfw: z.boolean().optional(),
@@ -42,9 +42,9 @@ const updateCategorySchema = z.object({
 
 const channelPositionsSchema = z.object({
   positions: z.array(z.object({
-    id: z.string().length(20),
+    id: z.string().min(18).max(20),
     position: z.number().int().min(0),
-    categoryId: z.string().length(20).nullable().optional(),
+    categoryId: z.string().min(18).max(20).nullable().optional(),
   })),
 });
 

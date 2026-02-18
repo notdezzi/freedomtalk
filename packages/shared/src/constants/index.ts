@@ -108,6 +108,16 @@ export const WS_EVENTS = {
   // Invite Events
   INVITE_CREATE: 'invite:create',
   INVITE_DELETE: 'invite:delete',
+
+  // Friend Events
+  FRIEND_REQUEST_RECEIVED: 'friend_request:received',
+  FRIEND_REQUEST_ACCEPTED: 'friend_request:accepted',
+  FRIEND_REQUEST_REJECTED: 'friend_request:rejected',
+  FRIEND_REQUEST_CANCELLED: 'friend_request:cancelled',
+  FRIEND_REMOVED: 'friend:removed',
+  USER_BLOCKED: 'user:blocked',
+  USER_UNBLOCKED: 'user:unblocked',
+  FRIEND_PRESENCE_UPDATE: 'friend_presence:update',
 } as const;
 
 /**

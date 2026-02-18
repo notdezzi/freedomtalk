@@ -146,13 +146,13 @@ export default function ServerSidebar() {
 
   const handleServerClick = useCallback(
     (server: Server) => {
-      if (currentServerId !== server.id) {
-        setCurrentServer(server.id);
-        clearServerUnread(server.id);
-        router.push(`/app/servers/${server.id}`);
-      }
+      // Always allow navigation - the condition was preventing navigation
+      // when clicking on the same server while on DMs page
+      setCurrentServer(server.id);
+      clearServerUnread(server.id);
+      router.push(`/app/servers/${server.id}`);
     },
-    [currentServerId, setCurrentServer, clearServerUnread, router]
+    [setCurrentServer, clearServerUnread, router]
   );
 
   const handleHomeClick = useCallback(() => {

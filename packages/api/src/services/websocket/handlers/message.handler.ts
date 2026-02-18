@@ -10,8 +10,11 @@ import { messageRouter } from '../message.router';
  */
 const messageCreateSchema = z.object({
   content: z.string().min(1).max(2000),
-  channelId: z.string().min(1),
+  channelId: z.string().min(1).optional(),
+  dmChannelId: z.string().min(1).optional(),
   embeds: z.array(z.any()).max(VALIDATION.EMBED.MAX_PER_MESSAGE).optional(),
+}).refine(data => data.channelId || data.dmChannelId, {
+  message: 'Either channelId or dmChannelId is required',
 });
 
 /**
@@ -57,7 +60,7 @@ export async function handleMessageCreate(socket: Socket, data: unknown): Promis
       return;
     }
 
-    const { content, channelId, embeds } = validation.data;
+    const { content, channelId, dmChannelId, embeds } = validation.data;
 
     // Create message
     // Note: We don't check subscription here because messages are broadcast
@@ -66,6 +69,7 @@ export async function handleMessageCreate(socket: Socket, data: unknown): Promis
       content,
       authorId: user.id,
       channelId,
+      dmChannelId,
       embeds,
     });
 
@@ -75,6 +79,7 @@ export async function handleMessageCreate(socket: Socket, data: unknown): Promis
       content: message.content,
       authorId: message.author_id,
       channelId: message.channel_id,
+      dmChannelId: message.dm_channel_id,
       createdAt: message.created_at.toISOString(),
       updatedAt: message.updated_at.toISOString(),
       isEdited: message.is_edited,
@@ -98,7 +103,7 @@ export async function handleMessageCreate(socket: Socket, data: unknown): Promis
       timestamp: new Date().toISOString(),
     });
 
-    logger.info({ userId: user.id, messageId: message.id, channelId }, 'Message created via WebSocket');
+    logger.info({ userId: user.id, messageId: message.id, channelId: channelId || dmChannelId }, 'Message created via WebSocket');
   } catch (error) {
     logger.error({ error, socketId: socket.id }, 'Error handling message create');
     socket.emit(WS_EVENTS.ERROR, {

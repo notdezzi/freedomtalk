@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDMStore } from '@/stores/dmStore';
 import { useMessageStore } from '@/stores/messageStore';
@@ -15,9 +15,12 @@ export default function DMChannelPage() {
   const channelId = params.channelId as string;
   const { user } = useAuth();
   const { channels, getChannel, getChannelName, getChannelIcon, fetchChannels, setCurrentChannel } = useDMStore();
-  const { fetchMessages, loading } = useMessageStore();
+  const { fetchMessages, loading, messages } = useMessageStore();
   const { isConnected, sendMessage, joinChannel, leaveChannel } = useSocket();
   const [loadingChannel, setLoadingChannel] = useState(true);
+
+  // Use ref to track fetched channels to prevent duplicate requests
+  const fetchedMessagesRef = useRef<Set<string>>(new Set());
 
   const channel = getChannel(channelId);
 
@@ -33,11 +36,19 @@ export default function DMChannelPage() {
     loadChannel();
   }, [channelId, channels.length, fetchChannels, setCurrentChannel]);
 
+  // Fetch messages when channel is loaded (only once per channel)
   useEffect(() => {
-    if (channel && !loading[channelId]) {
+    // Skip if already fetched, currently loading, or messages already exist
+    if (
+      channel &&
+      !loading[channelId] &&
+      !fetchedMessagesRef.current.has(channelId) &&
+      !messages[channelId]
+    ) {
+      fetchedMessagesRef.current.add(channelId);
       fetchMessages(channelId);
     }
-  }, [channel, channelId, loading, fetchMessages]);
+  }, [channel, channelId, loading, messages, fetchMessages]);
 
   // Join/leave room for real-time updates
   useEffect(() => {
@@ -175,7 +186,7 @@ export default function DMChannelPage() {
       <MessageList channelId={channelId} />
 
       {/* Input */}
-      <MessageInput channelId={channelId} />
+      <MessageInput channelId={channelId} isDM />
     </div>
   );
 }

@@ -26,6 +26,7 @@ export interface Message {
   content: string;
   author_id: string;
   channel_id: string | null;
+  dm_channel_id: string | null;
   is_edited: boolean;
   edited_at: Date | null;
   is_deleted: boolean;
@@ -80,6 +81,7 @@ export interface PaginationCursor {
 export interface MessageFilter {
   authorId?: string;
   channelId?: string;
+  dmChannelId?: string;
   isPinned?: boolean;
   search?: string; // Search in message content
   startDate?: Date;
@@ -134,6 +136,7 @@ class MessageService {
     content: string;
     authorId: string;
     channelId?: string;
+    dmChannelId?: string;
     serverId?: string;
     embeds?: EmbedData[];
   }): Promise<MessageWithEmbeds> {
@@ -182,6 +185,7 @@ class MessageService {
           content: data.content,
           author_id: data.authorId,
           channel_id: data.channelId || null,
+          dm_channel_id: data.dmChannelId || null,
           is_edited: false,
           edited_at: null,
           is_deleted: false,
@@ -354,6 +358,10 @@ class MessageService {
         query = query.where({ channel_id: filter.channelId });
       }
 
+      if (filter.dmChannelId) {
+        query = query.where({ dm_channel_id: filter.dmChannelId });
+      }
+
       if (filter.isPinned !== undefined) {
         query = query.where({ is_pinned: filter.isPinned });
       }
@@ -405,6 +413,7 @@ class MessageService {
         content: msg.content,
         author_id: msg.author_id,
         channel_id: msg.channel_id,
+        dm_channel_id: msg.dm_channel_id,
         is_edited: msg.is_edited,
         edited_at: msg.edited_at,
         is_deleted: msg.is_deleted,

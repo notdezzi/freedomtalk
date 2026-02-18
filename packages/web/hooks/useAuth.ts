@@ -1,7 +1,11 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, User } from '@/stores/authStore';
 import { apiClient, getStoredRefreshToken, setStoredRefreshToken } from '@/lib/api-client';
+
+// Global promise to deduplicate session checks across all hook instances
+let sessionCheckPromise: Promise<void> | null = null;
+let isSessionChecked = false;
 
 export function useAuth() {
   const router = useRouter();
@@ -21,8 +25,15 @@ export function useAuth() {
     updateProfile: storeUpdateProfile,
   } = useAuthStore();
 
-  // Check session on mount
+  // Ref to track if this component instance has triggered a session check
+  const hasTriggeredCheck = useRef(false);
+
+  // Check session on mount - with deduplication to prevent multiple simultaneous requests
   useEffect(() => {
+    // Skip if we've already triggered a check from this instance
+    if (hasTriggeredCheck.current) return;
+    hasTriggeredCheck.current = true;
+
     const checkSession = async () => {
       const token = apiClient.getAccessToken();
 
@@ -31,68 +42,102 @@ export function useAuth() {
         return;
       }
 
-      try {
-        const response = await apiClient.getSession();
+      // If a session check is already in progress, wait for it
+      if (sessionCheckPromise) {
+        await sessionCheckPromise;
+        return;
+      }
 
-        if (response.success && response.data?.user) {
-          const userData = response.data.user;
-          const user: User = {
-            id: userData.id,
-            username: userData.username,
-            email: userData.email,
-            avatar: userData.avatar,
-            displayName: userData.displayName,
-            isVerified: userData.emailVerified,
-            has2FA: userData.mfaEnabled,
-            createdAt: new Date().toISOString(),
-          };
-          setUser(user);
+      // If session was already successfully checked, don't check again
+      if (isSessionChecked) {
+        setLoading(false);
+        return;
+      }
 
-          // Set onboarding status from API
-          if (userData.onboardingComplete !== undefined) {
-            setOnboardingComplete(userData.onboardingComplete);
-          }
-        } else {
-          // Token is invalid, try to refresh
-          const refreshResponse = await apiClient.refreshTokens();
+      // Create a new session check promise
+      sessionCheckPromise = (async () => {
+        try {
+          const response = await apiClient.getSession();
 
-          if (refreshResponse.success) {
-            // Retry getting session with new token
-            const retryResponse = await apiClient.getSession();
-            if (retryResponse.success && retryResponse.data?.user) {
-              const userData = retryResponse.data.user;
-              const user: User = {
-                id: userData.id,
-                username: userData.username,
-                email: userData.email,
-                avatar: userData.avatar,
-                displayName: userData.displayName,
-                isVerified: userData.emailVerified,
-                has2FA: userData.mfaEnabled,
-                createdAt: new Date().toISOString(),
-              };
-              setUser(user);
+          if (response.success && response.data?.user) {
+            const userData = response.data.user;
+            const user: User = {
+              id: userData.id,
+              username: userData.username,
+              email: userData.email,
+              avatar: userData.avatar,
+              displayName: userData.displayName,
+              isVerified: userData.emailVerified,
+              has2FA: userData.mfaEnabled,
+              createdAt: new Date().toISOString(),
+            };
+            setUser(user);
+            isSessionChecked = true;
 
-              // Set onboarding status from API
-              if (userData.onboardingComplete !== undefined) {
-                setOnboardingComplete(userData.onboardingComplete);
-              }
-            } else {
-              setUser(null);
+            // Set onboarding status from API
+            if (userData.onboardingComplete !== undefined) {
+              setOnboardingComplete(userData.onboardingComplete);
             }
           } else {
-            setUser(null);
+            // Token is invalid, try to refresh
+            const refreshResponse = await apiClient.refreshTokens();
+
+            if (refreshResponse.success) {
+              // Retry getting session with new token
+              const retryResponse = await apiClient.getSession();
+              if (retryResponse.success && retryResponse.data?.user) {
+                const userData = retryResponse.data.user;
+                const user: User = {
+                  id: userData.id,
+                  username: userData.username,
+                  email: userData.email,
+                  avatar: userData.avatar,
+                  displayName: userData.displayName,
+                  isVerified: userData.emailVerified,
+                  has2FA: userData.mfaEnabled,
+                  createdAt: new Date().toISOString(),
+                };
+                setUser(user);
+                isSessionChecked = true;
+
+                // Set onboarding status from API
+                if (userData.onboardingComplete !== undefined) {
+                  setOnboardingComplete(userData.onboardingComplete);
+                }
+              } else {
+                // Refresh succeeded but session still invalid - clear user
+                setUser(null);
+                // Mark as checked to prevent retry loops
+                isSessionChecked = true;
+              }
+            } else {
+              // Refresh failed - clear user and mark as checked
+              setUser(null);
+              // Mark as checked to prevent retry loops
+              isSessionChecked = true;
+            }
           }
+        } catch (error) {
+          console.error('Session check failed:', error);
+          setUser(null);
+          // Mark as checked to prevent retry loops even on error
+          isSessionChecked = true;
+        } finally {
+          setLoading(false);
+          sessionCheckPromise = null;
         }
-      } catch (error) {
-        console.error('Session check failed:', error);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
+      })();
+
+      await sessionCheckPromise;
     };
 
     checkSession();
+
+    // Cleanup: reset the trigger ref if component unmounts before check completes
+    return () => {
+      // Don't reset hasTriggeredCheck here - we want to prevent re-checks
+      // even if the component remounts (React Strict Mode)
+    };
   }, [setUser, setLoading, setOnboardingComplete]);
 
   const loginWithEmail = useCallback(async (email: string, password: string) => {
@@ -132,6 +177,8 @@ export function useAuth() {
       };
 
       storeLogin(user);
+      // Mark session as checked since we just logged in
+      isSessionChecked = true;
 
       // Redirect based on onboarding status
       if (!isOnboardingComplete) {
@@ -180,6 +227,8 @@ export function useAuth() {
       };
 
       storeLogin(user);
+      // Mark session as checked since we just verified MFA
+      isSessionChecked = true;
 
       // Redirect based on onboarding status
       if (!isOnboardingComplete) {
@@ -236,6 +285,10 @@ export function useAuth() {
     } catch (error) {
       console.error('Logout error:', error);
     }
+
+    // Reset session check state so user can log back in
+    isSessionChecked = false;
+    sessionCheckPromise = null;
 
     storeLogout();
     router.push('/auth/login');

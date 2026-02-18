@@ -2,6 +2,8 @@
  * DM Channel Types
  */
 
+import { db } from '../../config/database';
+
 /**
  * DM Channel type enum
  */
@@ -21,6 +23,16 @@ export interface DMChannel {
 }
 
 /**
+ * Recipient with user profile data
+ */
+export interface DMRecipientResponse {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatar: string | null;
+}
+
+/**
  * DM Channel response for API
  */
 export interface DMChannelResponse {
@@ -29,40 +41,60 @@ export interface DMChannelResponse {
   name: string | null;
   iconUrl: string | null;
   ownerId: string | null;
+  recipients: DMRecipientResponse[];
+  lastMessageId: string | null;
+  lastMessageAt: string | null;
   createdAt: string;
   updatedAt: string;
-  participants: DMChannelParticipantResponse[];
 }
 
 /**
- * DM Channel participant response for API
+ * Convert DM channel to API response format with user profile data
  */
-export interface DMChannelParticipantResponse {
-  id: string;
-  userId: string;
-  joinedAt: string;
-  leftAt: string | null;
-  isActive: boolean;
-}
+export async function toDMChannelResponse(
+  dmChannel: any,
+  participants: any[]
+): Promise<DMChannelResponse> {
+  // Get user IDs from participants
+  const userIds = participants
+    .filter((p) => p.is_active)
+    .map((p) => p.user_id);
 
-/**
- * Convert DM channel to API response format
- */
-export function toDMChannelResponse(dmChannel: any, participants: any[]): DMChannelResponse {
+  // Fetch user profiles for all participants
+  let userProfiles: any[] = [];
+  if (userIds.length > 0) {
+    userProfiles = await db('user_profiles')
+      .join('users', 'user_profiles.user_id', 'users.id')
+      .whereIn('user_profiles.user_id', userIds)
+      .select(
+        'user_profiles.user_id as id',
+        'users.username as username',
+        'user_profiles.display_name as displayName',
+        'user_profiles.avatar_url as avatar'
+      );
+  }
+
+  // Create a map for quick lookup
+  const profileMap = new Map(userProfiles.map((p) => [p.id, p]));
+
   return {
     id: dmChannel.id,
     type: dmChannel.type,
     name: dmChannel.name,
     iconUrl: dmChannel.icon_url,
     ownerId: dmChannel.owner_id,
+    recipients: userIds.map((userId) => {
+      const profile = profileMap.get(userId);
+      return {
+        id: userId,
+        username: profile?.username || 'Unknown User',
+        displayName: profile?.displayName || null,
+        avatar: profile?.avatar || null,
+      };
+    }),
+    lastMessageId: dmChannel.last_message_id || null,
+    lastMessageAt: dmChannel.last_message_at ? dmChannel.last_message_at.toISOString() : null,
     createdAt: dmChannel.created_at.toISOString(),
     updatedAt: dmChannel.updated_at.toISOString(),
-    participants: participants.map((p) => ({
-      id: p.id,
-      userId: p.user_id,
-      joinedAt: p.joined_at.toISOString(),
-      leftAt: p.left_at ? p.left_at.toISOString() : null,
-      isActive: p.is_active,
-    })),
   };
 }

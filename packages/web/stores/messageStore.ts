@@ -205,6 +205,11 @@ export const useMessageStore = create<MessageState>()(
       error: null,
 
       fetchMessages: async (channelId: string, before?: string) => {
+        // Skip fetching for temporary channel IDs
+        if (channelId.startsWith('temp-')) {
+          return;
+        }
+
         set((state) => ({
           loading: { ...state.loading, [channelId]: true },
           error: null

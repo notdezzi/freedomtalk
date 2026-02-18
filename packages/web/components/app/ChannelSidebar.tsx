@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Hash,
@@ -11,29 +11,13 @@ import {
   Plus,
   Settings,
   User,
-  Mic,
-  Headphones,
   FolderPlus,
 } from 'lucide-react';
 import { useServerStore } from '@/stores/serverStore';
 import { useChannelStore, Channel, Category } from '@/stores/channelStore';
-import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/stores/uiStore';
 import { useVoiceStore } from '@/stores/voiceStore';
 import { VoiceChannelUsers, VoiceJoinButton } from '@/components/voice';
-
-function getStatusColor(status: string): string {
-  switch (status) {
-    case 'online':
-      return 'bg-success';
-    case 'idle':
-      return 'bg-warning';
-    case 'dnd':
-      return 'bg-error';
-    default:
-      return 'bg-foreground-subtle';
-  }
-}
 
 function ChannelIcon({ type }: { type: Channel['type'] }) {
   switch (type) {
@@ -228,83 +212,9 @@ function CategorySection({
   );
 }
 
-function UserPanel() {
-  const { user } = useAuth();
-  const { openModal } = useUIStore();
-  const [status] = useState<'online' | 'idle' | 'dnd' | 'offline'>('online');
-  const [isMuted, setIsMuted] = useState(false);
-  const [isDeafened, setIsDeafened] = useState(false);
-
-  if (!user) return null;
-
-  return (
-    <div className="h-[52px] px-2 flex items-center gap-2 bg-background-surface">
-      {/* Avatar */}
-      <div className="relative">
-        <button
-          onClick={() => openModal('user-profile')}
-          className="w-8 h-8 rounded-full bg-gradient-to-br from-accent to-secondary flex items-center justify-center overflow-hidden"
-        >
-          {user.avatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.avatar} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-xs font-bold text-background">
-              {user.username.charAt(0).toUpperCase()}
-            </span>
-          )}
-        </button>
-        {/* Status indicator */}
-        <div
-          className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background-surface ${getStatusColor(
-            status
-          )}`}
-        />
-      </div>
-
-      {/* User info */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{user.username}</p>
-        <p className="text-xs text-foreground-subtle">
-          {status === 'online' ? 'Online' : status}
-        </p>
-      </div>
-
-      {/* Controls */}
-      <div className="flex items-center gap-0.5">
-        <button
-          onClick={() => setIsMuted(!isMuted)}
-          className={`p-1.5 rounded hover:bg-background-elevated transition-colors ${
-            isMuted ? 'text-error' : 'text-foreground-muted hover:text-foreground'
-          }`}
-          aria-label={isMuted ? 'Unmute' : 'Mute'}
-        >
-          <Mic className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => setIsDeafened(!isDeafened)}
-          className={`p-1.5 rounded hover:bg-background-elevated transition-colors ${
-            isDeafened ? 'text-error' : 'text-foreground-muted hover:text-foreground'
-          }`}
-          aria-label={isDeafened ? 'Undeafen' : 'Deafen'}
-        >
-          <Headphones className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => openModal('user-settings')}
-          className="p-1.5 rounded hover:bg-background-elevated text-foreground-muted hover:text-foreground transition-colors"
-          aria-label="User settings"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function ChannelSidebar() {
   const router = useRouter();
-  const { currentServerId, servers, setCurrentServer } = useServerStore();
+  const { currentServerId, servers } = useServerStore();
   const { currentChannelId, setCurrentChannel, clearChannelUnread, getChannelsByServer, loading } =
     useChannelStore();
   const { isChannelSidebarOpen, openModal, openCreateChannelModal, openEditChannelModal, openCreateCategoryModal } = useUIStore();
@@ -344,9 +254,9 @@ export default function ChannelSidebar() {
   // No server selected - show DMs view
   if (!currentServerId) {
     return (
-      <div className="w-60 bg-background-elevated flex flex-col">
+      <>
         {/* Header */}
-        <div className="h-12 px-4 flex items-center border-b border-border shadow-md">
+        <div className="h-12 px-4 flex items-center border-b border-border shadow-md flex-shrink-0">
           <button className="flex items-center gap-2 w-full hover:text-accent transition-colors">
             <span className="font-semibold">Direct Messages</span>
           </button>
@@ -358,16 +268,14 @@ export default function ChannelSidebar() {
             Select a conversation or server to get started
           </p>
         </div>
-
-        <UserPanel />
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="w-60 bg-background-elevated flex flex-col">
+    <>
       {/* Server header */}
-      <div className="h-12 px-4 flex items-center justify-between border-b border-border shadow-md">
+      <div className="h-12 px-4 flex items-center justify-between border-b border-border shadow-md flex-shrink-0">
         <button
           onClick={() => openModal('server-settings')}
           className="flex items-center gap-2 w-full hover:text-accent transition-colors"
@@ -436,8 +344,6 @@ export default function ChannelSidebar() {
           </>
         )}
       </div>
-
-      <UserPanel />
-    </div>
+    </>
   );
 }
