@@ -198,7 +198,10 @@ export class VoiceClient {
           resolve();
         } catch (error: any) {
           console.error('Error initializing voice:', error);
+          // Reset state on failure so we can retry
           this.isJoining = false;
+          this.sessionId = null;
+          this.channelId = null;
           this.onError?.(error.message || 'Failed to initialize voice');
           reject(error);
         }
@@ -748,4 +751,12 @@ export function createVoiceClient(socket: Socket): VoiceClient {
 
 export function getVoiceClient(): VoiceClient | null {
   return voiceClientInstance;
+}
+
+export function resetVoiceClient(): void {
+  if (voiceClientInstance) {
+    voiceClientInstance.cleanup();
+    voiceClientInstance = null;
+  }
+  currentSocketId = null;
 }

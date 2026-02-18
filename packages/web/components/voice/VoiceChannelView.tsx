@@ -7,7 +7,7 @@ import { useVoiceStore, VoiceUser } from '@/stores/voiceStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import { apiClient } from '@/lib/api-client';
-import { createVoiceClient, getVoiceClient } from '@/lib/voice-client';
+import { createVoiceClient, getVoiceClient, resetVoiceClient } from '@/lib/voice-client';
 import VideoGrid from './VideoGrid';
 import VoiceConnectedPanel from './VoiceConnectedPanel';
 
@@ -214,6 +214,8 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
       } catch (err) {
         console.error('Voice join error:', err);
         if (mountedRef.current) {
+          // Reset voice client on failure so we can retry fresh
+          resetVoiceClient();
           setError('Failed to join voice channel');
           joinInitiatedRef.current = false;
         }
@@ -265,6 +267,7 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
           <p className="text-error mb-4">{error}</p>
           <button
             onClick={() => {
+              resetVoiceClient();
               setError(null);
               joinInitiatedRef.current = false;
             }}
