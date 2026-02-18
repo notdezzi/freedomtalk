@@ -84,12 +84,17 @@ export interface MemberResponse {
 export interface InviteResponse {
   id: string;
   code: string;
-  serverId: string;
-  createdBy: string;
+  serverId?: string;
+  server_id?: string;
+  createdBy?: string;
+  inviter_id?: string;
   maxUses: number;
+  max_uses?: number;
   uses: number;
   expiresAt?: string;
+  expires_at?: string;
   createdAt: string;
+  created_at?: string;
 }
 
 export interface ChannelResponse {

@@ -50,7 +50,18 @@ export default function ServerInvitesTab({ serverId }: ServerInvitesTabProps) {
       const invitesArray = Array.isArray(response.data)
         ? response.data
         : (response.data as { invites?: InviteResponse[] }).invites || [];
-      setInvites(invitesArray);
+      // Map snake_case to camelCase
+      const mappedInvites = invitesArray.map((invite: any) => ({
+        id: invite.id,
+        code: invite.code,
+        serverId: invite.serverId || invite.server_id,
+        createdBy: invite.createdBy || invite.inviter_id,
+        maxUses: invite.maxUses ?? invite.max_uses ?? 0,
+        uses: invite.uses ?? 0,
+        expiresAt: invite.expiresAt || invite.expires_at,
+        createdAt: invite.createdAt || invite.created_at,
+      }));
+      setInvites(mappedInvites);
     }
     setLoading(false);
   };
@@ -63,10 +74,22 @@ export default function ServerInvitesTab({ serverId }: ServerInvitesTabProps) {
     });
 
     if (response.success && response.data) {
-      setInvites((prev) => [response.data as InviteResponse, ...prev]);
+      // Map snake_case to camelCase
+      const invite = response.data as any;
+      const mappedInvite: InviteResponse = {
+        id: invite.id,
+        code: invite.code,
+        serverId: invite.serverId || invite.server_id,
+        createdBy: invite.createdBy || invite.inviter_id,
+        maxUses: invite.maxUses ?? invite.max_uses ?? 0,
+        uses: invite.uses ?? 0,
+        expiresAt: invite.expiresAt || invite.expires_at,
+        createdAt: invite.createdAt || invite.created_at,
+      };
+      setInvites((prev) => [mappedInvite, ...prev]);
       setCreating(false);
       // Auto-copy the new invite
-      copyInvite(response.data as InviteResponse);
+      copyInvite(mappedInvite);
     }
 
     setSaving(false);
