@@ -64,7 +64,7 @@ export default function MessageItem({
 }: MessageItemProps) {
   const { user } = useAuth();
   const { setEditingMessage, setReplyingTo, addReaction, removeReaction } = useMessageStore();
-  const { openContextMenu, closeContextMenu, contextMenu } = useUIStore();
+  const { openContextMenu, closeContextMenu, contextMenu, openModal } = useUIStore();
   const { addReaction: socketAddReaction, removeReaction: socketRemoveReaction, deleteMessage: socketDeleteMessage } = useSocket();
   const [showActions, setShowActions] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -74,6 +74,10 @@ export default function MessageItem({
 
   const isOwn = user?.id === message.authorId;
   const showContextMenu = contextMenu?.data?.messageId === message.id;
+
+  const handleOpenProfile = () => {
+    openModal('user-profile', { userId: message.authorId, serverId: message.serverId });
+  };
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -372,8 +376,9 @@ export default function MessageItem({
       <div className="flex items-start gap-4">
         {/* Avatar */}
         <div
-          className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
+          className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm font-bold cursor-pointer hover:opacity-80 transition-opacity"
           style={{ backgroundColor: message.author.color || '#00E5CC' }}
+          onClick={handleOpenProfile}
         >
           {message.author.avatar ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -396,6 +401,7 @@ export default function MessageItem({
             <span
               className="font-medium hover:underline cursor-pointer"
               style={{ color: message.author.color }}
+              onClick={handleOpenProfile}
             >
               {message.author.displayName || message.author.username}
             </span>
