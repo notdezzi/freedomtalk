@@ -1,26 +1,28 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Settings, Users, Shield, Link2, Trash2, Loader2 } from 'lucide-react';
+import { X, Settings, Users, Shield, Link2, Trash2, Ban } from 'lucide-react';
 import { useServerStore } from '@/stores/serverStore';
 import { apiClient } from '@/lib/api-client';
 import ServerOverviewTab from './ServerOverviewTab';
 import ServerMembersTab from './ServerMembersTab';
 import ServerRolesTab from './ServerRolesTab';
 import ServerInvitesTab from './ServerInvitesTab';
+import ServerBansTab from './ServerBansTab';
 
 interface ServerSettingsModalProps {
   serverId: string;
   onClose: () => void;
 }
 
-type TabType = 'overview' | 'members' | 'roles' | 'invites';
+type TabType = 'overview' | 'members' | 'roles' | 'invites' | 'bans';
 
 const tabs: { id: TabType; label: string; icon: typeof Settings }[] = [
   { id: 'overview', label: 'Overview', icon: Settings },
   { id: 'members', label: 'Members', icon: Users },
   { id: 'roles', label: 'Roles', icon: Shield },
   { id: 'invites', label: 'Invites', icon: Link2 },
+  { id: 'bans', label: 'Bans', icon: Ban },
 ];
 
 export default function ServerSettingsModal({ serverId, onClose }: ServerSettingsModalProps) {
@@ -134,6 +136,9 @@ export default function ServerSettingsModal({ serverId, onClose }: ServerSetting
             )}
             {activeTab === 'invites' && (
               <ServerInvitesTab serverId={serverId} />
+            )}
+            {activeTab === 'bans' && (
+              <ServerBansTab serverId={serverId} />
             )}
           </div>
         </div>

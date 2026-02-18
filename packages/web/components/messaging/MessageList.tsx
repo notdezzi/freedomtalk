@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { ChevronDown, Hash, Bell, Pin } from 'lucide-react';
+import { ChevronDown, Hash, Bell, Pin, Clock } from 'lucide-react';
 import type { Message } from '@/stores/messageStore';
 import { useMessageStore } from '@/stores/messageStore';
 import { useChannelStore } from '@/stores/channelStore';
@@ -168,6 +168,15 @@ export default function MessageList({ channelId }: MessageListProps) {
           <>
             <div className="w-px h-5 bg-border mx-2" />
             <span className="text-sm text-foreground-muted truncate">{channel.topic}</span>
+          </>
+        )}
+        {channel?.rateLimitPerUser && channel.rateLimitPerUser > 0 && (
+          <>
+            <div className="w-px h-5 bg-border mx-2" />
+            <div className="flex items-center gap-1 text-xs text-warning">
+              <Clock className="w-3.5 h-3.5" />
+              <span>{channel.rateLimitPerUser}s slow mode</span>
+            </div>
           </>
         )}
         <div className="ml-auto flex items-center gap-2">
