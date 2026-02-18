@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, MessageCircle, Phone, Video, UserPlus, MoreVertical, Clock, AtSign } from 'lucide-react';
+import { X, MessageCircle, Phone, Video, UserPlus, MoreVertical, Clock, AtSign, Bot, Zap, Server } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/api-client';
+import { useServerStore } from '@/stores/serverStore';
 
 interface UserProfileCardProps {
   userId: string;
@@ -26,10 +27,15 @@ interface UserProfile {
   createdAt: string;
   status?: 'online' | 'idle' | 'dnd' | 'offline';
   statusMessage?: string;
+  isBot?: boolean;
+  isBoosting?: boolean;
+  boostLevel?: number;
+  mutualServers?: Array<{ id: string; name: string; icon?: string }>;
 }
 
 export default function UserProfileCard({ userId, serverId, memberData, onClose }: UserProfileCardProps) {
   const { user: currentUser } = useAuth();
+  const { servers } = useServerStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState('');
@@ -141,7 +147,23 @@ export default function UserProfileCard({ userId, serverId, memberData, onClose 
       <div className="px-4 pt-2 pb-4 border-b border-border">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="font-semibold text-lg">{displayName}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-lg">{displayName}</h3>
+              {/* Bot badge */}
+              {profile.isBot && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-accent/20 text-accent text-xs font-medium">
+                  <Bot className="w-3 h-3" />
+                  BOT
+                </span>
+              )}
+              {/* Boost badge */}
+              {profile.isBoosting && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary/20 text-secondary text-xs font-medium" title={`Level ${profile.boostLevel || 1} Booster`}>
+                  <Zap className="w-3 h-3" />
+                  {profile.boostLevel || 1}
+                </span>
+              )}
+            </div>
             <p className="text-sm text-foreground-muted">@{profile.username}</p>
           </div>
           <button className="p-1.5 rounded hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors">
@@ -152,6 +174,25 @@ export default function UserProfileCard({ userId, serverId, memberData, onClose 
         {/* Status message */}
         {profile.statusMessage && (
           <p className="text-sm text-foreground-muted mt-2">{profile.statusMessage}</p>
+        )}
+
+        {/* Role tags */}
+        {memberData?.roles && memberData.roles.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {memberData.roles.slice(0, 5).map((role, index) => (
+              <span
+                key={index}
+                className="px-2 py-0.5 text-xs rounded-full bg-background-surface text-foreground-muted"
+              >
+                {role}
+              </span>
+            ))}
+            {memberData.roles.length > 5 && (
+              <span className="px-2 py-0.5 text-xs rounded-full bg-background-surface text-foreground-muted">
+                +{memberData.roles.length - 5} more
+              </span>
+            )}
+          </div>
         )}
       </div>
 
@@ -202,6 +243,41 @@ export default function UserProfileCard({ userId, serverId, memberData, onClose 
             {new Date(profile.createdAt).toLocaleDateString()}
           </div>
         </div>
+
+        {/* Mutual Servers */}
+        {!isSelf && (
+          <div>
+            <h4 className="text-xs font-semibold text-foreground-muted uppercase mb-2">
+              <Server className="w-3 h-3 inline mr-1" />
+              Mutual Servers
+            </h4>
+            {profile.mutualServers && profile.mutualServers.length > 0 ? (
+              <div className="space-y-2">
+                {profile.mutualServers.slice(0, 5).map((server) => (
+                  <div key={server.id} className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded bg-background-surface flex items-center justify-center overflow-hidden">
+                      {server.icon ? (
+                        <img src={server.icon} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs font-bold text-foreground-muted">
+                          {server.name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-sm truncate">{server.name}</span>
+                  </div>
+                ))}
+                {profile.mutualServers.length > 5 && (
+                  <p className="text-xs text-foreground-muted">
+                    +{profile.mutualServers.length - 5} more servers
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-foreground-muted">No mutual servers</p>
+            )}
+          </div>
+        )}
 
         {/* Note */}
         <div>
