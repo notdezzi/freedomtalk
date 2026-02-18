@@ -34,6 +34,7 @@ interface DMState {
   fetchChannels: () => Promise<void>;
   addChannel: (channel: DMChannel) => void;
   updateChannel: (channelId: string, updates: Partial<DMChannel>) => void;
+  updateChannelMuted: (channelId: string, isMuted: boolean) => void;
   removeChannel: (channelId: string) => void;
   setCurrentChannel: (channelId: string | null) => void;
 
@@ -103,6 +104,12 @@ export const useDMStore = create<DMState>()(
       updateChannel: (channelId, updates) => set((state) => ({
         channels: state.channels.map((c) =>
           c.id === channelId ? { ...c, ...updates } : c
+        ),
+      })),
+
+      updateChannelMuted: (channelId, isMuted) => set((state) => ({
+        channels: state.channels.map((c) =>
+          c.id === channelId ? { ...c, isMuted } : c
         ),
       })),
 

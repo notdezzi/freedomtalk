@@ -7,17 +7,19 @@ import { useMessageStore } from '@/stores/messageStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import { MessageList, MessageInput } from '@/components/messaging';
-import { Loader2, Users, Phone, Video, Pin, Bell, BellOff, UserPlus, Settings } from 'lucide-react';
+import { Loader2, Users, Phone, Video, Pin, Bell, BellOff, UserPlus } from 'lucide-react';
+import { apiClient } from '@/lib/api-client';
 
 export default function DMChannelPage() {
   const params = useParams();
   const router = useRouter();
   const channelId = params.channelId as string;
   const { user } = useAuth();
-  const { channels, getChannel, getChannelName, getChannelIcon, fetchChannels, setCurrentChannel } = useDMStore();
+  const { channels, getChannel, getChannelName, getChannelIcon, fetchChannels, setCurrentChannel, updateChannelMuted } = useDMStore();
   const { fetchMessages, loading, messages } = useMessageStore();
-  const { isConnected, sendMessage, joinChannel, leaveChannel } = useSocket();
+  const { isConnected, joinChannel, leaveChannel } = useSocket();
   const [loadingChannel, setLoadingChannel] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
 
   // Use ref to track fetched channels to prevent duplicate requests
   const fetchedMessagesRef = useRef<Set<string>>(new Set());
@@ -35,6 +37,24 @@ export default function DMChannelPage() {
 
     loadChannel();
   }, [channelId, channels.length, fetchChannels, setCurrentChannel]);
+
+  // Fetch notification settings
+  useEffect(() => {
+    const fetchNotificationSettings = async () => {
+      if (channelId) {
+        try {
+          const response = await apiClient.getDMNotificationSettings(channelId);
+          if (response.success && response.data) {
+            setIsMuted(response.data.isMuted);
+          }
+        } catch (error) {
+          console.error('Failed to fetch notification settings:', error);
+        }
+      }
+    };
+
+    fetchNotificationSettings();
+  }, [channelId]);
 
   // Fetch messages when channel is loaded (only once per channel)
   useEffect(() => {
@@ -60,6 +80,22 @@ export default function DMChannelPage() {
       };
     }
   }, [isConnected, channelId, joinChannel, leaveChannel]);
+
+  const handleToggleMute = async () => {
+    try {
+      if (isMuted) {
+        await apiClient.unmuteDM(channelId);
+        setIsMuted(false);
+        updateChannelMuted(channelId, false);
+      } else {
+        await apiClient.muteDM(channelId);
+        setIsMuted(true);
+        updateChannelMuted(channelId, true);
+      }
+    } catch (error) {
+      console.error('Failed to toggle mute:', error);
+    }
+  };
 
   if (loadingChannel) {
     return (
@@ -107,7 +143,14 @@ export default function DMChannelPage() {
             </div>
           ) : (
             <div
-              className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-xs font-bold text-background"
+              className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-xs font-bold text-background cursor-pointer hover:opacity-80"
+              onClick={() => {
+                // Open user profile for the other user in the DM
+                const otherUser = channel.recipients.find(r => r.id !== user?.id);
+                if (otherUser) {
+                  // TODO: Open user profile modal
+                }
+              }}
             >
               {channelIcon ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -122,8 +165,20 @@ export default function DMChannelPage() {
             </div>
           )}
 
-          {/* Name */}
-          <span className="font-semibold">{channelName}</span>
+          {/* Name - clickable to open profile for DMs */}
+          <span
+            className={`font-semibold ${channel.type !== 'group_dm' ? 'cursor-pointer hover:underline' : ''}`}
+            onClick={() => {
+              if (channel.type !== 'group_dm') {
+                const otherUser = channel.recipients.find(r => r.id !== user?.id);
+                if (otherUser) {
+                  // TODO: Open user profile modal
+                }
+              }
+            }}
+          >
+            {channelName}
+          </span>
 
           {channel.type === 'group_dm' && (
             <span className="text-xs text-foreground-muted">
@@ -164,20 +219,17 @@ export default function DMChannelPage() {
             <Pin className="w-4 h-4" />
           </button>
           <button
-            className="p-1.5 rounded hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
-            title="Notifications"
+            onClick={handleToggleMute}
+            className={`p-1.5 rounded hover:bg-background-surface transition-colors ${
+              isMuted ? 'text-error' : 'text-foreground-muted hover:text-foreground'
+            }`}
+            title={isMuted ? 'Unmute' : 'Mute'}
           >
-            {channel.isMuted ? (
+            {isMuted ? (
               <BellOff className="w-4 h-4" />
             ) : (
               <Bell className="w-4 h-4" />
             )}
-          </button>
-          <button
-            className="p-1.5 rounded hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
-            title="Settings"
-          >
-            <Settings className="w-4 h-4" />
           </button>
         </div>
       </div>

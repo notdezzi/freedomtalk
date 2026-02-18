@@ -358,6 +358,7 @@ export default async function dmRoutes(app: FastifyInstance) {
         updatedAt: msg.updated_at.toISOString(),
         isEdited: msg.is_edited,
         isPinned: msg.is_pinned,
+        author: msg.author,
       }));
 
       return reply.status(200).send({

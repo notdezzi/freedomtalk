@@ -514,6 +514,13 @@ class ApiClient {
     });
   }
 
+  async updateServerPositions(positions: { id: string; position: number }[]): Promise<ApiResponse<{ servers: ServerResponse[] }>> {
+    return this.request<{ servers: ServerResponse[] }>('/api/v1/servers/positions', {
+      method: 'PATCH',
+      body: JSON.stringify({ positions }),
+    });
+  }
+
   // Server members
   async getServerMembers(serverId: string): Promise<ApiResponse<{ members: MemberResponse[] }>> {
     return this.request<{ members: MemberResponse[] }>(`/api/v1/servers/${serverId}/members`);
@@ -589,6 +596,13 @@ class ApiClient {
     });
   }
 
+  async updateChannelPositions(serverId: string, positions: { id: string; position: number; categoryId?: string | null }[]): Promise<ApiResponse<{ channels: ChannelResponse[] }>> {
+    return this.request<{ channels: ChannelResponse[] }>(`/api/v1/servers/${serverId}/channels/positions`, {
+      method: 'PATCH',
+      body: JSON.stringify({ positions }),
+    });
+  }
+
   // Category endpoints
   async createCategory(serverId: string, data: { name: string; position?: number }): Promise<ApiResponse<CategoryResponse>> {
     return this.request<CategoryResponse>(`/api/v1/servers/${serverId}/categories`, {
@@ -659,20 +673,33 @@ class ApiClient {
   }
 
   // Reaction endpoints
+  /**
+   * Format emoji for API URL
+   * Backend expects format: "unicode:😀" or "custom:123456789012345678"
+   */
+  private formatEmoji(emoji: string): string {
+    // Custom emojis are 20-digit snowflake IDs
+    const isUnicode = !/^\d{20}$/.test(emoji);
+    return isUnicode ? `unicode:${emoji}` : `custom:${emoji}`;
+  }
+
   async addReaction(messageId: string, emoji: string): Promise<ApiResponse<{ count: number }>> {
-    return this.request<{ count: number }>(`/api/v1/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`, {
+    const formattedEmoji = this.formatEmoji(emoji);
+    return this.request<{ count: number }>(`/api/v1/messages/${messageId}/reactions/${encodeURIComponent(formattedEmoji)}`, {
       method: 'PUT',
     });
   }
 
   async removeReaction(messageId: string, emoji: string): Promise<ApiResponse<void>> {
-    return this.request<void>(`/api/v1/messages/${messageId}/reactions/${encodeURIComponent(emoji)}/@me`, {
+    const formattedEmoji = this.formatEmoji(emoji);
+    return this.request<void>(`/api/v1/messages/${messageId}/reactions/${encodeURIComponent(formattedEmoji)}/@me`, {
       method: 'DELETE',
     });
   }
 
   async getReactionUsers(messageId: string, emoji: string): Promise<ApiResponse<{ users: { id: string; username: string }[] }>> {
-    return this.request<{ users: { id: string; username: string }[] }>(`/api/v1/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`);
+    const formattedEmoji = this.formatEmoji(emoji);
+    return this.request<{ users: { id: string; username: string }[] }>(`/api/v1/messages/${messageId}/reactions/${encodeURIComponent(formattedEmoji)}`);
   }
 
   // DM Channel endpoints
@@ -742,6 +769,40 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ content }),
     });
+  }
+
+  // DM Notification Settings
+  async getDMNotificationSettings(channelId: string): Promise<ApiResponse<{ isMuted: boolean; muteUntil: string | null; notificationLevel: string }>> {
+    return this.request<{ isMuted: boolean; muteUntil: string | null; notificationLevel: string }>(
+      `/api/v1/channels/${channelId}/notification-settings`
+    );
+  }
+
+  async updateDMNotificationSettings(channelId: string, data: { isMuted?: boolean; notificationLevel?: string }): Promise<ApiResponse<{ isMuted: boolean; notificationLevel: string }>> {
+    return this.request<{ isMuted: boolean; notificationLevel: string }>(
+      `/api/v1/channels/${channelId}/notification-settings`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({ is_muted: data.isMuted, notification_level: data.notificationLevel }),
+      }
+    );
+  }
+
+  async muteDM(channelId: string, duration?: number): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>(
+      `/api/v1/channels/${channelId}/mute`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ duration }),
+      }
+    );
+  }
+
+  async unmuteDM(channelId: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>(
+      `/api/v1/channels/${channelId}/mute`,
+      { method: 'DELETE' }
+    );
   }
 
   // Search endpoints
