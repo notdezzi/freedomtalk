@@ -61,16 +61,16 @@ const MEDIA_CODECS = [
     clockRate: 48000,
     channels: 2,
     parameters: {
-      // High quality audio settings for OPUS codec
+      // Voice-optimized OPUS settings
       useinbandfec: 1,        // Enable in-band FEC for packet loss recovery
-      usedtx: 1,              // Enable DTX for bandwidth efficiency
-      stereo: 1,              // Enable stereo
-      'sprop-stereo': 1,      // Signal stereo support
+      usedtx: 1,              // Enable DTX for bandwidth efficiency when silent
       maxplaybackrate: 48000, // Max playback sample rate
-      maxaveragebitrate: 128000, // 128 kbps for high quality voice (default is ~32kbps)
+      maxaveragebitrate: 64000, // 64 kbps for mono voice (high quality for speech)
       ptime: 20,              // 20ms frame size (good balance of quality/latency)
       minptime: 10,           // Min frame size
       maxptime: 60,           // Max frame size
+      stereo: 0,              // Mono for voice (saves bandwidth, better quality)
+      'sprop-stereo': 0,      // Signal mono
     },
   },
   {

@@ -482,19 +482,18 @@ export class VoiceClient {
 
     try {
       // High quality audio capture settings
+      // Using more conservative settings for better compatibility
       this._localAudioStream = await navigator.mediaDevices.getUserMedia({
         audio: deviceId ? {
           deviceId: { exact: deviceId },
-          // High quality settings for specified device
           sampleRate: 48000,
-          channelCount: 2,
+          channelCount: 1, // Mono for voice (reduces bandwidth, better quality)
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
         } : {
-          // High quality default settings
           sampleRate: 48000,
-          channelCount: 2,
+          channelCount: 1, // Mono for voice
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
@@ -507,13 +506,16 @@ export class VoiceClient {
       this.audioProducer = await this.sendTransport.produce({
         track: audioTrack,
         codecOptions: {
-          // High quality OPUS encoding options
-          opusStereo: 1,
-          opusDtx: 1,
-          opusFec: 1,           // Enable FEC for packet loss resilience
-          opusNack: 1,          // Enable NACK for retransmissions
-          opusMaxAverageBitrate: 128000, // 128 kbps
+          opusStereo: 0,        // Mono
+          opusDtx: 1,           // DTX for efficiency
+          opusFec: 1,           // In-band FEC
+          opusNack: true,       // NACK support
+          opusMaxAverageBitrate: 64000, // 64 kbps for mono voice (plenty)
         },
+        // Specify OPUS codec explicitly
+        codec: this.device?.rtpCapabilities.codecs?.find(
+          (c: any) => c.mimeType.toLowerCase() === 'audio/opus'
+        ),
       });
 
       this.audioProducer.on('transportclose', () => {

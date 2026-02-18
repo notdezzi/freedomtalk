@@ -53,6 +53,7 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
   const joinInitiatedRef = useRef(false);
   const mountedRef = useRef(true);
   const joiningRef = useRef(false);
+  const wasConnectedRef = useRef(false);
 
   // Check if we're already in this channel
   const isInThisChannel = isConnected && currentChannelId === channelId;
@@ -64,6 +65,30 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
       mountedRef.current = false;
     };
   }, []);
+
+  // Track when we were connected - redirect when disconnected
+  useEffect(() => {
+    if (isInThisChannel) {
+      wasConnectedRef.current = true;
+    }
+
+    // If we were connected but now we're not, redirect to last text channel or /app
+    if (wasConnectedRef.current && !isConnected && mountedRef.current) {
+      console.log('[VoiceChannelView] Disconnected, redirecting...');
+      wasConnectedRef.current = false;
+
+      // Use setTimeout to avoid state updates during render
+      setTimeout(() => {
+        if (lastTextChannelId && lastTextChannelServerId) {
+          router.push(`/app/servers/${lastTextChannelServerId}/channels/${lastTextChannelId}`);
+        } else if (serverId) {
+          router.push(`/app/servers/${serverId}`);
+        } else {
+          router.push('/app');
+        }
+      }, 0);
+    }
+  }, [isConnected, isInThisChannel, router, lastTextChannelId, lastTextChannelServerId, serverId]);
 
   // Setup voice client and join channel
   useEffect(() => {
@@ -96,6 +121,7 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
 
     // Create abort controller for cleanup
     let aborted = false;
+    let joinSucceeded = false; // Track if THIS effect's join succeeded
     let voiceClient: ReturnType<typeof createVoiceClient> | null = null;
 
     const joinVoiceChannel = async () => {
@@ -168,16 +194,17 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
         // Join the channel (auto-creates device, transports, and starts audio)
         await voiceClient.joinChannel(channelId);
 
-        // Check if aborted during async join
+        // Check if aborted during async join (StrictMode remount)
         if (aborted) {
-          console.log('[VoiceChannelView] Join aborted, cleaning up');
-          await voiceClient.leaveChannel();
-          resetVoiceClient();
+          console.log('[VoiceChannelView] Join completed but effect was aborted, leaving connection for next effect');
+          // DON'T cleanup - the next effect will use this connection
+          // The VoiceClient singleton preserves the session
           return;
         }
 
         if (!mountedRef.current) {
-          // Component unmounted during join, clean up
+          // Component truly unmounted (not StrictMode), clean up
+          console.log('[VoiceChannelView] Component unmounted, cleaning up');
           await voiceClient.leaveChannel();
           resetVoiceClient();
           return;
@@ -191,6 +218,10 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
           console.error('[VoiceChannelView] sessionId is null after successful join');
           throw new Error('Failed to get session ID - join may have failed silently');
         }
+
+        // Mark join as succeeded BEFORE updating store
+        joinSucceeded = true;
+        joiningRef.current = false; // Allow future joins
 
         // Update store with local streams
         const audioStream = voiceClient.getLocalAudioStream();
@@ -266,18 +297,21 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
 
     // Cleanup function - critical for React StrictMode
     return () => {
-      console.log('[VoiceChannelView] Effect cleanup - aborting join');
+      // If THIS effect's join succeeded, don't cleanup - the connection is working
+      if (joinSucceeded) {
+        console.log('[VoiceChannelView] Effect cleanup - join succeeded, keeping connection');
+        return;
+      }
+
+      console.log('[VoiceChannelView] Effect cleanup - marking as aborted');
       aborted = true;
       joiningRef.current = false;
       joinInitiatedRef.current = false;
 
-      // Only clean up if this component initiated the join and we have a client
-      // Don't reset the singleton - let the VoiceClient manage its own state
-      // The VoiceClient handles duplicate joins gracefully with isJoining flag
-      if (voiceClient && voiceClient.getSessionId()) {
-        // We were connected, leave properly
-        voiceClient.leaveChannel().catch(console.error);
-      }
+      // DON'T call leaveChannel() here - it resets VoiceClient state
+      // which allows the next effect to start a new join.
+      // Instead, let the VoiceClient's isJoining flag prevent duplicate joins.
+      // The aborted flag will cause the join to reject if the callback fires.
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, channelId, serverId, isInThisChannel]);
