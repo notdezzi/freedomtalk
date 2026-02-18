@@ -56,6 +56,8 @@ export class VoiceClient {
   private socketHandlersSetup: boolean = false;
   private isConsuming: boolean = false;
   private pendingProducers: ProducerInfo[] = [];
+  private sendTransportConnected: boolean = false;
+  private recvTransportConnected: boolean = false;
 
   // Callbacks
   public onProducerCreated?: (producerId: string, kind: 'audio' | 'video', sessionId: string) => void;
@@ -241,13 +243,22 @@ export class VoiceClient {
         });
 
         this.sendTransport.on('connect', async ({ dtlsParameters }: any, callback: any, errback: any) => {
+          // Guard against duplicate connect calls
+          if (this.sendTransportConnected) {
+            callback();
+            return;
+          }
+
           try {
             await new Promise<void>((res, rej) => {
               this.socket.emit('voice:connect_transport', {
                 transportId: this.sendTransport.id,
                 dtlsParameters,
               }, (resp: any) => {
-                if (resp.success) res();
+                if (resp.success) {
+                  this.sendTransportConnected = true;
+                  res();
+                }
                 else rej(new Error(resp.error));
               });
             });
@@ -308,13 +319,22 @@ export class VoiceClient {
         });
 
         this.recvTransport.on('connect', async ({ dtlsParameters }: any, callback: any, errback: any) => {
+          // Guard against duplicate connect calls
+          if (this.recvTransportConnected) {
+            callback();
+            return;
+          }
+
           try {
             await new Promise<void>((res, rej) => {
               this.socket.emit('voice:connect_transport', {
                 transportId: this.recvTransport.id,
                 dtlsParameters,
               }, (resp: any) => {
-                if (resp.success) res();
+                if (resp.success) {
+                  this.recvTransportConnected = true;
+                  res();
+                }
                 else rej(new Error(resp.error));
               });
             });
@@ -660,6 +680,8 @@ export class VoiceClient {
     this.rtpCapabilities = null;
     this.isJoining = false;
     this.isConsuming = false;
+    this.sendTransportConnected = false;
+    this.recvTransportConnected = false;
   }
 
   /**
@@ -707,12 +729,20 @@ export class VoiceClient {
 
 // Singleton instance
 let voiceClientInstance: VoiceClient | null = null;
+let currentSocketId: string | null = null;
 
 export function createVoiceClient(socket: Socket): VoiceClient {
-  if (voiceClientInstance) {
+  // If socket changed or no existing instance, create new
+  if (voiceClientInstance && currentSocketId !== socket.id) {
     voiceClientInstance.cleanup();
+    voiceClientInstance = null;
   }
-  voiceClientInstance = new VoiceClient(socket);
+
+  if (!voiceClientInstance) {
+    voiceClientInstance = new VoiceClient(socket);
+    currentSocketId = socket.id ?? null;
+  }
+
   return voiceClientInstance;
 }
 

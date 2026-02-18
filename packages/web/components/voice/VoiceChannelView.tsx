@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { PhoneOff, Users, Volume2 } from 'lucide-react';
 import { useVoiceStore, VoiceUser } from '@/stores/voiceStore';
@@ -41,26 +41,43 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
     setLocalVideoStream,
     setLocalScreenStream,
     setError,
-    isConnecting,
     error,
   } = useVoiceStore();
 
   const [loading, setLoading] = useState(false);
   const [channelInfo, setChannelInfo] = useState<{ name: string } | null>(null);
 
+  // Use a ref to prevent double-joining (React StrictMode safe)
+  const joinInitiatedRef = useRef(false);
+  const mountedRef = useRef(true);
+
   // Check if we're already in this channel
   const isInThisChannel = isConnected && currentChannelId === channelId;
+
+  // Cleanup on unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Reset join flag when channel changes
+  useEffect(() => {
+    joinInitiatedRef.current = false;
+  }, [channelId]);
 
   // Setup voice client and join channel
   useEffect(() => {
     if (!user || !channelId || !serverId) return;
     if (isInThisChannel) return; // Already connected
-    if (loading) return; // Already loading
+    if (joinInitiatedRef.current) return; // Already initiated
+
+    joinInitiatedRef.current = true;
+    setLoading(true);
+    setError(null);
 
     const joinVoiceChannel = async () => {
-      setLoading(true);
-      setError(null);
-
       try {
         const socket = getSocket();
         if (!socket) {
@@ -72,10 +89,13 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
 
         // Setup callbacks for remote streams
         voiceClient.onRemoteStreamChanged = (remoteSessionId, kind, stream) => {
-          updateUserStream(remoteSessionId, kind, stream);
+          if (mountedRef.current) {
+            updateUserStream(remoteSessionId, kind, stream);
+          }
         };
 
         voiceClient.onUserJoined = (userId, joinedSessionId) => {
+          if (!mountedRef.current) return;
           const voiceUser: VoiceUser = {
             userId,
             username: '',
@@ -92,29 +112,44 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
         };
 
         voiceClient.onUserLeft = (leftSessionId) => {
+          if (!mountedRef.current) return;
           clearUserStreams(leftSessionId);
           removeUser(channelId, leftSessionId);
         };
 
         voiceClient.onUserStateChange = (changedSessionId, state) => {
+          if (!mountedRef.current) return;
           updateUser(channelId, changedSessionId, state);
         };
 
         voiceClient.onUserSpeaking = (speakingSessionId, speaking) => {
+          if (!mountedRef.current) return;
           updateUser(channelId, speakingSessionId, { isSpeaking: speaking });
         };
 
         voiceClient.onError = (err) => {
-          setError(err);
-          setLoading(false);
+          if (mountedRef.current) {
+            setError(err);
+            setLoading(false);
+            joinInitiatedRef.current = false;
+          }
         };
 
         voiceClient.onDisconnected = () => {
-          disconnectFromChannel();
+          if (mountedRef.current) {
+            disconnectFromChannel();
+            joinInitiatedRef.current = false;
+          }
         };
 
         // Join the channel (auto-creates device, transports, and starts audio)
         await voiceClient.joinChannel(channelId);
+
+        if (!mountedRef.current) {
+          // Component unmounted during join, clean up
+          await voiceClient.leaveChannel();
+          return;
+        }
 
         // Get session info
         const newSessionId = voiceClient.getSessionId();
@@ -150,7 +185,7 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
 
         // Fetch current users in channel
         const usersResponse = await apiClient.getVoiceChannelUsers(channelId);
-        if (usersResponse.success && usersResponse.data) {
+        if (usersResponse.success && usersResponse.data && mountedRef.current) {
           const usersArray = Array.isArray(usersResponse.data)
             ? usersResponse.data
             : (usersResponse.data as { users?: unknown[] }).users || [];
@@ -176,28 +211,22 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
           setUsers(channelId, voiceUsers);
         }
 
-        // Fetch channel info for header
-        // const channelResponse = await apiClient.getChannel(channelId);
-        // if (channelResponse.success && channelResponse.data) {
-        //   setChannelInfo({ name: channelResponse.data.name });
-        // }
-
       } catch (err) {
         console.error('Voice join error:', err);
-        setError('Failed to join voice channel');
+        if (mountedRef.current) {
+          setError('Failed to join voice channel');
+          joinInitiatedRef.current = false;
+        }
       } finally {
-        setLoading(false);
+        if (mountedRef.current) {
+          setLoading(false);
+        }
       }
     };
 
     joinVoiceChannel();
-
-    // Cleanup on unmount
-    return () => {
-      // Don't disconnect on unmount - let the user control this
-      // The VoiceConnectedPanel handles disconnect
-    };
-  }, [user, channelId, serverId, isInThisChannel, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, channelId, serverId, isInThisChannel]);
 
   // Handle disconnect
   const handleDisconnect = useCallback(async () => {
@@ -210,6 +239,7 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
     setLocalVideoStream(null);
     setLocalScreenStream(null);
     disconnectFromChannel();
+    joinInitiatedRef.current = false;
 
     // Navigate away from voice view
     router.push(`/app/servers/${serverId}`);
@@ -234,8 +264,17 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
         <div className="text-center">
           <p className="text-error mb-4">{error}</p>
           <button
+            onClick={() => {
+              setError(null);
+              joinInitiatedRef.current = false;
+            }}
+            className="px-4 py-2 bg-accent text-white rounded hover:bg-accent/80 transition-colors mr-2"
+          >
+            Retry
+          </button>
+          <button
             onClick={() => router.push(`/app/servers/${serverId}`)}
-            className="px-4 py-2 bg-accent text-white rounded hover:bg-accent/80 transition-colors"
+            className="px-4 py-2 bg-background-surface text-foreground rounded hover:bg-background transition-colors"
           >
             Go Back
           </button>
