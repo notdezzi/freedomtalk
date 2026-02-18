@@ -247,12 +247,12 @@ Currently shows "coming soon". Need full implementation.
 - `packages/web/components/user/UserSettingsModal.tsx`
 
 **Subtasks:**
-- [ ] Add privacy settings API endpoints
-- [ ] DM from server members toggle
-- [ ] Friend request settings
-- [ ] Explicit content filter
-- [ ] DM scan level
-- [ ] Save settings to backend
+- [x] Add privacy settings API endpoints
+- [x] DM from server members toggle
+- [x] Friend request settings
+- [x] Explicit content filter
+- [x] DM scan level
+- [x] Save settings to backend
 
 ---
 
@@ -265,10 +265,10 @@ Currently shows "coming soon". Need full implementation.
 - `packages/web/components/user/UserSettingsModal.tsx`
 
 **Subtasks:**
-- [ ] Create authorized apps list endpoint
-- [ ] Display connected apps
-- [ ] Add revoke functionality
-- [ ] Show permissions granted
+- [x] Create authorized apps list endpoint
+- [x] Display connected apps
+- [x] Add revoke functionality
+- [x] Show permissions granted
 
 ---
 
@@ -281,10 +281,10 @@ Currently shows "coming soon". Need full implementation.
 - `packages/web/components/user/UserSettingsModal.tsx`
 
 **Subtasks:**
-- [ ] Fetch active sessions
-- [ ] Display device info, location, last active
-- [ ] Add logout other sessions button
-- [ ] Show current session indicator
+- [x] Fetch active sessions
+- [x] Display device info, location, last active
+- [x] Add logout other sessions button
+- [x] Show current session indicator
 
 ---
 
@@ -297,13 +297,13 @@ Currently shows "coming soon". Need full implementation.
 - `packages/web/components/user/UserSettingsModal.tsx`
 
 **Subtasks:**
-- [ ] Input device selection (microphone)
-- [ ] Output device selection (speakers)
-- [ ] Camera selection
-- [ ] Test microphone/speakers
-- [ ] Noise suppression toggle
-- [ ] Echo cancellation toggle
-- [ ] Video preview
+- [x] Input device selection (microphone)
+- [x] Output device selection (speakers)
+- [x] Camera selection
+- [x] Test microphone/speakers
+- [x] Noise suppression toggle
+- [x] Echo cancellation toggle
+- [x] Video preview
 
 ---
 
@@ -313,11 +313,11 @@ Currently shows "coming soon". Need full implementation.
 **Dependencies:** None (pin API exists)
 
 **Subtasks:**
-- [ ] Add pinned messages button in channel header
-- [ ] Create pinned messages sidebar/modal
-- [ ] List pinned messages with pagination
-- [ ] Allow unpinning from UI
-- [ ] Show pin indicator on messages
+- [x] Add pinned messages button in channel header
+- [x] Create pinned messages sidebar/modal
+- [x] List pinned messages with pagination
+- [x] Allow unpinning from UI
+- [x] Show pin indicator on messages
 
 ---
 
@@ -327,10 +327,10 @@ Currently shows "coming soon". Need full implementation.
 **Dependencies:** None (ban API exists)
 
 **Subtasks:**
-- [ ] Add Bans tab to server settings
-- [ ] List banned users with reasons
-- [ ] Add unban functionality
-- [ ] Search/filter bans
+- [x] Add Bans tab to server settings
+- [x] List banned users with reasons
+- [x] Add unban functionality
+- [x] Search/filter bans
 
 ---
 
@@ -340,9 +340,9 @@ Currently shows "coming soon". Need full implementation.
 **Dependencies:** None (slow mode API exists)
 
 **Subtasks:**
-- [ ] Add slow mode setting to channel edit modal
-- [ ] Display slow mode indicator in channel
-- [ ] Show countdown when typing during slow mode
+- [x] Add slow mode setting to channel edit modal
+- [x] Display slow mode indicator in channel
+- [x] Show countdown when typing during slow mode
 
 ---
 
@@ -360,14 +360,14 @@ Several types are defined in API/Web but should be in shared package.
 - `packages/shared/src/types/index.ts`
 
 **Subtasks:**
-- [ ] Add Reaction types
-- [ ] Add Attachment types
-- [ ] Add Embed types
-- [ ] Add Friend/Connection types
-- [ ] Add VoiceState types
-- [ ] Add Presence/Status types
-- [ ] Add ApiErrorCode enum
-- [ ] Update imports in API and Web
+- [x] Add Reaction types
+- [x] Add Attachment types
+- [x] Add Embed types
+- [x] Add Friend/Connection types
+- [x] Add VoiceState types
+- [x] Add Presence/Status types
+- [x] Add ApiErrorCode enum
+- [x] Update imports in API and Web (types added to shared package)
 
 ---
 
@@ -706,13 +706,13 @@ Full keyboard navigation support for power users and accessibility.
 - `packages/web/hooks/useKeyboardShortcuts.ts` (new)
 
 **Subtasks:**
-- [ ] Create useKeyboardShortcuts hook
-- [ ] Add Tab navigation between focusable elements
-- [ ] Add arrow key navigation in lists
-- [ ] Add Escape to close modals
-- [ ] Add Ctrl+K for quick search
-- [ ] Add keyboard shortcuts for channel navigation
-- [ ] Add focus indicators
+- [x] Create useKeyboardShortcuts hook
+- [x] Add Tab navigation between focusable elements
+- [x] Add arrow key navigation in lists
+- [x] Add Escape to close modals
+- [x] Add Ctrl+K for quick search
+- [x] Add keyboard shortcuts for channel navigation
+- [x] Add focus indicators
 
 ---
 
