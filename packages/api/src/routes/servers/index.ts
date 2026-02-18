@@ -60,6 +60,13 @@ const joinServerSchema = z.object({
   inviteCode: z.string().min(1).max(VALIDATION.INVITE.MAX_CODE_LENGTH),
 });
 
+const serverPositionsSchema = z.object({
+  positions: z.array(z.object({
+    id: z.string().min(15).max(25),
+    position: z.number().int().min(0),
+  })),
+});
+
 // Permission check helper
 async function checkServerPermission(
   serverId: string,
@@ -173,6 +180,49 @@ export default async function serverRoutes(app: FastifyInstance) {
       const userId = request.user!.id;
 
       const servers = await serverService.getUserServers(userId);
+      return reply.send(successResponse(servers));
+    }
+  );
+
+  /**
+   * PATCH /api/v1/servers/positions
+   * Update server positions for the current user
+   */
+  app.patch(
+    '/positions',
+    {
+      schema: {
+        description: 'Update server positions for the current user',
+        tags: ['Servers'],
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          required: ['positions'],
+          properties: {
+            positions: {
+              type: 'array',
+              items: {
+                type: 'object',
+                required: ['id', 'position'],
+                properties: {
+                  id: { type: 'string', minLength: 15, maxLength: 25 },
+                  position: { type: 'integer', minimum: 0 },
+                },
+              },
+            },
+          },
+        },
+        response: {
+          200: { type: 'object' },
+        },
+      },
+      preHandler: validateBody(serverPositionsSchema),
+    },
+    async (request: FastifyRequest<{ Body: z.infer<typeof serverPositionsSchema> }>, reply: FastifyReply) => {
+      const userId = request.user!.id;
+      const { positions } = request.body;
+
+      const servers = await serverService.updateServerPositions(userId, positions);
       return reply.send(successResponse(servers));
     }
   );
@@ -345,6 +395,54 @@ export default async function serverRoutes(app: FastifyInstance) {
   );
 
   /**
+   * POST /api/v1/servers/:serverId/leave
+   * Leave a server
+   */
+  app.post(
+    '/:serverId/leave',
+    {
+      schema: {
+        description: 'Leave a server',
+        tags: ['Servers'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['serverId'],
+          properties: {
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+          },
+        },
+        response: {
+          200: { type: 'object' },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
+      const { serverId } = request.params;
+      const userId = request.user!.id;
+
+      // Check if server exists and user is a member
+      const server = await serverService.getServer(serverId);
+      if (!server) {
+        return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Server not found' } });
+      }
+
+      // Cannot leave if owner
+      if (server.owner_id === userId) {
+        return reply.code(400).send({
+          success: false,
+          error: { code: 'CANNOT_LEAVE', message: 'Server owner cannot leave. Transfer ownership or delete the server instead.' },
+        });
+      }
+
+      // Remove member
+      await serverMemberService.removeMember(serverId, userId, userId);
+
+      return reply.send(successResponse({ message: 'Left server successfully' }));
+    }
+  );
+
+  /**
    * GET /api/v1/servers/invite/:code/preview
    * Preview an invite without joining
    */
@@ -394,6 +492,13 @@ export default async function serverRoutes(app: FastifyInstance) {
         });
       }
 
+      // Get online member count
+      let onlineCount = 0;
+      if (invite.server_id) {
+        const { presenceManager } = await import('../services/websocket/presence.manager');
+        onlineCount = await presenceManager.getServerOnlineCount(invite.server_id);
+      }
+
       return reply.send(successResponse({
         invite: {
           code: invite.code,
@@ -401,7 +506,10 @@ export default async function serverRoutes(app: FastifyInstance) {
           maxUses: invite.max_uses,
           uses: invite.uses,
         },
-        server: invite.server,
+        server: invite.server ? {
+          ...invite.server,
+          online_count: onlineCount,
+        } : null,
         channel: invite.channel,
         inviter: invite.inviter,
       }));

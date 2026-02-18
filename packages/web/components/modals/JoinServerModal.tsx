@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Link as LinkIcon, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Link as LinkIcon, Loader2, CheckCircle, AlertCircle, Users, Wifi } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useServerStore, Server } from '@/stores/serverStore';
 import { apiClient } from '@/lib/api-client';
 
 interface InvitePreview {
   invite: { code: string; expiresAt: string | null; maxUses: number | null; uses: number };
-  server: { id: string; name: string; icon_url: string | null; member_count: number } | null;
+  server: { id: string; name: string; icon_url: string | null; member_count: number; online_count: number } | null;
   channel: { id: string; name: string; type: string } | null;
   inviter: { id: string; username: string; avatar: string | null } | null;
 }
@@ -94,7 +94,6 @@ export default function JoinServerModal() {
       }
 
       // Convert to Server format and add to store
-      const serverData = response.data?.server;
       const previewServer = preview.server;
       const server: Server = {
         id: previewServer.id,
@@ -103,7 +102,7 @@ export default function JoinServerModal() {
         icon: previewServer.icon_url || undefined,
         ownerId: '',
         memberCount: previewServer.member_count || 0,
-        onlineCount: 0,
+        onlineCount: previewServer.online_count || 0,
         createdAt: new Date().toISOString(),
         isOwner: false,
       };
@@ -191,11 +190,18 @@ export default function JoinServerModal() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold truncate">{preview.server.name}</h3>
-                  <p className="text-sm text-foreground-muted">
-                    {preview.server.member_count.toLocaleString()} members
-                  </p>
+                  <div className="flex items-center gap-3 text-sm text-foreground-muted">
+                    <div className="flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5" />
+                      <span>{preview.server.member_count.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Wifi className="w-3.5 h-3.5 text-success" />
+                      <span className="text-success">{preview.server.online_count.toLocaleString()}</span>
+                    </div>
+                  </div>
                   {preview.channel && (
-                    <p className="text-xs text-foreground-subtle">
+                    <p className="text-xs text-foreground-subtle mt-0.5">
                       #{preview.channel.name}
                     </p>
                   )}

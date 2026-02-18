@@ -283,6 +283,39 @@ class PresenceManager {
       logger.error({ error, userId, presence }, 'Error broadcasting presence update');
     }
   }
+
+  /**
+   * Get online member count for a server
+   * @param serverId - Server ID
+   * @returns Number of online members
+   */
+  async getServerOnlineCount(serverId: string): Promise<number> {
+    try {
+      const redis = await getRedisClient();
+
+      // Get all member user IDs for this server
+      const { db } = await import('../../config/database');
+      const members = await db('server_members')
+        .where('server_id', serverId)
+        .select('user_id');
+
+      if (members.length === 0) {
+        return 0;
+      }
+
+      const userIds = members.map(m => m.user_id);
+      const keys = userIds.map(id => `presence:${id}`);
+
+      // Check which users are online
+      const values = await redis.mGet(keys);
+      const onlineCount = values.filter(v => v === 'online').length;
+
+      return onlineCount;
+    } catch (error) {
+      logger.error({ error, serverId }, 'Error getting server online count');
+      return 0;
+    }
+  }
 }
 
 // Export singleton instance
