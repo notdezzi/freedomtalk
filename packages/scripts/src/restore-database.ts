@@ -22,6 +22,7 @@ import * as path from 'path';
 import * as readline from 'readline';
 import 'dotenv/config';
 
+
 const execAsync = promisify(exec);
 
 // Configuration
@@ -153,7 +154,7 @@ async function restoreDatabase(backupPath: string, dryRun: boolean = false): Pro
   console.log('   Restoring...');
 
   try {
-    const { stdout, stderr } = await execAsync(command, { shell: '/bin/bash' });
+    const { stderr } = await execAsync(command, { shell: '/bin/bash' });
 
     if (stderr && !stderr.includes('NOTICE')) {
       console.log('   Warnings:', stderr);
@@ -218,8 +219,9 @@ async function main() {
     const index = parseInt(backupArg, 10);
     if (!isNaN(index)) {
       const backups = await listBackups();
-      if (index > 0 && index <= backups.length) {
-        backupPath = backups[index - 1].path;
+      const backup = backups[index - 1];
+      if (index > 0 && index <= backups.length && backup) {
+        backupPath = backup.path;
       } else {
         console.log(`❌ Invalid backup number: ${index}`);
         process.exit(1);

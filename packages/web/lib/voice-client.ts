@@ -498,7 +498,6 @@ export class VoiceClient {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          latency: 0.02, // 20ms latency for real-time communication
         },
       });
 
