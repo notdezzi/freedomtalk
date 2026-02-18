@@ -578,11 +578,11 @@ Show "Playing...", "Listening to...", "Streaming..." status on users.
 - `packages/web/stores/authStore.ts`
 
 **Subtasks:**
-- [ ] Add activity status to user store
-- [ ] Display activity text under username
-- [ ] Show activity icon (game, music, stream)
-- [ ] Support custom status with emoji
-- [ ] Add status expiration
+- [x] Add activity status to user store
+- [x] Display activity text under username
+- [x] Show activity icon (game, music, stream)
+- [x] Support custom status with emoji
+- [x] Add status expiration
 
 ---
 
