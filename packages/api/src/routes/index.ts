@@ -20,8 +20,12 @@ import discoveryRoutes from './discovery';
 import friendRoutes from './friends';
 import webhookRoutes from './webhooks.routes';
 import auditLogRoutes from './audit-logs.routes';
+import metricsRoutes from './metrics.routes';
 
 export default async function routes(app: FastifyInstance) {
+  // Prometheus metrics endpoint (no auth required, outside /api/v1)
+  await app.register(metricsRoutes);
+
   // API v1 routes
   await app.register(async (v1) => {
     // Auth routes: /api/v1/auth/*

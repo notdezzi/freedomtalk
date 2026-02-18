@@ -457,12 +457,12 @@ Several types are defined in API/Web but should be in shared package.
 **Estimated Complexity:** Medium
 
 **Subtasks:**
-- [ ] Add prom-client package
-- [ ] Create metrics endpoint
-- [ ] Track API latency
-- [ ] Track WebSocket connections
-- [ ] Track database queries
-- [ ] Track error rates
+- [x] Add prom-client package
+- [x] Create metrics endpoint
+- [x] Track API latency
+- [x] Track WebSocket connections
+- [x] Track database queries
+- [x] Track error rates
 
 ---
 

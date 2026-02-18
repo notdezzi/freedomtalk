@@ -11,6 +11,7 @@ import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
+import { registerMetricsMiddleware } from './middleware/metrics.middleware';
 import routes from './routes';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -112,6 +113,9 @@ export async function build(options: { skipRateLimit?: boolean } = {}): Promise<
   // Error handlers (must be registered BEFORE routes)
   app.setErrorHandler(errorHandler);
   app.setNotFoundHandler(notFoundHandler);
+
+  // Register metrics middleware for Prometheus
+  registerMetricsMiddleware(app);
 
   // Health check endpoint
   app.get('/health', async () => {
