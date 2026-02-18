@@ -111,6 +111,22 @@ export async function build(options: { skipRateLimit?: boolean } = {}): Promise<
       timeWindow: process.env.RATE_LIMIT_WINDOW || '1 minute',
       cache: 10000, // Cache size for in-memory store
       skipOnError: true,
+      // Add rate limiting headers to all responses
+      addHeaders: {
+        'x-ratelimit-limit': true,
+        'x-ratelimit-remaining': true,
+        'x-ratelimit-reset': true,
+        'retry-after': true,
+      },
+      // Add hooks for rate limit events
+      onExceeded: (request) => {
+        const route = request.url.replace(/\/[0-9]{15,}/g, '/:id');
+        captureException(new Error('Rate limit exceeded'), {
+          route,
+          ip: request.ip,
+          method: request.method,
+        });
+      },
     });
   }
 

@@ -68,6 +68,8 @@ export async function errorHandler(
 
     // Map Fastify error codes to ApiErrorCode
     let apiErrorCode = ApiErrorCode.INTERNAL_SERVER_ERROR;
+    let errorMessage = fastifyError.message;
+
     // Check if it's a validation error (Fastify schema validation)
     if (fastifyError.statusCode === 400 && (fastifyError.code === 'FST_ERR_VALIDATION' || fastifyError.validation)) {
       apiErrorCode = ApiErrorCode.VALIDATION_ERROR;
@@ -77,10 +79,13 @@ export async function errorHandler(
     if (fastifyError.statusCode === 401) apiErrorCode = ApiErrorCode.UNAUTHORIZED;
     if (fastifyError.statusCode === 403) apiErrorCode = ApiErrorCode.FORBIDDEN;
     if (fastifyError.statusCode === 404) apiErrorCode = ApiErrorCode.NOT_FOUND;
-    if (fastifyError.statusCode === 429) apiErrorCode = ApiErrorCode.RATE_LIMIT_EXCEEDED;
+    if (fastifyError.statusCode === 429) {
+      apiErrorCode = ApiErrorCode.RATE_LIMIT_EXCEEDED;
+      errorMessage = 'Too many requests. Please slow down and try again later.';
+    }
 
     reply.status(fastifyError.statusCode || 500).send(
-      genericErrorResponse(fastifyError.message, apiErrorCode, requestId)
+      genericErrorResponse(errorMessage, apiErrorCode, requestId)
     );
     return;
   }

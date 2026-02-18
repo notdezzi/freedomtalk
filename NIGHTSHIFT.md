@@ -483,10 +483,10 @@ Several types are defined in API/Web but should be in shared package.
 **Estimated Complexity:** Low
 
 **Subtasks:**
-- [ ] Add X-RateLimit-Limit header
-- [ ] Add X-RateLimit-Remaining header
-- [ ] Add X-RateLimit-Reset header
-- [ ] Handle rate limit exceeded gracefully
+- [x] Add X-RateLimit-Limit header
+- [x] Add X-RateLimit-Remaining header
+- [x] Add X-RateLimit-Reset header
+- [x] Handle rate limit exceeded gracefully
 
 ---
 

@@ -113,10 +113,14 @@ export function addBreadcrumb(
 }
 
 /**
- * Create a transaction for performance monitoring
+ * Create a transaction span for performance monitoring
  */
-export function startTransaction(name: string, op: string): Sentry.Transaction {
-  return Sentry.startTransaction({ name, op });
+export function startSpan<T>(
+  name: string,
+  op: string,
+  callback: () => T
+): T {
+  return Sentry.startSpan({ name, op }, callback);
 }
 
 /**
