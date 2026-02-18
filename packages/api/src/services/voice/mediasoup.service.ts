@@ -47,7 +47,8 @@ export interface TransportOptions {
 
 const MEDIASOUP_CONFIG: MediasoupConfig = {
   numWorkers: parseInt(process.env.MEDIASOUP_WORKERS || '2', 10),
-  announcedIp: process.env.MEDIASOUP_ANNOUNCED_IP,
+  // Default to 127.0.0.1 for local development if not set
+  announcedIp: process.env.MEDIASOUP_ANNOUNCED_IP || '127.0.0.1',
   rtcMinPort: parseInt(process.env.MEDIASOUP_RTC_MIN_PORT || '40000', 10),
   rtcMaxPort: parseInt(process.env.MEDIASOUP_RTC_MAX_PORT || '49999', 10),
 };
