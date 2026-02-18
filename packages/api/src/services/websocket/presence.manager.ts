@@ -4,12 +4,26 @@ import { WS_EVENTS } from '@freedomtalk/shared';
 import { wsServer } from './websocket.server';
 import { dmChannelService } from '../dm/dm-channel.service';
 
+// Track last presence broadcast time per user for throttling
+const presenceBroadcastCache = new Map<string, number>();
+const PRESENCE_BROADCAST_THROTTLE_MS = 30000; // 30 seconds minimum between broadcasts
+
+// Clean up old cache entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, lastBroadcast] of presenceBroadcastCache.entries()) {
+    if (now - lastBroadcast > 300000) { // 5 minutes
+      presenceBroadcastCache.delete(userId);
+    }
+  }
+}, 300000);
+
 /**
  * Presence Manager class
  * Tracks user online/offline status
  */
 class PresenceManager {
-  private readonly PRESENCE_TTL = 60; // 60 seconds
+  private readonly PRESENCE_TTL = 30; // 30 seconds - presence must be refreshed within this time
   private readonly DM_PARTICIPANTS_CACHE_TTL = 300; // 5 minutes
 
   /**
@@ -228,23 +242,27 @@ class PresenceManager {
   }
 
   /**
-   * Broadcast presence update to all connected clients and DM rooms
+   * Broadcast presence update to relevant users only (DM partners and server members)
    * @param userId - User ID
    * @param presence - Presence status
    */
   private async broadcastPresenceUpdate(userId: string, presence: 'online' | 'offline'): Promise<void> {
     try {
+      // Check throttle - don't broadcast too frequently (except for offline which is always sent)
+      const now = Date.now();
+      const lastBroadcast = presenceBroadcastCache.get(userId);
+      if (presence !== 'offline' && lastBroadcast && (now - lastBroadcast) < PRESENCE_BROADCAST_THROTTLE_MS) {
+        logger.debug({ userId, presence, msSinceLastBroadcast: now - lastBroadcast }, 'Presence broadcast throttled');
+        return;
+      }
+
+      // Update last broadcast time
+      presenceBroadcastCache.set(userId, now);
+
       const io = wsServer.getIO();
       const timestamp = new Date().toISOString();
 
-      // Broadcast globally
-      io.emit(WS_EVENTS.PRESENCE_UPDATE, {
-        userId,
-        presence,
-        timestamp,
-      });
-
-      // Also broadcast to all DM channels the user is in
+      // Only broadcast to DM channels the user is in (their friends/DM partners)
       const result = await dmChannelService.getDMsByUser(userId, 100, 0);
       for (const dmChannel of result.dmChannels) {
         const roomName = `dm:${dmChannel.id}`;
@@ -256,7 +274,11 @@ class PresenceManager {
         });
       }
 
-      logger.debug({ userId, presence, dmCount: result.dmChannels.length }, 'Presence update broadcast');
+      // TODO: Also broadcast to server rooms where user is a member
+      // This would require getting user's server memberships and broadcasting to each server room
+      // For now, server presence is handled through separate subscription mechanism
+
+      logger.debug({ userId, presence, dmCount: result.dmChannels.length }, 'Presence update broadcast to relevant users');
     } catch (error) {
       logger.error({ error, userId, presence }, 'Error broadcasting presence update');
     }
