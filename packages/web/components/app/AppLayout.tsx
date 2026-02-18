@@ -18,6 +18,7 @@ import { useServerStore } from '@/stores/serverStore';
 import { useChannelStore } from '@/stores/channelStore';
 import { useMemberStore } from '@/stores/memberStore';
 import { useMessageStore } from '@/stores/messageStore';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -30,6 +31,9 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const { fetchMembers, loading: membersLoading, members } = useMemberStore();
   const { fetchMessages, loading: messagesLoading, messages: messagesStore } = useMessageStore();
   const [mounted, setMounted] = useState(false);
+
+  // Initialize keyboard shortcuts
+  useKeyboardShortcuts();
 
   // Use refs to track what has been fetched to prevent duplicate requests
   const fetchedServersRef = useRef(false);
