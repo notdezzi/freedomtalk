@@ -146,7 +146,11 @@ class InviteService {
     const [server, channel, inviter] = await Promise.all([
       db('servers').where('id', invite.server_id).first(),
       db('channels').where('id', invite.channel_id).first(),
-      db('users').where('id', invite.inviter_id).select('id', 'username', 'avatar').first(),
+      db('users')
+        .where('users.id', invite.inviter_id)
+        .leftJoin('user_profiles', 'users.id', 'user_profiles.user_id')
+        .select('users.id', 'users.username', 'user_profiles.avatar_url as avatar')
+        .first(),
     ]);
 
     return {
@@ -201,7 +205,10 @@ class InviteService {
         ? db('channels').whereIn('id', channelIds).select('id', 'name', 'type')
         : [],
       inviterIds.length > 0
-        ? db('users').whereIn('id', inviterIds).select('id', 'username', 'avatar')
+        ? db('users')
+            .whereIn('users.id', inviterIds)
+            .leftJoin('user_profiles', 'users.id', 'user_profiles.user_id')
+            .select('users.id', 'users.username', 'user_profiles.avatar_url as avatar')
         : [],
       db('servers').where('id', serverId).first(),
     ]);
