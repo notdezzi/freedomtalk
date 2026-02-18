@@ -29,13 +29,15 @@ function groupMessagesByDate(messages: Message[]): Array<{ type: 'date'; date: s
   let lastDate: string | null = null;
   let lastAuthorId: string | null = null;
   let lastTimestamp: number | null = null;
+  let currentDateGroupStart: number | null = null;
 
-  for (const message of messages) {
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i];
     const messageDate = new Date(message.createdAt).toDateString();
 
-    // Add date separator if date changed
+    // Track the start of a new date group
     if (lastDate !== messageDate) {
-      groups.push({ type: 'date', date: message.createdAt });
+      currentDateGroupStart = groups.length;
       lastDate = messageDate;
       lastAuthorId = null;
       lastTimestamp = null;
@@ -51,6 +53,13 @@ function groupMessagesByDate(messages: Message[]): Array<{ type: 'date'; date: s
 
     lastAuthorId = message.authorId;
     lastTimestamp = currentTimestamp;
+
+    // Check if next message is on a different date or this is the last message
+    const nextMessage = messages[i + 1];
+    if (!nextMessage || new Date(nextMessage.createdAt).toDateString() !== messageDate) {
+      // Insert date separator at the start of this date group, using the LAST message's date
+      groups.splice(currentDateGroupStart!, 0, { type: 'date', date: message.createdAt });
+    }
   }
 
   return groups;
