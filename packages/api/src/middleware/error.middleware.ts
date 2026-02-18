@@ -8,6 +8,7 @@ import { ZodError } from 'zod';
 import { ApiError, ApiErrorCode } from '../types/api.types';
 import { errorResponse, genericErrorResponse, validationErrorResponse } from '../utils/errors';
 import { logger } from '../config/logger';
+import { captureException } from '../config/sentry';
 
 /**
  * Global error handler
@@ -32,6 +33,17 @@ export async function errorHandler(
     url: request.url,
     ip: request.ip,
   }, 'Request error');
+
+  // Capture error with Sentry (only 5xx errors or unexpected errors)
+  const statusCode = 'statusCode' in error ? (error as FastifyError).statusCode : 500;
+  if (!statusCode || statusCode >= 500) {
+    captureException(error, {
+      requestId,
+      method: request.method,
+      url: request.url,
+      ip: request.ip,
+    });
+  }
 
   // Handle Zod validation errors
   if (error instanceof ZodError) {

@@ -471,10 +471,10 @@ Several types are defined in API/Web but should be in shared package.
 **Estimated Complexity:** Low
 
 **Subtasks:**
-- [ ] Add @sentry/node to API
-- [ ] Add @sentry/nextjs to Web
-- [ ] Configure error capture
-- [ ] Add source maps upload
+- [x] Add @sentry/node to API
+- [x] Add @sentry/nextjs to Web
+- [x] Configure error capture
+- [x] Add source maps upload
 
 ---
 

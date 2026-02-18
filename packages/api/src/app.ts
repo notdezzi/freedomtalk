@@ -12,9 +12,13 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { registerMetricsMiddleware } from './middleware/metrics.middleware';
+import { initSentry, sentryMiddleware, captureException } from './config/sentry';
 import routes from './routes';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
+
+// Initialize Sentry error tracking
+initSentry();
 
 /**
  * Build and configure Fastify application
@@ -113,6 +117,15 @@ export async function build(options: { skipRateLimit?: boolean } = {}): Promise<
   // Error handlers (must be registered BEFORE routes)
   app.setErrorHandler(errorHandler);
   app.setNotFoundHandler(notFoundHandler);
+
+  // Sentry middleware for error tracking
+  const sentry = sentryMiddleware();
+  app.addHook('onRequest', async (request) => {
+    sentry.onRequest(request as { user?: { id: string; username?: string } });
+  });
+  app.addHook('onError', async (_request, _reply, error) => {
+    sentry.onError(error);
+  });
 
   // Register metrics middleware for Prometheus
   registerMetricsMiddleware(app);

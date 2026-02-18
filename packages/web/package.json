@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@sentry/nextjs": "^10.39.0",
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.5",
     "clsx": "^2.1.1",
