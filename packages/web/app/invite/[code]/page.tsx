@@ -20,7 +20,7 @@ interface InvitePreview {
     name: string;
     icon_url: string | null;
     member_count: number;
-    online_count: number;
+    online_count?: number;
   } | null;
   channel: {
     id: string;
@@ -206,7 +206,7 @@ export default function InvitePage() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Wifi className="w-4 h-4 text-success" />
-                  <span>{preview.server.online_count.toLocaleString()} Online</span>
+                  <span>{(preview.server.online_count ?? 0).toLocaleString()} Online</span>
                 </div>
               </div>
             </div>
