@@ -556,11 +556,11 @@ Visual indication of audio levels when users speak in voice channels.
 - `packages/web/components/voice/VoiceConnectedPanel.tsx`
 
 **Subtasks:**
-- [ ] Create AudioLevelIndicator component
-- [ ] Hook into WebRTC audio analyser
-- [ ] Show animated bars when speaking
-- [ ] Show ring around avatar when speaking
-- [ ] Add to voice channel user list
+- [x] Create AudioLevelIndicator component
+- [x] Hook into WebRTC audio analyser
+- [x] Show animated bars when speaking
+- [x] Show ring around avatar when speaking
+- [x] Add to voice channel user list
 
 ---
 
