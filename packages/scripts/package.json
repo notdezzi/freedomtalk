@@ -6,7 +6,9 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "backup:db": "tsx src/backup-database.ts"
+    "backup:db": "tsx src/backup-database.ts",
+    "restore:db": "tsx src/restore-database.ts",
+    "backup:list": "tsx src/restore-database.ts --list"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

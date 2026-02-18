@@ -18,7 +18,10 @@
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f"
+    "docker:logs": "docker-compose logs -f",
+    "backup:db": "npm run backup:db --workspace=@freedomtalk/scripts",
+    "restore:db": "npm run restore:db --workspace=@freedomtalk/scripts",
+    "backup:list": "npm run backup:list --workspace=@freedomtalk/scripts"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

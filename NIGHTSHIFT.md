@@ -495,10 +495,10 @@ Several types are defined in API/Web but should be in shared package.
 **Estimated Complexity:** Medium
 
 **Subtasks:**
-- [ ] Create backup script
-- [ ] Schedule daily backups
-- [ ] Implement backup rotation
-- [ ] Test restore procedure
+- [x] Create backup script
+- [x] Schedule daily backups
+- [x] Implement backup rotation
+- [x] Test restore procedure
 
 ---
 
