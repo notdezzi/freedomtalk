@@ -648,11 +648,11 @@ Show "Playing...", "Listening to...", "Streaming..." status on users.
 - `packages/web/components/user/UserProfileCard.tsx`
 
 **Subtasks:**
-- [ ] Add mutual servers display
-- [ ] Add bot indicator badge
-- [ ] Add boost status indicator (nitro)
-- [ ] Add role tags display
-- [ ] Show member since date
+- [x] Add mutual servers display
+- [x] Add bot indicator badge
+- [x] Add boost status indicator (nitro)
+- [x] Add role tags display
+- [x] Show member since date
 
 ---
 
