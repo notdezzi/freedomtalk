@@ -1,50 +1,59 @@
 'use client';
 
 import { useState } from 'react';
-import { X, FolderPlus } from 'lucide-react';
+import { X, FolderPlus, Loader2 } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useChannelStore } from '@/stores/channelStore';
+import { apiClient } from '@/lib/api-client';
 
 export default function CreateCategoryModal() {
   const { activeModal, closeModal } = useUIStore();
-  const { categories, addChannel } = useChannelStore();
+  const { addCategory } = useChannelStore();
   const isOpen = activeModal.type === 'create-category';
   const createCategoryData = activeModal.createCategoryData;
 
   const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen || !createCategoryData) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name.trim()) return;
 
+    setSaving(true);
+    setError(null);
+
     const serverId = createCategoryData.serverId;
-    const existingCategories = Object.values(categories).filter(
-      (cat) => cat.serverId === serverId
-    );
 
-    const categoryId = `${serverId}-cat-${Date.now()}`;
-
-    // Add category as a special channel entry
-    addChannel({
-      id: categoryId,
-      serverId,
-      categoryId: null,
+    const response = await apiClient.createCategory(serverId, {
       name: name.trim(),
-      type: 'category',
-      position: existingCategories.length,
-      nsfw: false,
-      rateLimitPerUser: 0,
     });
 
-    setName('');
-    closeModal();
+    if (response.success && response.data) {
+      addCategory({
+        id: response.data.id,
+        serverId: response.data.serverId || serverId,
+        name: response.data.name,
+        position: response.data.position,
+        isCollapsed: false,
+        channels: [],
+      });
+
+      setName('');
+      closeModal();
+    } else {
+      setError(response.error?.message || 'Failed to create category');
+    }
+
+    setSaving(false);
   };
 
   const handleClose = () => {
     setName('');
+    setError(null);
     closeModal();
   };
 
@@ -97,20 +106,29 @@ export default function CreateCategoryModal() {
             Categories help organize your channels into sections. You can add channels to this category after creating it.
           </div>
 
+          {/* Error */}
+          {error && (
+            <div className="p-3 bg-error/10 border border-error/20 rounded text-error text-sm">
+              {error}
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 rounded text-sm font-medium text-foreground-muted hover:text-foreground transition-colors"
+              disabled={saving}
+              className="px-4 py-2 rounded text-sm font-medium text-foreground-muted hover:text-foreground transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={!name.trim()}
-              className="px-4 py-2 rounded text-sm font-medium bg-accent text-background hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              disabled={!name.trim() || saving}
+              className="px-4 py-2 rounded text-sm font-medium bg-accent text-background hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
               Create Category
             </button>
           </div>

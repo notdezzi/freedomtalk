@@ -552,14 +552,31 @@ class ApiClient {
     return this.request<ChannelResponse>(`/api/v1/servers/${serverId}/channels/${channelId}`);
   }
 
-  async createChannel(serverId: string, data: { name: string; type: string; categoryId?: string; topic?: string }): Promise<ApiResponse<ChannelResponse>> {
+  async createChannel(serverId: string, data: {
+    name: string;
+    type: string;
+    categoryId?: string;
+    topic?: string;
+    nsfw?: boolean;
+    rateLimitPerUser?: number;
+    bitrate?: number;
+    userLimit?: number;
+  }): Promise<ApiResponse<ChannelResponse>> {
     return this.request<ChannelResponse>(`/api/v1/servers/${serverId}/channels`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateChannel(serverId: string, channelId: string, data: Partial<{ name: string; topic: string; position: number }>): Promise<ApiResponse<ChannelResponse>> {
+  async updateChannel(serverId: string, channelId: string, data: Partial<{
+    name: string;
+    topic: string;
+    position: number;
+    nsfw: boolean;
+    rateLimitPerUser: number;
+    bitrate: number;
+    userLimit: number;
+  }>): Promise<ApiResponse<ChannelResponse>> {
     return this.request<ChannelResponse>(`/api/v1/servers/${serverId}/channels/${channelId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),

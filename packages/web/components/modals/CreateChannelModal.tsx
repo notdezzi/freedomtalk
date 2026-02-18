@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Hash, Volume2, Megaphone, Lock } from 'lucide-react';
+import { X, Hash, Volume2, Megaphone, Lock, Loader2 } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useChannelStore, ChannelType } from '@/stores/channelStore';
+import { apiClient } from '@/lib/api-client';
 
 const channelTypes: { value: ChannelType; label: string; icon: typeof Hash; description: string }[] = [
   {
@@ -39,6 +40,8 @@ export default function CreateChannelModal() {
   const [nsfw, setNsfw] = useState(false);
   const [slowmode, setSlowmode] = useState(0);
   const [isPrivate, setIsPrivate] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen || !createChannelData) return null;
 
@@ -46,36 +49,56 @@ export default function CreateChannelModal() {
     (cat) => cat.serverId === createChannelData.serverId
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name.trim()) return;
 
+    setSaving(true);
+    setError(null);
+
     const channelName = name.toLowerCase().replace(/\s+/g, '-');
 
-    addChannel({
-      id: `${createChannelData.serverId}-ch-${Date.now()}`,
-      serverId: createChannelData.serverId,
-      categoryId,
+    const response = await apiClient.createChannel(createChannelData.serverId, {
       name: channelName,
       type,
+      categoryId: categoryId || undefined,
       topic: topic || undefined,
-      position: 0,
       nsfw,
       rateLimitPerUser: slowmode,
       bitrate: type === 'voice' ? 64000 : undefined,
       userLimit: type === 'voice' ? 0 : undefined,
     });
 
-    // Reset form
-    setName('');
-    setType('text');
-    setCategoryId(null);
-    setTopic('');
-    setNsfw(false);
-    setSlowmode(0);
-    setIsPrivate(false);
-    closeModal();
+    if (response.success && response.data) {
+      addChannel({
+        id: response.data.id,
+        serverId: response.data.serverId || createChannelData.serverId,
+        categoryId: response.data.categoryId || null,
+        name: response.data.name,
+        type: response.data.type as ChannelType,
+        topic: response.data.topic,
+        position: response.data.position,
+        nsfw: response.data.nsfw,
+        rateLimitPerUser: response.data.rateLimitPerUser,
+        bitrate: response.data.bitrate,
+        userLimit: response.data.userLimit,
+      });
+
+      // Reset form
+      setName('');
+      setType('text');
+      setCategoryId(null);
+      setTopic('');
+      setNsfw(false);
+      setSlowmode(0);
+      setIsPrivate(false);
+      closeModal();
+    } else {
+      setError(response.error?.message || 'Failed to create channel');
+    }
+
+    setSaving(false);
   };
 
   const handleClose = () => {
@@ -86,6 +109,7 @@ export default function CreateChannelModal() {
     setNsfw(false);
     setSlowmode(0);
     setIsPrivate(false);
+    setError(null);
     closeModal();
   };
 
@@ -286,20 +310,29 @@ export default function CreateChannelModal() {
             </>
           )}
 
+          {/* Error */}
+          {error && (
+            <div className="p-3 bg-error/10 border border-error/20 rounded text-error text-sm">
+              {error}
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 rounded text-sm font-medium text-foreground-muted hover:text-foreground transition-colors"
+              disabled={saving}
+              className="px-4 py-2 rounded text-sm font-medium text-foreground-muted hover:text-foreground transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={!name.trim()}
-              className="px-4 py-2 rounded text-sm font-medium bg-accent text-background hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              disabled={!name.trim() || saving}
+              className="px-4 py-2 rounded text-sm font-medium bg-accent text-background hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
               Create Channel
             </button>
           </div>

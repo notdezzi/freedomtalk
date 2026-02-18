@@ -49,6 +49,7 @@ interface ChannelState {
   clearChannelUnread: (channelId: string) => void;
 
   // Categories
+  addCategory: (category: Category) => void;
   toggleCategoryCollapse: (categoryId: string) => void;
   reorderChannels: (categoryId: string, channelIds: string[]) => void;
 
@@ -220,6 +221,10 @@ export const useChannelStore = create<ChannelState>()(
             ? { ...state.channels[channelId], unreadCount: 0, hasNotification: false }
             : state.channels[channelId],
         },
+      })),
+
+      addCategory: (category) => set((state) => ({
+        categories: { ...state.categories, [category.id]: category },
       })),
 
       toggleCategoryCollapse: (categoryId) => set((state) => ({
