@@ -153,8 +153,11 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
 
         // Get session info
         const newSessionId = voiceClient.getSessionId();
+        console.log('[VoiceChannelView] After join, sessionId:', newSessionId);
         if (!newSessionId) {
-          throw new Error('Failed to get session ID');
+          // This shouldn't happen if joinChannel succeeded
+          console.error('[VoiceChannelView] sessionId is null after successful join');
+          throw new Error('Failed to get session ID - join may have failed silently');
         }
 
         // Update store with local streams
@@ -232,20 +235,30 @@ export default function VoiceChannelView({ channelId, serverId }: VoiceChannelVi
 
   // Handle disconnect
   const handleDisconnect = useCallback(async () => {
-    const voiceClient = getVoiceClient();
-    if (voiceClient) {
-      await voiceClient.leaveChannel();
+    try {
+      const voiceClient = getVoiceClient();
+      if (voiceClient) {
+        await voiceClient.leaveChannel();
+      }
+
+      if (currentChannelId) {
+        await apiClient.leaveVoiceChannel(currentChannelId);
+      }
+    } catch (error) {
+      console.error('Error during disconnect:', error);
+    } finally {
+      // Always reset state even if leaveChannel fails
+      setLocalAudioStream(null);
+      setLocalVideoStream(null);
+      setLocalScreenStream(null);
+      disconnectFromChannel();
+      resetVoiceClient();
+      joinInitiatedRef.current = false;
+
+      // Navigate away from voice view
+      router.push(`/app/servers/${serverId}`);
     }
-
-    setLocalAudioStream(null);
-    setLocalVideoStream(null);
-    setLocalScreenStream(null);
-    disconnectFromChannel();
-    joinInitiatedRef.current = false;
-
-    // Navigate away from voice view
-    router.push(`/app/servers/${serverId}`);
-  }, [disconnectFromChannel, router, serverId, setLocalAudioStream, setLocalVideoStream, setLocalScreenStream]);
+  }, [disconnectFromChannel, router, serverId, setLocalAudioStream, setLocalVideoStream, setLocalScreenStream, currentChannelId]);
 
   // Loading state
   if (loading || !isInThisChannel) {

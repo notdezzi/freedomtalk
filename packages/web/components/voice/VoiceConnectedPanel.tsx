@@ -19,7 +19,7 @@ import {
 import { useVoiceStore } from '@/stores/voiceStore';
 import { apiClient } from '@/lib/api-client';
 import { useSocket } from '@/hooks/useSocket';
-import { getVoiceClient } from '@/lib/voice-client';
+import { getVoiceClient, resetVoiceClient } from '@/lib/voice-client';
 
 // Helper to get or create voice client
 function getOrCreateVoiceClient() {
@@ -234,21 +234,25 @@ export default function VoiceConnectedPanel() {
   };
 
   const handleDisconnect = async () => {
-    const voiceClient = getOrCreateVoiceClient();
-    if (voiceClient) {
-      await voiceClient.leaveChannel();
+    try {
+      const voiceClient = getOrCreateVoiceClient();
+      if (voiceClient) {
+        await voiceClient.leaveChannel();
+      }
+
+      if (currentChannelId) {
+        await apiClient.leaveVoiceChannel(currentChannelId);
+      }
+    } catch (error) {
+      console.error('Error during disconnect:', error);
+    } finally {
+      // Always reset state even if leaveChannel fails
+      useVoiceStore.getState().setLocalAudioStream(null);
+      useVoiceStore.getState().setLocalVideoStream(null);
+      useVoiceStore.getState().setLocalScreenStream(null);
+      disconnectFromChannel();
+      resetVoiceClient();
     }
-
-    if (currentChannelId) {
-      await apiClient.leaveVoiceChannel(currentChannelId);
-    }
-
-    // Clear local streams from store
-    useVoiceStore.getState().setLocalAudioStream(null);
-    useVoiceStore.getState().setLocalVideoStream(null);
-    useVoiceStore.getState().setLocalScreenStream(null);
-
-    disconnectFromChannel();
   };
 
   // Count users including self

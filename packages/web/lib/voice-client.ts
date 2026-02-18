@@ -156,6 +156,7 @@ export class VoiceClient {
         try {
           this.sessionId = response.data.sessionId;
           this.rtpCapabilities = response.data.rtpCapabilities;
+          console.log('[VoiceClient] Got sessionId:', this.sessionId);
 
           // Step 2: Create Device
           this.device = new Device();
@@ -191,13 +192,19 @@ export class VoiceClient {
           this.pendingProducers = [];
 
           // Step 6-7: Auto get local audio and produce
-          await this.startAudio();
+          try {
+            await this.startAudio();
+          } catch (audioError: any) {
+            // Audio failure is non-fatal - user can manually enable
+            console.warn('[VoiceClient] Could not auto-start audio:', audioError.message);
+          }
 
+          console.log('[VoiceClient] Join complete, sessionId:', this.sessionId);
           this.onConnected?.();
           this.isJoining = false;
           resolve();
         } catch (error: any) {
-          console.error('Error initializing voice:', error);
+          console.error('[VoiceClient] Error initializing voice:', error);
           // Reset state on failure so we can retry
           this.isJoining = false;
           this.sessionId = null;
