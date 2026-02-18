@@ -68,6 +68,9 @@ export async function handleConnection(socket: Socket): Promise<void> {
     // Add to connection manager
     connectionManager.addConnection(socket.id, user.id);
 
+    // Join user's personal room for direct events (friend requests, etc.)
+    socket.join(`user:${user.id}`);
+
     // Start heartbeat
     heartbeatManager.startHeartbeat(socket);
 
@@ -111,6 +114,9 @@ export async function handleDisconnect(socket: Socket): Promise<void> {
     }
 
     logger.info({ socketId: socket.id, userId: user.id }, 'WebSocket disconnection');
+
+    // Leave user's personal room
+    socket.leave(`user:${user.id}`);
 
     // Remove from connection manager
     connectionManager.removeConnection(socket.id);
