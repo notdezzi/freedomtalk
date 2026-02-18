@@ -404,11 +404,11 @@ Several types are defined in API/Web but should be in shared package.
 **Dependencies:** Task 6.2
 
 **Subtasks:**
-- [ ] Webhooks section in server settings
-- [ ] Create webhook modal
-- [ ] Edit webhook modal
-- [ ] Webhook URL display/copy
-- [ ] Delete webhook
+- [x] Webhooks section in server settings
+- [x] Create webhook modal
+- [x] Edit webhook modal
+- [x] Webhook URL display/copy
+- [x] Delete webhook
 
 ---
 
