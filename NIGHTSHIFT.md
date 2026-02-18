@@ -683,11 +683,11 @@ Show "Playing...", "Listening to...", "Streaming..." status on users.
 - `packages/web/components/voice/VoiceConnectedPanel.tsx`
 
 **Subtasks:**
-- [ ] Implement screen share button and picker
-- [ ] Add screen share preview
-- [ ] Add quality settings for screen share
-- [ ] Implement picture-in-picture mode
-- [ ] Add video resize/quality options
+- [x] Implement screen share button and picker
+- [x] Add screen share preview
+- [x] Add quality settings for screen share
+- [x] Implement picture-in-picture mode
+- [x] Add video resize/quality options
 
 ---
 
