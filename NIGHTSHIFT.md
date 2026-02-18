@@ -834,11 +834,11 @@ Full keyboard navigation support for power users and accessibility.
 - `packages/web/components/messaging/MessageList.tsx`
 
 **Subtasks:**
-- [ ] Add message appear animation
-- [ ] Add message delete animation
-- [ ] Add message edit highlight animation
-- [ ] Add reaction pop animation
-- [ ] Add typing indicator animation
+- [x] Add message appear animation
+- [x] Add message delete animation
+- [x] Add message edit highlight animation
+- [x] Add reaction pop animation
+- [x] Add typing indicator animation
 
 ---
 
