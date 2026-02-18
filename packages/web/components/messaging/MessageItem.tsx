@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMessageStore } from '@/stores/messageStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useSocket } from '@/hooks/useSocket';
+import { apiClient } from '@/lib/api-client';
 import ReactionPicker from './ReactionPicker';
 import MessageContent from './MessageContent';
 import MessageAttachments from './MessageAttachments';
@@ -103,6 +104,25 @@ export default function MessageItem({
   const handleDelete = () => {
     // Send delete request via socket (will update store when confirmation received)
     socketDeleteMessage(message.id);
+    closeContextMenu();
+  };
+
+  const handlePin = async () => {
+    try {
+      if (message.pinned) {
+        // Unpin the message
+        await apiClient.unpinMessage(message.id);
+        // Update local store optimistically
+        useMessageStore.getState().updateMessage(message.channelId, message.id, { pinned: false });
+      } else {
+        // Pin the message
+        await apiClient.pinMessage(message.id);
+        // Update local store optimistically
+        useMessageStore.getState().updateMessage(message.channelId, message.id, { pinned: true });
+      }
+    } catch (error) {
+      console.error('Failed to pin/unpin message:', error);
+    }
     closeContextMenu();
   };
 
@@ -229,11 +249,11 @@ export default function MessageItem({
           Add Reaction
         </button>
         <button
-          onClick={() => {}}
+          onClick={handlePin}
           className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-background-surface transition-colors"
         >
-          <Pin className="w-4 h-4" />
-          Pin Message
+          <Pin className={`w-4 h-4 ${message.pinned ? 'text-accent' : ''}`} />
+          {message.pinned ? 'Unpin Message' : 'Pin Message'}
         </button>
         <button
           onClick={handleCopy}
