@@ -288,6 +288,12 @@ export default function ChannelSidebar() {
     (channel: Channel) => {
       setCurrentChannel(channel.id);
       clearChannelUnread(channel.id);
+
+      // Track last text channel for voice disconnect redirect
+      if (channel.type !== 'voice') {
+        useVoiceStore.getState().setLastTextChannel(channel.id, currentServerId);
+      }
+
       // Navigate for both text and voice channels
       // Voice channels will render VoiceChannelView which handles joining
       router.push(`/app/servers/${currentServerId}/channels/${channel.id}`);
@@ -358,7 +364,7 @@ export default function ChannelSidebar() {
       {/* Server header */}
       <div className="h-12 px-4 flex items-center justify-between border-b border-border shadow-md flex-shrink-0">
         <button
-          onClick={() => openModal('server-settings')}
+          onClick={() => openModal('server-settings', { serverId: currentServerId })}
           className="flex items-center gap-2 w-full hover:text-accent transition-colors"
         >
           <span className="font-semibold truncate">{currentServer?.name || 'Server'}</span>

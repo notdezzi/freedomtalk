@@ -5,7 +5,6 @@ import { apiClient, getStoredRefreshToken, setStoredRefreshToken } from '@/lib/a
 
 // Global promise to deduplicate session checks across all hook instances
 let sessionCheckPromise: Promise<void> | null = null;
-let isSessionChecked = false;
 
 export function useAuth() {
   const router = useRouter();
@@ -27,6 +26,8 @@ export function useAuth() {
 
   // Ref to track if this component instance has triggered a session check
   const hasTriggeredCheck = useRef(false);
+  // Track if we've done an initial session check for this session
+  const sessionCheckedRef = useRef(false);
 
   // Check session on mount - with deduplication to prevent multiple simultaneous requests
   useEffect(() => {
@@ -48,8 +49,8 @@ export function useAuth() {
         return;
       }
 
-      // If session was already successfully checked, don't check again
-      if (isSessionChecked) {
+      // If session was already successfully checked in this hook instance, don't check again
+      if (sessionCheckedRef.current) {
         setLoading(false);
         return;
       }
@@ -72,12 +73,10 @@ export function useAuth() {
               createdAt: new Date().toISOString(),
             };
             setUser(user);
-            isSessionChecked = true;
+            sessionCheckedRef.current = true;
 
-            // Set onboarding status from API
-            if (userData.onboardingComplete !== undefined) {
-              setOnboardingComplete(userData.onboardingComplete);
-            }
+            // Set onboarding status from API - this is the source of truth
+            setOnboardingComplete(!!userData.onboardingComplete);
           } else {
             // Token is invalid, try to refresh
             const refreshResponse = await apiClient.refreshTokens();
@@ -98,30 +97,28 @@ export function useAuth() {
                   createdAt: new Date().toISOString(),
                 };
                 setUser(user);
-                isSessionChecked = true;
+                sessionCheckedRef.current = true;
 
-                // Set onboarding status from API
-                if (userData.onboardingComplete !== undefined) {
-                  setOnboardingComplete(userData.onboardingComplete);
-                }
+                // Set onboarding status from API - this is the source of truth
+                setOnboardingComplete(!!userData.onboardingComplete);
               } else {
                 // Refresh succeeded but session still invalid - clear user
                 setUser(null);
-                // Mark as checked to prevent retry loops
-                isSessionChecked = true;
+                setOnboardingComplete(false);
+                sessionCheckedRef.current = true;
               }
             } else {
               // Refresh failed - clear user and mark as checked
               setUser(null);
-              // Mark as checked to prevent retry loops
-              isSessionChecked = true;
+              setOnboardingComplete(false);
+              sessionCheckedRef.current = true;
             }
           }
         } catch (error) {
           console.error('Session check failed:', error);
           setUser(null);
-          // Mark as checked to prevent retry loops even on error
-          isSessionChecked = true;
+          setOnboardingComplete(false);
+          sessionCheckedRef.current = true;
         } finally {
           setLoading(false);
           sessionCheckPromise = null;
@@ -182,9 +179,6 @@ export function useAuth() {
       const onboardingComplete = data!.user.onboardingComplete ?? false;
       setOnboardingComplete(onboardingComplete);
 
-      // Mark session as checked since we just logged in
-      isSessionChecked = true;
-
       // Redirect based on onboarding status from API
       if (!onboardingComplete) {
         router.push('/onboarding');
@@ -236,9 +230,6 @@ export function useAuth() {
       // Set onboarding status from MFA verification response
       const onboardingComplete = data!.user.onboardingComplete ?? false;
       setOnboardingComplete(onboardingComplete);
-
-      // Mark session as checked since we just verified MFA
-      isSessionChecked = true;
 
       // Redirect based on onboarding status from API
       if (!onboardingComplete) {
@@ -296,8 +287,7 @@ export function useAuth() {
       console.error('Logout error:', error);
     }
 
-    // Reset session check state so user can log back in
-    isSessionChecked = false;
+    // Reset session check promise so user can log back in
     sessionCheckPromise = null;
 
     storeLogout();

@@ -187,19 +187,27 @@ class InviteService {
       .where('server_id', serverId)
       .orderBy('created_at', 'desc');
 
+    // Return early if no invites
+    if (invites.length === 0) {
+      return [];
+    }
+
     // Get related data
     const channelIds = [...new Set(invites.map(i => i.channel_id))];
     const inviterIds = [...new Set(invites.map(i => i.inviter_id))];
 
-    const [channels, inviters] = await Promise.all([
-      db('channels').whereIn('id', channelIds).select('id', 'name', 'type'),
-      db('users').whereIn('id', inviterIds).select('id', 'username', 'avatar'),
+    const [channels, inviters, server] = await Promise.all([
+      channelIds.length > 0
+        ? db('channels').whereIn('id', channelIds).select('id', 'name', 'type')
+        : [],
+      inviterIds.length > 0
+        ? db('users').whereIn('id', inviterIds).select('id', 'username', 'avatar')
+        : [],
+      db('servers').where('id', serverId).first(),
     ]);
 
     const channelMap = new Map(channels.map(c => [c.id, c]));
     const inviterMap = new Map(inviters.map(u => [u.id, u]));
-
-    const server = await db('servers').where('id', serverId).first();
 
     return invites.map(invite => ({
       ...invite,
