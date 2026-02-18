@@ -61,8 +61,16 @@ const MEDIA_CODECS = [
     clockRate: 48000,
     channels: 2,
     parameters: {
-      useinbandfec: 1,
-      usedtx: 1,
+      // High quality audio settings for OPUS codec
+      useinbandfec: 1,        // Enable in-band FEC for packet loss recovery
+      usedtx: 1,              // Enable DTX for bandwidth efficiency
+      stereo: 1,              // Enable stereo
+      'sprop-stereo': 1,      // Signal stereo support
+      maxplaybackrate: 48000, // Max playback sample rate
+      maxaveragebitrate: 128000, // 128 kbps for high quality voice (default is ~32kbps)
+      ptime: 20,              // 20ms frame size (good balance of quality/latency)
+      minptime: 10,           // Min frame size
+      maxptime: 60,           // Max frame size
     },
   },
   {
@@ -336,6 +344,9 @@ class MediasoupService {
       enableUdp: true,
       enableTcp: true,
       preferUdp: true,
+      // Audio quality optimizations
+      initialAvailableOutgoingBitrate: 500000, // 500 kbps initial for audio
+      enableSctp: true, // Enable data channels for metadata
     });
 
     if (direction === 'send') {

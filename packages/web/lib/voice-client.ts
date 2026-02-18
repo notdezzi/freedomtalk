@@ -126,9 +126,21 @@ export class VoiceClient {
    * Join a voice channel with auto-setup
    */
   async joinChannel(channelId: string): Promise<void> {
+    // If already joining, wait a bit and check again (handles race conditions)
     if (this.isJoining) {
-      console.log('VoiceClient: Already joining a channel, skipping duplicate call');
-      return;
+      console.log('VoiceClient: Already joining a channel, waiting...');
+      // Wait for the ongoing join to complete or fail
+      let attempts = 0;
+      while (this.isJoining && attempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      // After waiting, if we're now in this channel, return success
+      if (this.channelId === channelId && this.sessionId) {
+        console.log('VoiceClient: Join completed while waiting');
+        return;
+      }
+      // Otherwise, proceed with a new join attempt
     }
 
     if (this.channelId && this.channelId !== channelId) {
@@ -145,7 +157,21 @@ export class VoiceClient {
     this.channelId = channelId;
 
     return new Promise((resolve, reject) => {
-      this.socket.emit('voice:join', { channelId }, async (response: any) => {
+      // Track if this join request has been aborted
+      let joinAborted = false;
+
+      const joinHandler = async (response: any) => {
+        // Check if cleanup was called during the socket emit
+        if (joinAborted || !this.isJoining) {
+          console.log('[VoiceClient] Join was aborted during socket emit');
+          // Still need to leave on the server side
+          if (response.success) {
+            this.socket.emit('voice:leave', () => {});
+          }
+          reject(new Error('Join aborted'));
+          return;
+        }
+
         if (!response.success) {
           this.isJoining = false;
           this.onError?.(response.error || 'Failed to join voice channel');
@@ -212,14 +238,32 @@ export class VoiceClient {
           this.onError?.(error.message || 'Failed to initialize voice');
           reject(error);
         }
-      });
+      };
+
+      // Emit with the handler
+      this.socket.emit('voice:join', { channelId }, joinHandler);
+
+      // Store abort function for cleanup
+      this.abortJoin = () => {
+        joinAborted = true;
+        this.isJoining = false;
+      };
     });
   }
+
+  // Abort function for ongoing join
+  private abortJoin: (() => void) | null = null;
 
   /**
    * Leave the current voice channel
    */
   async leaveChannel(): Promise<void> {
+    // Abort any ongoing join
+    if (this.abortJoin) {
+      this.abortJoin();
+      this.abortJoin = null;
+    }
+
     this.isJoining = false;
     this.isConsuming = false;
 
@@ -437,11 +481,24 @@ export class VoiceClient {
     if (!this.sendTransport || this.audioProducer) return;
 
     try {
+      // High quality audio capture settings
       this._localAudioStream = await navigator.mediaDevices.getUserMedia({
-        audio: deviceId ? { deviceId: { exact: deviceId } } : {
+        audio: deviceId ? {
+          deviceId: { exact: deviceId },
+          // High quality settings for specified device
+          sampleRate: 48000,
+          channelCount: 2,
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
+        } : {
+          // High quality default settings
+          sampleRate: 48000,
+          channelCount: 2,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          latency: 0.02, // 20ms latency for real-time communication
         },
       });
 
@@ -451,8 +508,12 @@ export class VoiceClient {
       this.audioProducer = await this.sendTransport.produce({
         track: audioTrack,
         codecOptions: {
+          // High quality OPUS encoding options
           opusStereo: 1,
           opusDtx: 1,
+          opusFec: 1,           // Enable FEC for packet loss resilience
+          opusNack: 1,          // Enable NACK for retransmissions
+          opusMaxAverageBitrate: 128000, // 128 kbps
         },
       });
 
@@ -692,6 +753,7 @@ export class VoiceClient {
     this.isConsuming = false;
     this.sendTransportConnected = false;
     this.recvTransportConnected = false;
+    this.abortJoin = null;
   }
 
   /**
