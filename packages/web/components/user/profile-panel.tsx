@@ -36,7 +36,7 @@ export function ProfilePanel({
       className={cn(
         'flex flex-col overflow-hidden',
         variant === 'sidebar' && 'h-full bg-background-elevated',
-        variant === 'modal' && 'w-80 rounded-lg bg-background-elevated',
+        variant === 'modal' && 'bg-background-elevated',
         variant === 'dm-profile' && 'h-full bg-background-elevated',
         className
       )}
@@ -52,15 +52,21 @@ export function ProfilePanel({
         )}
       </div>
 
-      {/* Avatar */}
-      <div className="relative px-4">
+      {/* Avatar - positioned based on variant */}
+      <div className={cn(
+        "relative px-4",
+        variant === 'modal' && "flex justify-end"
+      )}>
         <Avatar
           src={user.avatar}
           alt={user.displayName || user.username}
           size="xl"
           status={user.status}
           showStatus
-          className="-mt-10 border-4 border-background-elevated"
+          className={cn(
+            "border-4 border-background-elevated",
+            variant === 'modal' ? "-mt-10" : "-mt-10"
+          )}
         />
       </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { X } from 'lucide-react';
 import { Modal } from '@/components/ui';
 import { ProfilePanel } from '@/components/user';
 import { apiClient } from '@/lib/api-client';
@@ -42,8 +43,16 @@ export function UserProfileModal({ userId, serverId, onClose }: UserProfileModal
   }
 
   return (
-    <Modal open onClose={onClose} size="lg" showCloseButton>
-      <div className="p-0">
+    <Modal open onClose={onClose} size="lg" showCloseButton noBorder noHeader>
+      <div className="relative">
+        {/* Close button positioned absolutely */}
+        <button
+          onClick={onClose}
+          className="absolute top-2 left-2 z-10 rounded-lg p-1.5 text-foreground-muted hover:bg-background-surface hover:text-foreground transition-colors"
+          aria-label="Close modal"
+        >
+          <X className="h-4 w-4" />
+        </button>
         <ProfilePanel
           variant="modal"
           user={{
@@ -51,8 +60,8 @@ export function UserProfileModal({ userId, serverId, onClose }: UserProfileModal
             username: user.username,
             displayName: user.displayName || user.username,
             bio: user.bio || undefined,
-            avatarUrl: user.avatarUrl || undefined,
-            bannerUrl: user.bannerUrl || undefined,
+            avatar: user.avatarUrl || undefined,
+            banner: user.bannerUrl || undefined,
             roles: [],
             activities: [],
           }}

@@ -14,6 +14,8 @@ export interface ModalProps {
   children: ReactNode;
   showCloseButton?: boolean;
   closeOnOverlayClick?: boolean;
+  noBorder?: boolean;
+  noHeader?: boolean;
   className?: string;
 }
 
@@ -32,6 +34,8 @@ export function Modal({
   children,
   showCloseButton = true,
   closeOnOverlayClick = true,
+  noBorder = false,
+  noHeader = false,
   className,
 }: ModalProps) {
   const focusTrapRef = useFocusTrap<HTMLDivElement>(open);
@@ -75,15 +79,16 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
         className={cn(
-          'relative z-50 w-full rounded-xl bg-background-elevated border border-border shadow-xl',
+          'relative z-50 w-full rounded-xl bg-background-elevated shadow-xl',
+          !noBorder && 'border border-border',
           'transform transition-all',
           sizeClasses[size],
           className
         )}
       >
         {/* Header */}
-        {(title || showCloseButton) && (
-          <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        {!noHeader && (title || showCloseButton) && (
+          <div className="flex items-center justify-between px-4 py-2">
             {title && (
               <h2 id="modal-title" className="text-lg font-semibold text-foreground">
                 {title}
@@ -92,10 +97,13 @@ export function Modal({
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="ml-auto rounded-lg p-1.5 text-foreground-muted hover:bg-background-surface hover:text-foreground transition-colors"
+                className={cn(
+                  "rounded-lg p-1.5 text-foreground-muted hover:bg-background-surface hover:text-foreground transition-colors",
+                  !title && "ml-auto"
+                )}
                 aria-label="Close modal"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             )}
           </div>
