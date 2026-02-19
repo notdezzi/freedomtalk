@@ -64,4 +64,7 @@ export const queryKeys = {
     channel: (channelId: string) => ['channels', channelId, 'permissions', '@me'] as const,
     overwrites: (channelId: string) => ['channels', channelId, 'overwrites'] as const,
   },
+  bans: {
+    list: (serverId: string) => ['servers', serverId, 'bans'] as const,
+  },
 };
