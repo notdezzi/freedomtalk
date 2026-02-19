@@ -161,3 +161,6 @@ export type UpdateDiscoverySettingsInput = z.infer<typeof updateDiscoverySetting
 // Privacy schemas
 export * from './privacy.schema';
 
+// Role schemas
+export * from './role.schema';
+
