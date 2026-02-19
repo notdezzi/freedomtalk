@@ -269,6 +269,48 @@ export default async function permissionRoutes(app: FastifyInstance) {
   );
 
   /**
+   * GET /api/v1/servers/:serverId/permissions/@me
+   * Get current user's permissions in a server
+   */
+  app.get(
+    '/servers/:serverId/permissions/@me',
+    {
+      schema: {
+        description: "Get current user's permissions in a server",
+        tags: ['Permissions'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['serverId'],
+          properties: {
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+          },
+        },
+        response: {
+          200: { type: 'object' },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
+      const { serverId } = request.params;
+      const userId = request.user!.id;
+
+      // Check if member
+      const isMember = await serverService.isMember(serverId, userId);
+      if (!isMember) {
+        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'Not a member of this server' } });
+      }
+
+      const breakdown = await permissionService.getPermissionBreakdown(
+        userId,
+        serverId
+      );
+
+      return reply.send(successResponse(breakdown));
+    }
+  );
+
+  /**
    * POST /api/v1/channels/:channelId/permissions/check
    * Check if user has specific permissions
    */
