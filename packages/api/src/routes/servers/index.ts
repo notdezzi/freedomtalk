@@ -7,12 +7,13 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { requireAuth } from '../../middleware/auth.middleware';
 import { validateBody } from '../../middleware/validation.middleware';
+import { requireServerPermission } from '../../middleware/permission.middleware';
 import { successResponse } from '../../utils/errors';
 import { serverService } from '../../services/server/server.service';
 import { serverMemberService } from '../../services/server/server-member.service';
 import { serverBanService } from '../../services/server/server-ban.service';
 import { inviteService } from '../../services/server/invite.service';
-import { VALIDATION, PERMISSION_FLAGS, Permissions } from '@freedomtalk/shared';
+import { VALIDATION, PERMISSION_FLAGS } from '@freedomtalk/shared';
 
 // Validation schemas
 const createServerSchema = z.object({
@@ -67,55 +68,21 @@ const serverPositionsSchema = z.object({
   })),
 });
 
-// Permission check helper
+const rolePositionsSchema = z.object({
+  positions: z.array(z.object({
+    id: z.string().min(15).max(25),
+    position: z.number().int().min(0),
+  })),
+});
+
+// Permission check helper (used for routes that need inline permission checks)
 async function checkServerPermission(
   serverId: string,
   userId: string,
   permission: bigint
 ): Promise<boolean> {
-  // Check if owner
-  const isOwner = await serverService.isOwner(serverId, userId);
-  if (isOwner) return true;
-
-  // Get member's roles and calculate permissions
-  const member = await serverMemberService.getMember(serverId, userId);
-  if (!member) return false;
-
-  // Get @everyone role permissions
-  const server = await serverService.getServer(serverId);
-  if (!server) return false;
-
-  let permissions = 0n;
-
-  // Add @everyone permissions
-  const everyoneRole = await getEveryoneRole(serverId);
-  if (everyoneRole) {
-    permissions |= BigInt(everyoneRole.permissions);
-  }
-
-  // Add member's role permissions
-  if (member.roles) {
-    for (const role of member.roles) {
-      const fullRole = await getRole(role.id);
-      if (fullRole) {
-        permissions |= BigInt(fullRole.permissions);
-      }
-    }
-  }
-
-  return Permissions.has(permissions, permission);
-}
-
-// Helper to get @everyone role
-async function getEveryoneRole(serverId: string) {
-  const { db } = await import('../../config/database');
-  return db('roles').where('server_id', serverId).where('name', '@everyone').first();
-}
-
-// Helper to get role by ID
-async function getRole(roleId: string) {
-  const { db } = await import('../../config/database');
-  return db('roles').where('id', roleId).first();
+  const { permissionService } = await import('../../services/permission');
+  return permissionService.hasPermission(userId, serverId, permission);
 }
 
 export default async function serverRoutes(app: FastifyInstance) {
@@ -277,7 +244,7 @@ export default async function serverRoutes(app: FastifyInstance) {
     '/:serverId',
     {
       schema: {
-        description: 'Update server settings (owner only)',
+        description: 'Update server settings (requires MANAGE_SERVER permission)',
         tags: ['Servers'],
         security: [{ bearerAuth: [] }],
         params: {
@@ -305,20 +272,21 @@ export default async function serverRoutes(app: FastifyInstance) {
           200: { type: 'object' },
         },
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_SERVER)],
       preHandler: validateBody(updateServerSchema),
     },
-    async (request: FastifyRequest<{ Params: { serverId: string }; Body: z.infer<typeof updateServerSchema> }>, reply: FastifyReply) => {
-      const { serverId } = request.params;
+    async (request, reply) => {
+      const { serverId } = request.params as { serverId: string };
       const userId = request.user!.id;
 
-      const server = await serverService.updateServer(serverId, request.body, userId);
+      const server = await serverService.updateServer(serverId, request.body as z.infer<typeof updateServerSchema>, userId);
       return reply.send(successResponse(server));
     }
   );
 
   /**
    * DELETE /api/v1/servers/:serverId
-   * Delete server
+   * Delete server (owner only - special case, owner check done in service)
    */
   app.delete(
     '/:serverId',
@@ -338,9 +306,12 @@ export default async function serverRoutes(app: FastifyInstance) {
           204: { type: 'null' },
         },
       },
+      // Note: Server deletion is owner-only, which is checked in serverService.deleteServer
+      // We still require MANAGE_SERVER for consistency, but the owner check in the service is authoritative
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_SERVER)],
     },
-    async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
-      const { serverId } = request.params;
+    async (request, reply) => {
+      const { serverId } = request.params as { serverId: string };
       const userId = request.user!.id;
 
       await serverService.deleteServer(serverId, userId);
@@ -741,18 +712,12 @@ export default async function serverRoutes(app: FastifyInstance) {
           204: { type: 'null' },
         },
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_ROLES)],
       preHandler: validateBody(memberRolesSchema),
     },
     async (request: FastifyRequest<{ Params: { serverId: string; userId: string }; Body: z.infer<typeof memberRolesSchema> }>, reply: FastifyReply) => {
       const { serverId, userId } = request.params;
-      const currentUserId = request.user!.id;
       const { roleIds } = request.body;
-
-      // Check MANAGE_ROLES permission
-      const hasPerms = await checkServerPermission(serverId, currentUserId, PERMISSION_FLAGS.MANAGE_ROLES);
-      if (!hasPerms) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage roles' } });
-      }
 
       await serverMemberService.setRoles(serverId, userId, roleIds);
       return reply.code(204).send();
@@ -1093,6 +1058,55 @@ export default async function serverRoutes(app: FastifyInstance) {
   );
 
   /**
+   * GET /api/v1/servers/:serverId/roles/:roleId
+   * Get a single role by ID
+   */
+  app.get(
+    '/:serverId/roles/:roleId',
+    {
+      schema: {
+        description: 'Get a single role by ID',
+        tags: ['Roles'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['serverId', 'roleId'],
+          properties: {
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+            roleId: { type: 'string', minLength: 15, maxLength: 25 },
+          },
+        },
+        response: {
+          200: { type: 'object' },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { serverId: string; roleId: string } }>, reply: FastifyReply) => {
+      const { serverId, roleId } = request.params;
+      const userId = request.user!.id;
+
+      // Check if member
+      const isMember = await serverService.isMember(serverId, userId);
+      if (!isMember) {
+        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'Not a member of this server' } });
+      }
+
+      const { roleService } = await import('../../services/server/role.service');
+      const role = await roleService.getRole(roleId);
+      if (!role) {
+        return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Role not found' } });
+      }
+
+      // Verify role belongs to the server
+      if (role.server_id !== serverId) {
+        return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Role not found in this server' } });
+      }
+
+      return reply.send(successResponse(role));
+    }
+  );
+
+  /**
    * POST /api/v1/servers/:serverId/roles
    * Create a new role
    */
@@ -1274,14 +1288,14 @@ export default async function serverRoutes(app: FastifyInstance) {
   );
 
   /**
-   * PATCH /api/v1/servers/:serverId/roles
-   * Update role positions
+   * PATCH /api/v1/servers/:serverId/roles/positions
+   * Update role positions (reorder roles)
    */
   app.patch(
-    '/:serverId/roles',
+    '/:serverId/roles/positions',
     {
       schema: {
-        description: 'Update role positions',
+        description: 'Update role positions (reorder roles)',
         tags: ['Roles'],
         security: [{ bearerAuth: [] }],
         params: {
@@ -1312,8 +1326,9 @@ export default async function serverRoutes(app: FastifyInstance) {
           200: { type: 'object' },
         },
       },
+      preHandler: validateBody(rolePositionsSchema),
     },
-    async (request: FastifyRequest<{ Params: { serverId: string }; Body: { positions: { id: string; position: number }[] } }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Params: { serverId: string }; Body: z.infer<typeof rolePositionsSchema> }>, reply: FastifyReply) => {
       const { serverId } = request.params;
       const userId = request.user!.id;
       const { positions } = request.body;

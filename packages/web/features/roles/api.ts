@@ -82,3 +82,19 @@ export function useUpdateRolePositions(serverId: string) {
     },
   });
 }
+
+// Update member roles
+export function useSetMemberRoles(serverId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ userId, roleIds }: { userId: string; roleIds: string[] }) => {
+      if (!serverId) throw new Error('Server ID is required');
+      const response = await apiClient.setMemberRoles(serverId, userId, roleIds);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.servers.members(serverId || '') });
+    },
+  });
+}
