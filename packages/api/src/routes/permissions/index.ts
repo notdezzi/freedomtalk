@@ -12,7 +12,7 @@ import { permissionService } from '../../services/permission/permission.service'
 import { channelService } from '../../services/channel/channel.service';
 import { serverService } from '../../services/server/server.service';
 import { roleService } from '../../services/server/role.service';
-import { PERMISSION_FLAGS, Permissions, PermissionOverwriteType } from '@freedomtalk/shared';
+import { PERMISSION_FLAGS, PermissionOverwriteType } from '@freedomtalk/shared';
 
 // Validation schemas
 const overwriteSchema = z.object({
@@ -24,17 +24,13 @@ const permissionCheckSchema = z.object({
   permissions: z.array(z.string()),
 });
 
-// Permission check helper
+// Permission check helper using the new permission service
 async function checkServerPermission(
   serverId: string,
   userId: string,
   permission: bigint
 ): Promise<boolean> {
-  const isOwner = await serverService.isOwner(serverId, userId);
-  if (isOwner) return true;
-
-  const permissions = await roleService.calculateMemberPermissions(serverId, userId);
-  return Permissions.has(permissions, permission);
+  return permissionService.hasPermission(userId, serverId, permission);
 }
 
 export default async function permissionRoutes(app: FastifyInstance) {
@@ -263,10 +259,9 @@ export default async function permissionRoutes(app: FastifyInstance) {
         return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'Not a member of this server' } });
       }
 
-      const breakdown = await permissionService.getPermissionBreakdown(
-        channel.server_id,
-        channelId,
-        userId
+      const breakdown = await permissionService.getChannelPermissionBreakdown(
+        userId,
+        channelId
       );
 
       return reply.send(successResponse(breakdown));
@@ -327,10 +322,10 @@ export default async function permissionRoutes(app: FastifyInstance) {
         return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'Not a member of this server' } });
       }
 
-      const userPermissions = await permissionService.calculateChannelPermissions(
-        channel.server_id,
-        channelId,
-        userId
+      // Calculate effective permissions
+      const effectivePerms = await permissionService.calculateEffectivePermissions(
+        userId,
+        channel.server_id
       );
 
       // Check each permission
@@ -338,14 +333,19 @@ export default async function permissionRoutes(app: FastifyInstance) {
       for (const name of permissionNames) {
         const flag = PERMISSION_FLAGS[name as keyof typeof PERMISSION_FLAGS];
         if (flag) {
-          results[name] = Permissions.has(userPermissions, flag);
+          // Use channel-specific permission check
+          const hasPerm = await permissionService.hasChannelPermission(userId, channelId, flag);
+          results[name] = hasPerm;
         } else {
           results[name] = false;
         }
       }
 
+      // Return effective permissions and results
+      const combinedPermissions = effectivePerms.allow & ~effectivePerms.deny;
+
       return reply.send(successResponse({
-        permissions: userPermissions.toString(),
+        permissions: combinedPermissions.toString(),
         results,
       }));
     }
