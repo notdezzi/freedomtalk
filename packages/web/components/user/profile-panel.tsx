@@ -5,7 +5,7 @@ import { Avatar, Button } from '@/components/ui';
 import type { User, Role, Activity } from '@/types';
 import type { FriendshipStatus } from '@/types';
 
-interface ProfilePanelProps {
+export interface ProfilePanelProps {
   variant: 'sidebar' | 'modal' | 'dm-profile';
   user: User & {
     roles?: Role[];

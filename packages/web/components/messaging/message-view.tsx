@@ -24,6 +24,7 @@ export interface MessageViewProps {
   hasMore?: boolean;
   onLoadMore?: () => void;
   headerComponent?: ReactNode;
+  placeholder?: string;
   className?: string;
 }
 
@@ -42,6 +43,7 @@ export function MessageView({
   hasMore,
   onLoadMore,
   headerComponent,
+  placeholder,
   className,
 }: MessageViewProps) {
   const virtuosoRef = useRef(null);
@@ -107,6 +109,7 @@ export function MessageView({
         channelId={channelId}
         onSend={onSend}
         disabled={loading}
+        placeholder={placeholder}
       />
     </div>
   );

@@ -24,7 +24,7 @@ const EMOJI_CATEGORIES = [
   },
 ];
 
-interface ReactionPickerProps {
+export interface ReactionPickerProps {
   onSelect: (emoji: string) => void;
   onClose: () => void;
   position?: { x: number; y: number };

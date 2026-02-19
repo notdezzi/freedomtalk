@@ -6,7 +6,7 @@ import { Avatar } from '@/components/ui';
 import { MicOff } from 'lucide-react';
 import type { VoiceUser } from '@/types';
 
-interface VideoGridProps {
+export interface VideoGridProps {
   users: VoiceUser[];
   selfVideo?: boolean;
   selfStream?: boolean;
@@ -14,6 +14,20 @@ interface VideoGridProps {
   localScreenStream?: MediaStream | null;
   currentUserId?: string;
   className?: string;
+}
+
+// Extended video user for display (includes self)
+interface VideoUserDisplay extends Partial<VoiceUser> {
+  userId: string;
+  username: string;
+  selfVideo?: boolean;
+  selfMute?: boolean;
+  selfDeaf?: boolean;
+  selfStream?: boolean;
+  videoStream?: MediaStream;
+  screenStream?: MediaStream;
+  isSpeaking?: boolean;
+  avatar?: string;
 }
 
 export function VideoGrid({
@@ -29,7 +43,7 @@ export function VideoGrid({
   const streamUsers = users.filter((u) => u.selfStream || u.screenStream);
 
   // Include self if showing video
-  const allVideoUsers = selfVideo
+  const allVideoUsers: VideoUserDisplay[] = selfVideo
     ? [
         {
           userId: currentUserId || 'self',
@@ -38,9 +52,9 @@ export function VideoGrid({
           selfMute: false,
           selfDeaf: false,
           selfStream: false,
-          videoStream: localVideoStream,
-          speaking: false,
-        } as VoiceUser,
+          videoStream: localVideoStream || undefined,
+          isSpeaking: false,
+        },
         ...videoUsers,
       ]
     : videoUsers;
@@ -75,7 +89,7 @@ export function VideoGrid({
   );
 }
 
-function VideoItem({ user }: { user: VoiceUser }) {
+function VideoItem({ user }: { user: VideoUserDisplay }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasVideo, setHasVideo] = useState(false);
 
@@ -113,7 +127,7 @@ function VideoItem({ user }: { user: VoiceUser }) {
       </div>
 
       {/* Speaking indicator */}
-      {user.speaking && (
+      {user.isSpeaking && (
         <div className="absolute inset-0 border-2 border-green-500 rounded-lg pointer-events-none" />
       )}
     </div>

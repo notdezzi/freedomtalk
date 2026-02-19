@@ -1,1 +1,2 @@
-export { ProfilePanel, type ProfilePanelProps } from './profile-panel';
+export { ProfilePanel } from './profile-panel';
+export type { ProfilePanelProps } from './profile-panel';

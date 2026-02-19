@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import type { VoiceChannel } from '@/types';
 
-interface VoicePanelProps {
+export interface VoicePanelProps {
   channel?: VoiceChannel;
   className?: string;
 }

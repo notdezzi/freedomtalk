@@ -34,7 +34,7 @@ export function Modal({
   closeOnOverlayClick = true,
   className,
 }: ModalProps) {
-  const focusTrapRef = useFocusTrap(open);
+  const focusTrapRef = useFocusTrap<HTMLDivElement>(open);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {

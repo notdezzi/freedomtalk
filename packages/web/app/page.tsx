@@ -1,9 +1,4 @@
-import Navbar from '@/components/landing/Navbar';
-import Hero from '@/components/landing/Hero';
-import Features from '@/components/landing/Features';
-import WhyUs from '@/components/landing/WhyUs';
-import CTA from '@/components/landing/CTA';
-import Footer from '@/components/landing/Footer';
+import { Navbar, Hero, Features, WhyUs, CTA, Footer } from '@/components/landing';
 
 export default function Home() {
   return (

@@ -92,6 +92,9 @@ export interface Category {
   channels?: Channel[];
 }
 
+// Voice channel type alias
+export type VoiceChannel = Channel;
+
 // Message Types
 export interface Message {
   id: string;
