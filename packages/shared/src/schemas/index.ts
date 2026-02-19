@@ -158,3 +158,6 @@ export type AutocompleteInput = z.infer<typeof autocompleteSchema>;
 export type DiscoveryServersInput = z.infer<typeof discoveryServersSchema>;
 export type UpdateDiscoverySettingsInput = z.infer<typeof updateDiscoverySettingsSchema>;
 
+// Privacy schemas
+export * from './privacy.schema';
+
