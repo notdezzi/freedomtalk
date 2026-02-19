@@ -4,107 +4,123 @@
  * Each permission is represented by a bit position.
  * Permissions are stored as bigint to support all flags.
  *
- * Based on Discord's permission system.
+ * Three-state permission model: Allow, Neutral, Deny
+ * - Bit set in `allow` only -> Allow
+ * - Bit set in `deny` only -> Deny
+ * - Bit not set in either -> Neutral
+ * - Bit set in both -> Allow wins (for safety)
+ *
+ * Based on Discord's permission system with hierarchical role-based resolution.
  */
 
 /**
- * Permission bit flags
+ * Permission bit flags (34 permissions)
  */
 export const PERMISSION_FLAGS = {
-  // General permissions
-  CREATE_INSTANT_INVITE: 1n << 0n,    // 1 - Create invite links
-  KICK_MEMBERS: 1n << 1n,              // 2 - Kick members
-  BAN_MEMBERS: 1n << 2n,               // 4 - Ban members
-  ADMINISTRATOR: 1n << 3n,             // 8 - All permissions (bypasses all checks)
-  MANAGE_CHANNELS: 1n << 4n,           // 16 - Manage channels
-  MANAGE_SERVER: 1n << 5n,             // 32 - Manage server
-  ADD_REACTIONS: 1n << 6n,             // 64 - Add reactions to messages
-  VIEW_AUDIT_LOG: 1n << 7n,            // 128 - View audit logs
-  PRIORITY_SPEAKER: 1n << 8n,          // 256 - Priority speaker in voice
-  STREAM: 1n << 9n,                    // 512 - Stream video
-  VIEW_CHANNEL: 1n << 10n,             // 1024 - View channel
-  SEND_MESSAGES: 1n << 11n,            // 2048 - Send messages
-  SEND_TTS_MESSAGES: 1n << 12n,        // 4096 - Send text-to-speech messages
-  MANAGE_MESSAGES: 1n << 13n,          // 8192 - Manage messages (delete others)
-  EMBED_LINKS: 1n << 14n,              // 16384 - Embed links
-  ATTACH_FILES: 1n << 15n,             // 32768 - Attach files
-  READ_MESSAGE_HISTORY: 1n << 16n,     // 65536 - Read message history
-  MENTION_EVERYONE: 1n << 17n,         // 131072 - Mention @everyone
-  USE_EXTERNAL_EMOJIS: 1n << 18n,      // 262144 - Use external emojis
-  VIEW_SERVER_INSIGHTS: 1n << 19n,     // 524288 - View server insights
+  // General Server Permissions (5)
+  VIEW_CHANNELS: 1n << 0n,           // 1 - View all channels
+  MANAGE_CHANNELS: 1n << 1n,         // 2 - Create, edit, delete channels
+  MANAGE_ROLES: 1n << 2n,            // 4 - Manage role permissions
+  MANAGE_SERVER: 1n << 3n,           // 8 - Manage server settings
+  MANAGE_MESSAGES: 1n << 4n,         // 16 - Manage messages server-wide
 
-  // Voice permissions
-  CONNECT: 1n << 20n,                  // 1048576 - Connect to voice channels
-  SPEAK: 1n << 21n,                    // 2097152 - Speak in voice channels
-  MUTE_MEMBERS: 1n << 22n,             // 4194304 - Mute members
-  DEAFEN_MEMBERS: 1n << 23n,           // 8388608 - Deafen members
-  MOVE_MEMBERS: 1n << 24n,             // 16777216 - Move members between voice channels
-  USE_VAD: 1n << 25n,                  // 33554432 - Use voice activity detection
+  // Membership Permissions (6)
+  CREATE_INVITE: 1n << 5n,           // 32 - Create invite links
+  CHANGE_NICKNAME: 1n << 6n,         // 64 - Change own nickname
+  MANAGE_NICKNAMES: 1n << 7n,        // 128 - Change other members' nicknames
+  KICK_MEMBERS: 1n << 8n,            // 256 - Kick members from server
+  BAN_MEMBERS: 1n << 9n,             // 512 - Ban members from server
+  TIMEOUT_MEMBERS: 1n << 10n,        // 1024 - Timeout members
 
-  // Additional permissions
-  CHANGE_NICKNAME: 1n << 26n,          // 67108864 - Change own nickname
-  MANAGE_NICKNAMES: 1n << 27n,         // 134217728 - Manage nicknames
-  MANAGE_ROLES: 1n << 28n,             // 268435456 - Manage roles
-  MANAGE_WEBHOOKS: 1n << 29n,          // 536870912 - Manage webhooks
-  MANAGE_EMOJIS_AND_STICKERS: 1n << 30n, // 1073741824 - Manage emojis and stickers
-  USE_APPLICATION_COMMANDS: 1n << 31n, // 2147483648 - Use slash commands
-  REQUEST_TO_SPEAK: 1n << 32n,         // 4294967296 - Request to speak (stage)
-  MANAGE_EVENTS: 1n << 33n,            // 8589934592 - Manage events
-  MANAGE_THREADS: 1n << 34n,           // 17179869184 - Manage threads
-  CREATE_PUBLIC_THREADS: 1n << 35n,    // 34359738368 - Create public threads
-  CREATE_PRIVATE_THREADS: 1n << 36n,   // 68719476736 - Create private threads
-  USE_EXTERNAL_STICKERS: 1n << 37n,    // 137438953472 - Use external stickers
-  SEND_MESSAGES_IN_THREADS: 1n << 38n, // 274877906944 - Send messages in threads
-  USE_EMBEDDED_ACTIVITIES: 1n << 39n,  // 549755813888 - Use embedded activities
-  MODERATE_MEMBERS: 1n << 40n,         // 1099511627776 - Timeout members
+  // Text Channel Permissions (15)
+  VIEW_CHANNEL: 1n << 11n,           // 2048 - View specific channel
+  SEND_MESSAGES: 1n << 12n,          // 4096 - Send messages
+  SEND_TTS_MESSAGES: 1n << 13n,      // 8192 - Send text-to-speech messages
+  MANAGE_MESSAGES_TEXT: 1n << 14n,   // 16384 - Manage messages in text channels
+  EMBED_LINKS: 1n << 15n,            // 32768 - Embed links in messages
+  ATTACH_FILES: 1n << 16n,           // 65536 - Attach files to messages
+  READ_MESSAGE_HISTORY: 1n << 17n,   // 131072 - Read message history
+  MENTION_EVERYONE: 1n << 18n,       // 262144 - Mention @everyone
+  USE_EXTERNAL_EMOJIS: 1n << 19n,    // 524288 - Use external emojis
+  ADD_REACTIONS: 1n << 20n,          // 1048576 - Add reactions to messages
+  USE_APPLICATION_COMMANDS: 1n << 21n, // 2097152 - Use slash commands
+  CREATE_PUBLIC_THREADS: 1n << 22n,  // 4194304 - Create public threads
+  CREATE_PRIVATE_THREADS: 1n << 23n, // 8388608 - Create private threads
+  SEND_MESSAGES_IN_THREADS: 1n << 24n, // 16777216 - Send messages in threads
+  PIN_MESSAGES: 1n << 25n,           // 33554432 - Pin messages
+
+  // Voice Permissions (7)
+  CONNECT: 1n << 26n,                // 67108864 - Connect to voice channels
+  SPEAK: 1n << 27n,                  // 134217728 - Speak in voice channels
+  STREAM: 1n << 28n,                 // 268435456 - Stream video
+  MUTE_MEMBERS: 1n << 29n,           // 536870912 - Mute members in voice
+  DEAFEN_MEMBERS: 1n << 30n,         // 1073741824 - Deafen members in voice
+  MOVE_MEMBERS: 1n << 31n,           // 2147483648 - Move members between voice channels
+  USE_VOICE_ACTIVITY: 1n << 32n,     // 4294967296 - Use voice activity detection
+
+  // Advanced Permissions (1)
+  ADMINISTRATOR: 1n << 33n,          // 8589934592 - All permissions (bypasses all checks)
 } as const;
 
 /**
  * Permission names for display
  */
 export const PERMISSION_NAMES: Record<keyof typeof PERMISSION_FLAGS, string> = {
-  CREATE_INSTANT_INVITE: 'Create Invite',
+  // General Server Permissions
+  VIEW_CHANNELS: 'View Channels',
+  MANAGE_CHANNELS: 'Manage Channels',
+  MANAGE_ROLES: 'Manage Roles',
+  MANAGE_SERVER: 'Manage Server',
+  MANAGE_MESSAGES: 'Manage Messages',
+
+  // Membership Permissions
+  CREATE_INVITE: 'Create Invite',
+  CHANGE_NICKNAME: 'Change Nickname',
+  MANAGE_NICKNAMES: 'Manage Nicknames',
   KICK_MEMBERS: 'Kick Members',
   BAN_MEMBERS: 'Ban Members',
-  ADMINISTRATOR: 'Administrator',
-  MANAGE_CHANNELS: 'Manage Channels',
-  MANAGE_SERVER: 'Manage Server',
-  ADD_REACTIONS: 'Add Reactions',
-  VIEW_AUDIT_LOG: 'View Audit Log',
-  PRIORITY_SPEAKER: 'Priority Speaker',
-  STREAM: 'Video',
+  TIMEOUT_MEMBERS: 'Timeout Members',
+
+  // Text Channel Permissions
   VIEW_CHANNEL: 'View Channel',
   SEND_MESSAGES: 'Send Messages',
   SEND_TTS_MESSAGES: 'Send TTS Messages',
-  MANAGE_MESSAGES: 'Manage Messages',
+  MANAGE_MESSAGES_TEXT: 'Manage Messages',
   EMBED_LINKS: 'Embed Links',
   ATTACH_FILES: 'Attach Files',
   READ_MESSAGE_HISTORY: 'Read Message History',
   MENTION_EVERYONE: 'Mention Everyone',
   USE_EXTERNAL_EMOJIS: 'Use External Emojis',
-  VIEW_SERVER_INSIGHTS: 'View Server Insights',
+  ADD_REACTIONS: 'Add Reactions',
+  USE_APPLICATION_COMMANDS: 'Use Application Commands',
+  CREATE_PUBLIC_THREADS: 'Create Public Threads',
+  CREATE_PRIVATE_THREADS: 'Create Private Threads',
+  SEND_MESSAGES_IN_THREADS: 'Send Messages in Threads',
+  PIN_MESSAGES: 'Pin Messages',
+
+  // Voice Permissions
   CONNECT: 'Connect',
   SPEAK: 'Speak',
+  STREAM: 'Video',
   MUTE_MEMBERS: 'Mute Members',
   DEAFEN_MEMBERS: 'Deafen Members',
   MOVE_MEMBERS: 'Move Members',
-  USE_VAD: 'Use Voice Activity',
-  CHANGE_NICKNAME: 'Change Nickname',
-  MANAGE_NICKNAMES: 'Manage Nicknames',
-  MANAGE_ROLES: 'Manage Roles',
-  MANAGE_WEBHOOKS: 'Manage Webhooks',
-  MANAGE_EMOJIS_AND_STICKERS: 'Manage Emojis & Stickers',
-  USE_APPLICATION_COMMANDS: 'Use Application Commands',
-  REQUEST_TO_SPEAK: 'Request to Speak',
-  MANAGE_EVENTS: 'Manage Events',
-  MANAGE_THREADS: 'Manage Threads',
-  CREATE_PUBLIC_THREADS: 'Create Public Threads',
-  CREATE_PRIVATE_THREADS: 'Create Private Threads',
-  USE_EXTERNAL_STICKERS: 'Use External Stickers',
-  SEND_MESSAGES_IN_THREADS: 'Send Messages in Threads',
-  USE_EMBEDDED_ACTIVITIES: 'Use Embedded Activities',
-  MODERATE_MEMBERS: 'Moderate Members',
+  USE_VOICE_ACTIVITY: 'Use Voice Activity',
+
+  // Advanced Permissions
+  ADMINISTRATOR: 'Administrator',
 };
+
+/**
+ * Permission categories for UI grouping
+ */
+export const PERMISSION_CATEGORIES = {
+  general: ['VIEW_CHANNELS', 'MANAGE_CHANNELS', 'MANAGE_ROLES', 'MANAGE_SERVER', 'MANAGE_MESSAGES'] as const,
+  membership: ['CREATE_INVITE', 'CHANGE_NICKNAME', 'MANAGE_NICKNAMES', 'KICK_MEMBERS', 'BAN_MEMBERS', 'TIMEOUT_MEMBERS'] as const,
+  text: ['VIEW_CHANNEL', 'SEND_MESSAGES', 'SEND_TTS_MESSAGES', 'MANAGE_MESSAGES_TEXT', 'EMBED_LINKS', 'ATTACH_FILES', 'READ_MESSAGE_HISTORY', 'MENTION_EVERYONE', 'USE_EXTERNAL_EMOJIS', 'ADD_REACTIONS', 'USE_APPLICATION_COMMANDS', 'CREATE_PUBLIC_THREADS', 'CREATE_PRIVATE_THREADS', 'SEND_MESSAGES_IN_THREADS', 'PIN_MESSAGES'] as const,
+  voice: ['CONNECT', 'SPEAK', 'STREAM', 'MUTE_MEMBERS', 'DEAFEN_MEMBERS', 'MOVE_MEMBERS', 'USE_VOICE_ACTIVITY'] as const,
+  advanced: ['ADMINISTRATOR'] as const,
+} as const;
 
 /**
  * All permissions combined (used for administrator check)
@@ -113,23 +129,19 @@ export const ALL_PERMISSIONS = Object.values(PERMISSION_FLAGS).reduce((acc, flag
 
 /**
  * Default permissions for @everyone role
+ * Using the new three-state model with allow/deny structure
  */
-export const DEFAULT_PERMISSIONS =
-  PERMISSION_FLAGS.CREATE_INSTANT_INVITE |
-  PERMISSION_FLAGS.ADD_REACTIONS |
-  PERMISSION_FLAGS.STREAM |
-  PERMISSION_FLAGS.VIEW_CHANNEL |
-  PERMISSION_FLAGS.SEND_MESSAGES |
-  PERMISSION_FLAGS.SEND_TTS_MESSAGES |
-  PERMISSION_FLAGS.EMBED_LINKS |
-  PERMISSION_FLAGS.ATTACH_FILES |
-  PERMISSION_FLAGS.READ_MESSAGE_HISTORY |
-  PERMISSION_FLAGS.MENTION_EVERYONE |
-  PERMISSION_FLAGS.USE_EXTERNAL_EMOJIS |
-  PERMISSION_FLAGS.CONNECT |
-  PERMISSION_FLAGS.SPEAK |
-  PERMISSION_FLAGS.USE_VAD |
-  PERMISSION_FLAGS.CHANGE_NICKNAME;
+export const DEFAULT_PERMISSIONS = {
+  allow:
+    PERMISSION_FLAGS.VIEW_CHANNEL |
+    PERMISSION_FLAGS.SEND_MESSAGES |
+    PERMISSION_FLAGS.READ_MESSAGE_HISTORY |
+    PERMISSION_FLAGS.ADD_REACTIONS |
+    PERMISSION_FLAGS.CONNECT |
+    PERMISSION_FLAGS.SPEAK |
+    PERMISSION_FLAGS.USE_VOICE_ACTIVITY,
+  deny: 0n,
+};
 
 /**
  * Permission helper functions
@@ -209,6 +221,40 @@ export class Permissions {
       return flag ? acc | flag : acc;
     }, 0n);
   }
+}
+
+/**
+ * Three-state permission resolution result
+ */
+export type PermissionState = 'allow' | 'deny' | 'neutral';
+
+/**
+ * Permission overwrite data structure for permission resolution
+ * (Different from the database entity PermissionOverwrite in types/index.ts)
+ */
+export interface PermissionOverwriteData {
+  id: string;        // Role ID or member ID
+  type: 'role' | 'member';
+  allow: bigint;
+  deny: bigint;
+}
+
+/**
+ * Role permission structure with three-state model
+ */
+export interface RolePermissions {
+  allow: bigint;
+  deny: bigint;
+}
+
+/**
+ * Permission breakdown for debugging/UI display
+ */
+export interface PermissionBreakdown {
+  [permission: string]: {
+    result: PermissionState;
+    source: 'owner' | 'administrator' | `role:${string}` | 'overwrite' | 'default';
+  };
 }
 
 export type PermissionFlag = keyof typeof PERMISSION_FLAGS;
