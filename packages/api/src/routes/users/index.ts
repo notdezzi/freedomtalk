@@ -4,7 +4,7 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { updateProfileSchema } from '@freedomtalk/shared';
+import { updateProfileSchema, updatePrivacySchema } from '@freedomtalk/shared';
 import { validateBody } from '../../middleware/validation.middleware';
 import { requireAuth } from '../../middleware/auth.middleware';
 import { successResponse } from '../../utils/errors';
@@ -12,6 +12,7 @@ import { NotFoundError } from '../../types/api.types';
 import { db } from '../../config/database';
 import { logger } from '../../config/logger';
 import { snowflake } from '../../utils/snowflake';
+import { dmPermissionService } from '../../services/dm';
 
 export default async function userRoutes(app: FastifyInstance) {
   /**
@@ -258,6 +259,161 @@ export default async function userRoutes(app: FastifyInstance) {
               customStatus: result.custom_status,
             },
             message: 'Profile updated successfully',
+          })
+        );
+      } catch (error) {
+        throw error;
+      }
+    }
+  );
+
+  /**
+   * GET /api/v1/users/@me/privacy
+   * Get current user's DM privacy settings
+   */
+  app.get(
+    '/@me/privacy',
+    {
+      schema: {
+        description: 'Get current user DM privacy settings',
+        tags: ['Users'],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: {
+            description: 'Privacy settings retrieved successfully',
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  dmPrivacyLevel: { type: 'string', enum: ['open', 'friends_only', 'none'] },
+                },
+              },
+            },
+          },
+          401: {
+            description: 'Unauthorized',
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              error: {
+                type: 'object',
+                properties: {
+                  code: { type: 'string' },
+                  message: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: '1 minute',
+        },
+      },
+      preHandler: requireAuth,
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const userId = (request as any).user.id;
+        const privacyLevel = await dmPermissionService.getPrivacyLevel(userId);
+
+        reply.send(
+          successResponse({
+            dmPrivacyLevel: privacyLevel,
+          })
+        );
+      } catch (error) {
+        throw error;
+      }
+    }
+  );
+
+  /**
+   * PATCH /api/v1/users/@me/privacy
+   * Update current user's DM privacy settings
+   */
+  app.patch(
+    '/@me/privacy',
+    {
+      schema: {
+        description: 'Update current user DM privacy settings',
+        tags: ['Users'],
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          required: ['dmPrivacyLevel'],
+          properties: {
+            dmPrivacyLevel: { type: 'string', enum: ['open', 'friends_only', 'none'] },
+          },
+        },
+        response: {
+          200: {
+            description: 'Privacy settings updated successfully',
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              data: {
+                type: 'object',
+                properties: {
+                  dmPrivacyLevel: { type: 'string', enum: ['open', 'friends_only', 'none'] },
+                },
+              },
+            },
+          },
+          401: {
+            description: 'Unauthorized',
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              error: {
+                type: 'object',
+                properties: {
+                  code: { type: 'string' },
+                  message: { type: 'string' },
+                },
+              },
+            },
+          },
+          400: {
+            description: 'Validation error',
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              error: {
+                type: 'object',
+                properties: {
+                  code: { type: 'string' },
+                  message: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+      },
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: '1 minute',
+        },
+      },
+      preHandler: [requireAuth, validateBody(updatePrivacySchema)],
+    },
+    async (request, reply) => {
+      try {
+        const userId = (request as any).user.id;
+        const { dmPrivacyLevel } = request.body as { dmPrivacyLevel: 'open' | 'friends_only' | 'none' };
+
+        await dmPermissionService.setPrivacyLevel(userId, dmPrivacyLevel);
+
+        logger.info({ userId, dmPrivacyLevel }, 'User privacy settings updated');
+
+        reply.send(
+          successResponse({
+            dmPrivacyLevel,
           })
         );
       } catch (error) {
