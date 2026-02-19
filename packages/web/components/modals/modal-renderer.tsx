@@ -8,7 +8,7 @@ import { UserSettingsModal } from './user-settings-modal';
 import { InvitePeopleModal } from './invite-people-modal';
 import { CreateChannelModal } from './create-channel-modal';
 import { CreateCategoryModal } from './create-category-modal';
-import { ServerSettingsModal } from './server-settings-modal';
+import { ServerSettingsModal } from './server-settings';
 import { DeleteServerModal } from './delete-server-modal';
 import { EditChannelModal } from './edit-channel-modal';
 import { DeleteChannelModal } from './delete-channel-modal';
