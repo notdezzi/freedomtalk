@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { MessageCircle, ArrowLeft, Monitor, Smartphone, Tablet, MapPin, Clock, Trash2, LogOut, AlertTriangle, RefreshCw } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import type { Session } from '@/stores/authStore';
+import { useAuth } from '@/hooks/use-auth';
+import type { Session } from '@/stores';
 
 function getDeviceIcon(type: Session['deviceType']) {
   switch (type) {

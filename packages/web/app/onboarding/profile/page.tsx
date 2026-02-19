@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useRef } from 'react';
 import { ArrowRight, ArrowLeft, Camera, User, X, Check } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function OnboardingProfilePage() {
   const router = useRouter();

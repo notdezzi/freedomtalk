@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Loader2, Users, Wifi, Hash, User, AlertCircle, CheckCircle } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { useServerStore, Server } from '@/stores/serverStore';
+import { useAuth } from '@/hooks/use-auth';
+import { useServerStore, Server } from '@/stores';
 import { apiClient } from '@/lib/api-client';
 
 interface InvitePreview {

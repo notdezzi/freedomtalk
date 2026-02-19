@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ArrowRight, Sparkles, Users, Zap, Shield } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function OnboardingWelcomePage() {
   const router = useRouter();

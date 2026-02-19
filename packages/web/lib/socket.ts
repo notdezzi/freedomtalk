@@ -6,7 +6,7 @@
 import { io, Socket } from 'socket.io-client';
 import { useWebSocketStore, ConnectionStatus } from '@/stores/websocketStore';
 import { useMessageStore } from '@/stores/messageStore';
-import { useServerStore } from '@/stores/serverStore';
+import { useServerStore } from '@/stores';
 import { useChannelStore } from '@/stores/channelStore';
 import { WS_EVENTS } from '@freedomtalk/shared';
 import { getStoredAccessToken } from './api-client';

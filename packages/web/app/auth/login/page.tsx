@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, Suspense, useEffect } from 'react';
 import { Eye, EyeOff, MessageCircle, ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/use-auth';
 
 function LoginForm() {
   const router = useRouter();
@@ -48,8 +48,10 @@ function LoginForm() {
       } else if (result.mfaRequired) {
         setMfaRequired(true);
         setMfaSessionId(result.sessionId || null);
+      } else {
+        // Success - redirect to app
+        router.push('/app');
       }
-      // On success, the useAuth hook handles the redirect
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
@@ -72,8 +74,10 @@ function LoginForm() {
 
       if (!result.success) {
         setMfaError(result.error || 'Verification failed');
+      } else {
+        // Success - redirect to app
+        router.push('/app');
       }
-      // On success, the useAuth hook handles the redirect
     } catch (err) {
       setMfaError(err instanceof Error ? err.message : 'MFA verification failed');
     } finally {
