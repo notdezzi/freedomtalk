@@ -98,7 +98,7 @@ Discord's frontend is built on:
 - [x] Message grouping logic (consecutive messages)
 - [x] Message pagination
 - [x] Channel permissions UI - EditChannelModal.tsx
-- [ ] Thread view - **MISSING**
+
 
 ### 3.5 Voice Channels ⚠️ PARTIAL
 - [x] Voice channel list - VoiceChannelUsers.tsx
@@ -466,7 +466,7 @@ Discord's frontend is built on:
 2. **Add testing infrastructure** (Unit, Integration, E2E)
 3. **Production deployment setup** (CI/CD, Monitoring)
 4. **Complete Phase 10.4 settings** (Privacy, Language)
-5. **Implement Phase 3.4 Thread view**
+
 
 ---
 
