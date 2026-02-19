@@ -288,8 +288,8 @@ class InviteService {
       throw new AppError(400, 'INVITE_EXPIRED', 'This invite has expired');
     }
 
-    // Check if max uses reached
-    if (invite.max_uses !== null && invite.uses >= invite.max_uses) {
+    // Check if max uses reached (0 or null means unlimited)
+    if (invite.max_uses !== null && invite.max_uses > 0 && invite.uses >= invite.max_uses) {
       throw new AppError(400, 'INVITE_MAX_USES', 'This invite has reached its maximum uses');
     }
 

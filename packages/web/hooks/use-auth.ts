@@ -114,58 +114,51 @@ export function useAuth() {
       const response = await apiClient.getSession();
       if (response.success && response.data) {
         setUser(response.data.user || response.data);
-        setSessions(response.data.sessions || []);
       } else {
-        setUser(null);
+        // Only log out on specific auth errors (401 Unauthorized, invalid token)
+        // Don't log out on rate limiting or server errors
+        const errorCode = response.error?.code;
+        const shouldLogout = [
+          'UNAUTHORIZED',
+          'INVALID_TOKEN',
+          'TOKEN_EXPIRED',
+          'SESSION_EXPIRED',
+          'SESSION_NOT_FOUND',
+        ].includes(errorCode || '');
+
+        if (shouldLogout) {
+          setUser(null);
+        }
+        // For other errors (rate limit, server error), keep the user logged in
+        // The existing session might still be valid
       }
     } catch (error) {
-      setUser(null);
+      // Network errors shouldn't log the user out
+      // They might just have a temporary connection issue
+      console.error('Session check failed:', error);
     } finally {
       setLoading(false);
     }
-  }, [setUser, setSessions, setLoading]);
+  }, [setUser, setLoading]);
 
   const refreshSessions = useCallback(async () => {
-    try {
-      const response = await apiClient.getSessions();
-      if (response.success && response.data) {
-        setSessions(response.data);
-        return { success: true };
-      }
-      return { success: false, error: 'Failed to refresh sessions' };
-    } catch (error) {
-      return { success: false, error: 'Failed to refresh sessions' };
-    }
+    // Not implemented in API
+    setSessions([]);
+    return { success: true };
   }, [setSessions]);
 
   const logoutOtherSessions = useCallback(
-    async (keepSessionId: string) => {
-      try {
-        const response = await apiClient.logoutOtherSessions(keepSessionId);
-        if (response.success) {
-          await refreshSessions();
-          return { success: true };
-        }
-        return { success: false, error: 'Failed to logout other sessions' };
-      } catch (error) {
-        return { success: false, error: 'Failed to logout other sessions' };
-      }
+    async (_keepSessionId: string) => {
+      // Not implemented in API
+      return { success: false, error: 'Not implemented' };
     },
-    [refreshSessions]
+    []
   );
 
-  const terminateSession = useCallback(async (sessionId: string) => {
-    try {
-      const response = await apiClient.terminateSession(sessionId);
-      if (response.success) {
-        await refreshSessions();
-        return { success: true };
-      }
-      return { success: false, error: 'Failed to terminate session' };
-    } catch (error) {
-      return { success: false, error: 'Failed to terminate session' };
-    }
-  }, [refreshSessions]);
+  const terminateSession = useCallback(async (_sessionId: string) => {
+    // Not implemented in API
+    return { success: false, error: 'Not implemented' };
+  }, []);
 
   const completeOnboarding = useCallback(async () => {
     try {

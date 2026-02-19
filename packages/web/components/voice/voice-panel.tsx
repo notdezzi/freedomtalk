@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui';
 import { useVoiceStore } from '@/stores';
+import { useVoiceConnection } from '@/hooks';
 import {
   Mic,
   MicOff,
@@ -11,7 +12,7 @@ import {
   Video,
   VideoOff,
   Monitor,
-  Phone,
+  MonitorOff,
   PhoneOff,
 } from 'lucide-react';
 import type { VoiceChannel } from '@/types';
@@ -30,11 +31,15 @@ export function VoicePanel({ channel, className }: VoicePanelProps) {
     selfDeaf,
     selfVideo,
     selfStream,
-    setSelfMute,
-    setSelfDeaf,
-    setSelfVideo,
-    disconnect,
   } = useVoiceStore();
+
+  const {
+    toggleMute,
+    toggleDeafen,
+    toggleVideo,
+    toggleScreenShare,
+    leaveChannel,
+  } = useVoiceConnection();
 
   if (!isConnected || !currentChannelId) {
     return null;
@@ -61,9 +66,9 @@ export function VoicePanel({ channel, className }: VoicePanelProps) {
       </div>
 
       {/* Users in voice */}
-      <div className="flex-1 overflow-y-auto px-2 py-1">
+      <div className="flex-1 overflow-y-auto px-2 py-1 max-h-32">
         {voiceUsers.map((user) => (
-          <VoiceUserItem key={user.userId} user={user} />
+          <VoiceUserItem key={user.sessionId} user={user} />
         ))}
       </div>
 
@@ -73,35 +78,35 @@ export function VoicePanel({ channel, className }: VoicePanelProps) {
           icon={selfMute ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
           active={selfMute}
           activeColor="red"
-          onClick={() => setSelfMute(!selfMute)}
+          onClick={toggleMute}
           title={selfMute ? 'Unmute' : 'Mute'}
         />
         <VoiceControlButton
           icon={selfDeaf ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
           active={selfDeaf}
           activeColor="red"
-          onClick={() => setSelfDeaf(!selfDeaf)}
+          onClick={toggleDeafen}
           title={selfDeaf ? 'Undeafen' : 'Deafen'}
         />
         <VoiceControlButton
           icon={selfVideo ? <VideoOff className="h-5 w-5" /> : <Video className="h-5 w-5" />}
           active={selfVideo}
           activeColor="green"
-          onClick={() => setSelfVideo(!selfVideo)}
+          onClick={toggleVideo}
           title={selfVideo ? 'Stop Video' : 'Start Video'}
         />
         <VoiceControlButton
-          icon={<Monitor className="h-5 w-5" />}
+          icon={selfStream ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
           active={selfStream}
           activeColor="green"
-          onClick={() => {}}
-          title="Share Screen"
+          onClick={toggleScreenShare}
+          title={selfStream ? 'Stop Screen Share' : 'Share Screen'}
         />
         <VoiceControlButton
           icon={<PhoneOff className="h-5 w-5" />}
           active
           activeColor="red"
-          onClick={disconnect}
+          onClick={leaveChannel}
           title="Disconnect"
         />
       </div>

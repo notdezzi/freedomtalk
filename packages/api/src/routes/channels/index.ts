@@ -71,13 +71,13 @@ export default async function channelRoutes(app: FastifyInstance) {
 
   /**
    * GET /api/v1/servers/:serverId/channels
-   * Get all channels for a server
+   * Get all channels and categories for a server
    */
   app.get(
     '/servers/:serverId/channels',
     {
       schema: {
-        description: 'Get all channels for a server',
+        description: 'Get all channels and categories for a server',
         tags: ['Channels'],
         security: [{ bearerAuth: [] }],
         params: {
@@ -100,8 +100,12 @@ export default async function channelRoutes(app: FastifyInstance) {
         return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'Not a member of this server' } });
       }
 
-      const channels = await channelService.getServerChannels(serverId);
-      return reply.send(successResponse(channels));
+      const [channels, categories] = await Promise.all([
+        channelService.getServerChannels(serverId),
+        categoryService.getServerCategories(serverId),
+      ]);
+
+      return reply.send(successResponse({ channels, categories }));
     }
   );
 
@@ -316,9 +320,7 @@ export default async function channelRoutes(app: FastifyInstance) {
             },
           },
         },
-        response: {
-          200: { type: 'object' },
-        },
+        // Remove response schema to avoid Fastify stripping properties
       },
       preHandler: validateBody(channelPositionsSchema),
     },

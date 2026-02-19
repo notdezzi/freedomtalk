@@ -11,6 +11,7 @@ import { messageService } from '../services/message/message.service';
 import { dmNotificationService, NotificationLevel } from '../services/dm/dm-notification.service';
 import { requireAuth } from '../middleware/auth.middleware';
 import { logger } from '../config/logger';
+import { messageRouter } from '../services/websocket/message.router';
 
 // Validation schemas
 const createDMSchema = z.object({
@@ -282,6 +283,7 @@ export default async function dmRoutes(app: FastifyInstance) {
    */
   app.post('/channels/:channelId/messages', async (request, reply) => {
     const userId = request.user!.id;
+    const username = request.user!.username;
     const params = request.params as { channelId: string };
     const { channelId } = params;
     const body = parseBody(createMessageSchema, request.body);
@@ -303,6 +305,35 @@ export default async function dmRoutes(app: FastifyInstance) {
       });
 
       logger.info({ messageId: message.id, channelId, userId }, 'DM message created');
+
+      // Broadcast message to DM participants via WebSocket
+      const wsMessage = {
+        id: message.id,
+        content: message.content,
+        authorId: message.author_id,
+        channelId: message.channel_id,
+        dmChannelId: message.dm_channel_id,
+        createdAt: message.created_at.toISOString(),
+        updatedAt: message.updated_at.toISOString(),
+        isEdited: message.is_edited,
+        isDeleted: message.is_deleted,
+        author: {
+          id: userId,
+          username: username,
+        },
+        embeds: message.embeds?.map(embed => ({
+          ...embed,
+          timestamp: embed.timestamp instanceof Date ? embed.timestamp.toISOString() : embed.timestamp,
+        })),
+      };
+
+      // Route message to DM participants
+      try {
+        await messageRouter.routeMessage(wsMessage);
+      } catch (broadcastError) {
+        logger.error({ error: broadcastError, messageId: message.id }, 'Failed to broadcast DM message');
+        // Don't fail the request if broadcast fails
+      }
 
       return reply.status(201).send({
         id: message.id,

@@ -25,6 +25,7 @@ export interface MessageItemProps {
   onReaction: (emoji: string) => void;
   onReply: () => void;
   onPin: () => void;
+  onUserClick?: (userId: string) => void;
   context: 'server' | 'dm';
 }
 
@@ -38,6 +39,7 @@ export function MessageItem({
   onReaction,
   onReply,
   onPin,
+  onUserClick,
   context,
 }: MessageItemProps) {
   const [showActions, setShowActions] = useState(false);
@@ -69,16 +71,16 @@ export function MessageItem({
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
       >
-        {/* Timestamp on hover */}
-        <div className="w-[72px] flex-shrink-0 text-right">
+        {/* Timestamp on hover - same width as avatar (w-8) */}
+        <div className="w-8 flex-shrink-0 flex items-center justify-center">
           <span className="text-[10px] text-gray-500 opacity-0 group-hover:opacity-100">
             {formatTime(message.createdAt)}
           </span>
         </div>
 
-        {/* Content */}
+        {/* Content - same layout as non-grouped messages */}
         <div className="flex-1 min-w-0">
-          <p className="text-gray-200 text-sm break-words whitespace-pre-wrap">
+          <p className="text-gray-200 text-sm break-words whitespace-pre-wrap pl-0">
             {message.content}
           </p>
 
@@ -119,12 +121,16 @@ export function MessageItem({
     >
       {/* Avatar */}
       {showHeader ? (
-        <Avatar
-          src={message.author.avatar}
-          alt={message.author.displayName || message.author.username}
-          size="md"
-          className="flex-shrink-0"
-        />
+        <button
+          onClick={() => onUserClick?.(message.author.id)}
+          className="flex-shrink-0 cursor-pointer"
+        >
+          <Avatar
+            src={message.author.avatar}
+            alt={message.author.displayName || message.author.username}
+            size="md"
+          />
+        </button>
       ) : (
         <div className="w-8 flex-shrink-0" />
       )}
@@ -134,7 +140,10 @@ export function MessageItem({
         {/* Header */}
         {showHeader && (
           <div className="flex items-baseline gap-2">
-            <button className="font-medium text-white hover:underline">
+            <button
+              onClick={() => onUserClick?.(message.author.id)}
+              className="font-medium text-white hover:underline cursor-pointer"
+            >
               {message.author.displayName || message.author.username}
             </button>
             <Tooltip content={formatDate(message.createdAt)}>

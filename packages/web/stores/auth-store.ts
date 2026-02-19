@@ -69,7 +69,8 @@ export const useAuthStore = create<AuthStore>()(
       name: 'freedomtalk-auth',
       partialize: (state) => ({
         user: state.user,
-        isAuthenticated: state.isAuthenticated,
+        // Don't persist isAuthenticated - it must be verified by server
+        // isAuthenticated: state.isAuthenticated,
         isOnboardingComplete: state.isOnboardingComplete,
       }),
     }

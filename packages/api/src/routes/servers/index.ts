@@ -459,9 +459,7 @@ export default async function serverRoutes(app: FastifyInstance) {
             code: { type: 'string', minLength: 1, maxLength: VALIDATION.INVITE.MAX_CODE_LENGTH },
           },
         },
-        response: {
-          200: { type: 'object' },
-        },
+        // Remove response schema to avoid Fastify stripping properties
       },
     },
     async (request: FastifyRequest<{ Params: { code: string } }>, reply: FastifyReply) => {
@@ -484,8 +482,8 @@ export default async function serverRoutes(app: FastifyInstance) {
         });
       }
 
-      // Check if max uses reached
-      if (invite.max_uses !== null && invite.uses >= invite.max_uses) {
+      // Check if max uses reached (0 or null means unlimited)
+      if (invite.max_uses !== null && invite.max_uses > 0 && invite.uses >= invite.max_uses) {
         return reply.code(410).send({
           success: false,
           error: { code: 'MAX_USES', message: 'This invite has reached its maximum uses' },
@@ -929,9 +927,7 @@ export default async function serverRoutes(app: FastifyInstance) {
             serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
-        response: {
-          200: { type: 'object' },
-        },
+        // Remove response schema to avoid Fastify stripping properties
       },
     },
     async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
@@ -976,9 +972,7 @@ export default async function serverRoutes(app: FastifyInstance) {
             temporary: { type: 'boolean' },
           },
         },
-        response: {
-          201: { type: 'object' },
-        },
+        // Remove response schema to avoid Fastify stripping properties
       },
       preHandler: validateBody(createInviteSchema),
     },

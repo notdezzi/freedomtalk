@@ -9,6 +9,7 @@ import { validateBody } from '../../middleware/validation.middleware';
 import { requireAuth } from '../../middleware/auth.middleware';
 import { successResponse } from '../../utils/errors';
 import { messageService } from '../../services/message/message.service';
+import { messageRouter } from '../../services/websocket/message.router';
 import { VALIDATION } from '@freedomtalk/shared';
 
 /**
@@ -16,7 +17,7 @@ import { VALIDATION } from '@freedomtalk/shared';
  */
 const createMessageWithEmbedsSchema = z.object({
   content: z.string().min(1).max(2000),
-  channelId: z.string().min(20).max(20).optional(),
+  channelId: z.string().min(15).max(25).optional(),
   embeds: z.array(z.any()).max(VALIDATION.EMBED.MAX_PER_MESSAGE).optional(),
 });
 
@@ -124,6 +125,7 @@ export default async function messageRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: { content: string; channelId?: string; embeds?: any[] } }>, reply: FastifyReply) => {
       const { content, channelId, embeds } = request.body;
       const userId = request.user!.id;
+      const username = request.user!.username;
 
       const message = await messageService.createMessage({
         content,
@@ -131,6 +133,35 @@ export default async function messageRoutes(app: FastifyInstance) {
         channelId,
         embeds,
       });
+
+      // Broadcast message via WebSocket
+      const wsMessage = {
+        id: message.id,
+        content: message.content,
+        authorId: message.author_id,
+        channelId: message.channel_id,
+        dmChannelId: message.dm_channel_id,
+        createdAt: message.created_at.toISOString(),
+        updatedAt: message.updated_at.toISOString(),
+        isEdited: message.is_edited,
+        isDeleted: message.is_deleted,
+        author: {
+          id: userId,
+          username: username,
+        },
+        embeds: message.embeds?.map(embed => ({
+          ...embed,
+          timestamp: embed.timestamp instanceof Date ? embed.timestamp.toISOString() : embed.timestamp,
+        })),
+      };
+
+      // Route message to appropriate recipients
+      try {
+        await messageRouter.routeMessage(wsMessage);
+      } catch (broadcastError) {
+        // Log but don't fail the request if broadcast fails
+        request.log.error({ error: broadcastError, messageId: message.id }, 'Failed to broadcast message');
+      }
 
       return reply.code(201).send(successResponse(message));
     }

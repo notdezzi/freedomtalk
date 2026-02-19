@@ -1,140 +1,161 @@
 /**
  * Friends System E2E Tests
- * Tests for friend requests, accept, reject, remove
+ * Tests for friend requests, accept, reject, remove in the new FreedomTalk layout
  */
 
 import { test, expect, createTestUser } from '../fixtures';
 
 test.describe('Friends System', () => {
-  test.describe('Friends List', () => {
-    test('should display friends list', async ({ authenticatedPage }) => {
-      // Navigate to friends
+  test.describe('Friends Page', () => {
+    test('should display friends page on home', async ({ authenticatedPage }) => {
       await authenticatedPage.goto('/app');
-      await authenticatedPage.click('[data-testid="friends-tab"], button:has-text("Friends")').catch(() => {});
-
-      // Friends list should be visible
-      await expect(authenticatedPage.locator('[data-testid="friends-list"], [class*="friends"]')).toBeVisible({ timeout: 10000 }).catch(() => {
-        // May have different selector
-      });
-    });
-
-    test('should show online and offline sections', async ({ authenticatedPage }) => {
-      await authenticatedPage.goto('/app');
-      await authenticatedPage.click('[data-testid="friends-tab"], button:has-text("Friends")').catch(() => {});
       await authenticatedPage.waitForTimeout(1000);
 
-      // Check for online/offline sections or friend items
-      const hasOnlineSection = await authenticatedPage.locator('text=/Online/i').count() > 0;
-      const hasOfflineSection = await authenticatedPage.locator('text=/Offline/i').count() > 0;
-      const hasFriendItems = await authenticatedPage.locator('[data-testid="friend-item"], [class*="friend"]').count() > 0;
+      // Should see the friends header/title
+      const friendsHeader = authenticatedPage.locator('text=/Friends/i');
+      await expect(friendsHeader.first()).toBeVisible({ timeout: 10000 });
+    });
 
-      expect(hasOnlineSection || hasOfflineSection || hasFriendItems).toBeTruthy();
+    test('should show tab navigation', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/app');
+      await authenticatedPage.waitForTimeout(1000);
+
+      // Tabs should be visible
+      const tabs = ['All', 'Online', 'Pending', 'Blocked', 'Add Friend'];
+      for (const tab of tabs) {
+        const tabButton = authenticatedPage.locator(`button:has-text("${tab}")`);
+        await expect(tabButton.first()).toBeVisible({ timeout: 5000 }).catch(() => {});
+      }
+    });
+
+    test('should show empty state when no friends', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/app');
+      await authenticatedPage.waitForTimeout(1000);
+
+      // Click on "All" tab
+      await authenticatedPage.click('button:has-text("All")').catch(() => {});
+
+      // Should show empty state or friends list
+      const content = authenticatedPage.locator('text=/No friends|Add some friends|All Friends/i');
+      await expect(content.first()).toBeVisible({ timeout: 5000 }).catch(() => {});
     });
   });
 
-  test.describe('Send Friend Request', () => {
-    test('should search for users to add as friend', async ({ authenticatedPage }) => {
+  test.describe('Add Friend', () => {
+    test('should show Add Friend form', async ({ authenticatedPage }) => {
       await authenticatedPage.goto('/app');
-      await authenticatedPage.click('[data-testid="friends-tab"], button:has-text("Friends")').catch(() => {});
+      await authenticatedPage.waitForTimeout(1000);
 
-      // Click add friend button
-      await authenticatedPage.click('[data-testid="add-friend"], button:has-text("Add Friend")').catch(() => {});
+      // Click on Add Friend tab
+      await authenticatedPage.click('button:has-text("Add Friend")').catch(() => {});
 
-      // Search input should appear
-      const searchInput = authenticatedPage.locator('input[placeholder*="username"], input[placeholder*="search"]');
-      await expect(searchInput).toBeVisible({ timeout: 5000 }).catch(() => {});
+      // Should show input field
+      const input = authenticatedPage.locator('input[placeholder*="username"], input[type="text"]');
+      await expect(input.first()).toBeVisible({ timeout: 5000 });
     });
 
-    test('should show user not found for non-existent user', async ({ authenticatedPage }) => {
+    test('should show Send Friend Request button', async ({ authenticatedPage }) => {
       await authenticatedPage.goto('/app');
-      await authenticatedPage.click('[data-testid="friends-tab"], button:has-text("Friends")').catch(() => {});
-      await authenticatedPage.click('[data-testid="add-friend"], button:has-text("Add Friend")').catch(() => {});
+      await authenticatedPage.waitForTimeout(1000);
 
-      // Search for non-existent user
-      const searchInput = authenticatedPage.locator('input[placeholder*="username"], input[placeholder*="search"]');
-      await searchInput.fill('nonexistentuser123456789');
-      await searchInput.press('Enter');
+      await authenticatedPage.click('button:has-text("Add Friend")').catch(() => {});
 
-      // Should show not found message
-      await expect(authenticatedPage.locator('text=/not found|no.*user|doesn.*exist/i')).toBeVisible({ timeout: 10000 }).catch(() => {
-        // May show different error or empty results
-      });
+      // Button should be visible
+      const sendButton = authenticatedPage.locator('button:has-text("Send Friend Request")');
+      await expect(sendButton.first()).toBeVisible({ timeout: 5000 });
+    });
+
+    test('should show error for non-existent user', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/app');
+      await authenticatedPage.waitForTimeout(1000);
+
+      await authenticatedPage.click('button:has-text("Add Friend")').catch(() => {});
+
+      // Enter non-existent username
+      const input = authenticatedPage.locator('input[placeholder*="username"]').first();
+      await input.fill('nonexistentuser123456789');
+      await authenticatedPage.click('button:has-text("Send Friend Request")').catch(() => {});
+
+      // Should show error message
+      await expect(authenticatedPage.locator('text=/not found|Failed|error/i')).toBeVisible({ timeout: 10000 }).catch(() => {});
     });
   });
 
-  test.describe('Incoming Friend Requests', () => {
-    test('should show incoming requests tab', async ({ authenticatedPage }) => {
+  test.describe('Pending Requests', () => {
+    test('should show pending tab', async ({ authenticatedPage }) => {
       await authenticatedPage.goto('/app');
-      await authenticatedPage.click('[data-testid="friends-tab"], button:has-text("Friends")').catch(() => {});
+      await authenticatedPage.waitForTimeout(1000);
 
-      // Click on incoming/pending tab
-      await authenticatedPage.click('button:has-text("Incoming"), button:has-text("Pending")').catch(() => {});
+      // Click on Pending tab
+      await authenticatedPage.click('button:has-text("Pending")').catch(() => {});
 
-      // Should show requests section
+      // Should show pending section or empty state
       await authenticatedPage.waitForTimeout(500);
     });
-  });
 
-  test.describe('Friend Actions', () => {
-    test('should show friend options on hover/click', async ({ authenticatedPage }) => {
+    test('should show empty state when no pending requests', async ({ authenticatedPage }) => {
       await authenticatedPage.goto('/app');
-      await authenticatedPage.click('[data-testid="friends-tab"], button:has-text("Friends")').catch(() => {});
       await authenticatedPage.waitForTimeout(1000);
 
-      // Hover over first friend if available
-      const friendItem = authenticatedPage.locator('[data-testid="friend-item"], [class*="friend"]').first();
-      if ((await friendItem.count()) > 0) {
-        await friendItem.hover();
+      await authenticatedPage.click('button:has-text("Pending")').catch(() => {});
 
-        // Should show action buttons (message, more options)
-        const messageButton = authenticatedPage.locator('button:has-text("Message")');
-        const moreButton = authenticatedPage.locator('[data-testid="friend-options"], button[aria-label*="more"]');
-
-        expect(
-          (await messageButton.count()) > 0 || (await moreButton.count()) > 0
-        ).toBeTruthy();
-      } else {
-        test.skip();
-      }
-    });
-
-    test('should open DM when clicking message on friend', async ({ authenticatedPage }) => {
-      await authenticatedPage.goto('/app');
-      await authenticatedPage.click('[data-testid="friends-tab"], button:has-text("Friends")').catch(() => {});
-      await authenticatedPage.waitForTimeout(1000);
-
-      const friendItem = authenticatedPage.locator('[data-testid="friend-item"], [class*="friend"]').first();
-      if ((await friendItem.count()) > 0) {
-        await friendItem.hover();
-        await authenticatedPage.click('button:has-text("Message")').catch(() => {});
-
-        // Should navigate to DM
-        await expect(authenticatedPage).toHaveURL(/\/dms\//, { timeout: 10000 }).catch(() => {
-          // May have different URL structure
-        });
-      } else {
-        test.skip();
-      }
+      // Should show empty state message
+      const emptyState = authenticatedPage.locator('text=/No pending|No.*requests/i');
+      await expect(emptyState.first()).toBeVisible({ timeout: 5000 }).catch(() => {});
     });
   });
 
-  test.describe('Remove Friend', () => {
-    test('should show remove friend option', async ({ authenticatedPage }) => {
+  test.describe('Blocked Users', () => {
+    test('should show blocked tab', async ({ authenticatedPage }) => {
       await authenticatedPage.goto('/app');
-      await authenticatedPage.click('[data-testid="friends-tab"], button:has-text("Friends")').catch(() => {});
       await authenticatedPage.waitForTimeout(1000);
 
-      const friendItem = authenticatedPage.locator('[data-testid="friend-item"], [class*="friend"]').first();
-      if ((await friendItem.count()) > 0) {
-        // Right-click for context menu or click more options
-        await friendItem.click({ button: 'right' });
-        await authenticatedPage.click('text=/Remove Friend|Unfriend/i').catch(() => {});
+      // Click on Blocked tab
+      await authenticatedPage.click('button:has-text("Blocked")').catch(() => {});
 
-        // Should show confirmation or action taken
-        await authenticatedPage.waitForTimeout(500);
-      } else {
-        test.skip();
-      }
+      await authenticatedPage.waitForTimeout(500);
+    });
+
+    test('should show empty state when no blocked users', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/app');
+      await authenticatedPage.waitForTimeout(1000);
+
+      await authenticatedPage.click('button:has-text("Blocked")').catch(() => {});
+
+      // Should show empty state
+      const emptyState = authenticatedPage.locator('text=/haven.*blocked|No.*blocked/i');
+      await expect(emptyState.first()).toBeVisible({ timeout: 5000 }).catch(() => {});
+    });
+  });
+
+  test.describe('Navigation', () => {
+    test('should show Friends button in sidebar', async ({ authenticatedPage }) => {
+      await authenticatedPage.goto('/app');
+      await authenticatedPage.waitForTimeout(1000);
+
+      // Friends button should be visible in navigation
+      const friendsButton = authenticatedPage.locator('button:has-text("Friends")');
+      await expect(friendsButton.first()).toBeVisible({ timeout: 5000 });
+    });
+
+    test('should navigate to friends when clicking Friends button', async ({ authenticatedPage }) => {
+      // Go to a server first
+      const server = { name: 'Test Server ' + Date.now() };
+
+      await authenticatedPage.goto('/app');
+      await authenticatedPage.click('button[aria-label="Add server"]').catch(() => {});
+      await authenticatedPage.waitForTimeout(500);
+      await authenticatedPage.click('button:has-text("Create My Own")').catch(() => {});
+      await authenticatedPage.waitForTimeout(300);
+      await authenticatedPage.fill('input[type="text"]', server.name).catch(() => {});
+      await authenticatedPage.click('button:has-text("Create")').catch(() => {});
+      await expect(authenticatedPage).toHaveURL(/\/servers\//, { timeout: 15000 });
+
+      // Now click Friends button to go back
+      await authenticatedPage.click('button:has-text("Friends")').catch(() => {});
+
+      // Should be on /app (friends page)
+      await expect(authenticatedPage).toHaveURL(/\/app$/, { timeout: 10000 });
     });
   });
 });

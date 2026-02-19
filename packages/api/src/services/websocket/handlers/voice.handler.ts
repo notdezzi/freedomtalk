@@ -15,6 +15,7 @@ interface VoiceSession {
   sessionId: string;
   channelId: string;
   userId: string;
+  serverId: string;
 }
 
 // Store active voice sessions per socket
@@ -60,7 +61,7 @@ class VoiceHandler {
         });
 
         // Store session
-        socketSessions.set(socket.id, { sessionId, channelId, userId });
+        socketSessions.set(socket.id, { sessionId, channelId, userId, serverId: channel.server_id });
 
         // Join socket room for the voice channel
         socket.join(`voice:${channelId}`);
@@ -75,10 +76,37 @@ class VoiceHandler {
         // Get existing producers in the room
         const producers = mediasoupService.getRoomProducers(channelId);
 
-        // Notify others in the channel
+        // Get existing users in the channel (excluding current user)
+        const existingVoiceStates = await voiceStateService.getChannelVoiceStates(channelId);
+        const existingUsers = existingVoiceStates
+          .filter(state => state.session_id !== sessionId)
+          .map(state => ({
+            userId: state.user_id,
+            sessionId: state.session_id,
+            username: state.user?.username || 'User',
+            avatar: state.user?.avatar || null,
+            selfMute: state.self_mute,
+            selfDeaf: state.self_deaf,
+            selfVideo: state.self_video,
+            selfStream: state.self_stream,
+          }));
+
+        // Notify others in the channel with full user info
         socket.to(`voice:${channelId}`).emit('voice:user_joined', {
           userId,
           sessionId,
+          channelId,
+          username: socket.data.user?.username || 'User',
+          avatar: socket.data.user?.avatar || null,
+        });
+
+        // Also broadcast to server room for UI updates (users not in voice)
+        socket.to(`server:${channel.server_id}`).emit('voice:user_joined', {
+          userId,
+          sessionId,
+          channelId,
+          username: socket.data.user?.username || 'User',
+          avatar: socket.data.user?.avatar || null,
         });
 
         callback?.({
@@ -87,6 +115,7 @@ class VoiceHandler {
             sessionId,
             rtpCapabilities,
             producers,
+            existingUsers,
           },
         });
 
@@ -105,7 +134,7 @@ class VoiceHandler {
           return callback?.({ success: false, error: 'Not in a voice channel' });
         }
 
-        const { sessionId, channelId } = session;
+        const { sessionId, channelId, serverId } = session;
 
         // Leave mediasoup room
         await mediasoupService.removeParticipant(channelId, sessionId);
@@ -116,8 +145,11 @@ class VoiceHandler {
         // Leave socket room
         socket.leave(`voice:${channelId}`);
 
-        // Notify others
-        socket.to(`voice:${channelId}`).emit('voice:user_left', { sessionId });
+        // Notify others in voice channel
+        socket.to(`voice:${channelId}`).emit('voice:user_left', { sessionId, channelId });
+
+        // Also broadcast to server room for UI updates
+        socket.to(`server:${serverId}`).emit('voice:user_left', { sessionId, channelId });
 
         // Cleanup
         socketSessions.delete(socket.id);
@@ -198,9 +230,18 @@ class VoiceHandler {
             selfStream: isScreen,
           });
 
-          // Notify others
+          // Notify others in voice channel
           socket.to(`voice:${session.channelId}`).emit('voice:user_state', {
             sessionId: session.sessionId,
+            channelId: session.channelId,
+            selfVideo: !isScreen,
+            selfStream: isScreen,
+          });
+
+          // Also broadcast to server room for UI updates
+          socket.to(`server:${session.serverId}`).emit('voice:user_state', {
+            sessionId: session.sessionId,
+            channelId: session.channelId,
             selfVideo: !isScreen,
             selfStream: isScreen,
           });
@@ -295,9 +336,17 @@ class VoiceHandler {
 
         const updated = await voiceStateService.updateVoiceState(session.sessionId, data);
 
-        // Notify others
+        // Notify others in voice channel
         socket.to(`voice:${session.channelId}`).emit('voice:user_state', {
           sessionId: session.sessionId,
+          channelId: session.channelId,
+          ...data,
+        });
+
+        // Also broadcast to server room for UI updates
+        socket.to(`server:${session.serverId}`).emit('voice:user_state', {
+          sessionId: session.sessionId,
+          channelId: session.channelId,
           ...data,
         });
 
@@ -326,7 +375,18 @@ class VoiceHandler {
         try {
           await mediasoupService.removeParticipant(session.channelId, session.sessionId);
           await voiceStateService.deleteVoiceState(session.sessionId);
-          socket.to(`voice:${session.channelId}`).emit('voice:user_left', { sessionId: session.sessionId });
+
+          // Notify others in voice channel
+          socket.to(`voice:${session.channelId}`).emit('voice:user_left', {
+            sessionId: session.sessionId,
+            channelId: session.channelId,
+          });
+
+          // Also broadcast to server room for UI updates
+          socket.to(`server:${session.serverId}`).emit('voice:user_left', {
+            sessionId: session.sessionId,
+            channelId: session.channelId,
+          });
         } catch (error) {
           logger.error({ error }, 'Error cleaning up voice session on disconnect');
         }

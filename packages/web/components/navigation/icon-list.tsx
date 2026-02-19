@@ -4,6 +4,7 @@ import { cn, getAcronym } from '@/lib/utils';
 import { Tooltip } from '@/components/ui';
 import { Plus, Home } from 'lucide-react';
 import type { UserStatus } from '@/types';
+import { useState, useRef } from 'react';
 
 export interface IconItem {
   id: string;
@@ -21,6 +22,8 @@ export interface IconListProps {
   items: IconItem[];
   activeId?: string;
   onItemClick: (id: string) => void;
+  onItemContextMenu?: (e: React.MouseEvent, item: IconItem) => void;
+  onReorder?: (items: IconItem[]) => void;
   showAddButton?: boolean;
   onAddClick?: () => void;
   showHomeButton?: boolean;
@@ -32,11 +35,65 @@ export function IconList({
   items,
   activeId,
   onItemClick,
+  onItemContextMenu,
+  onReorder,
   showAddButton,
   onAddClick,
   showHomeButton,
   onHomeClick,
 }: IconListProps) {
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const dragNodeRef = useRef<HTMLDivElement | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    dragNodeRef.current = e.target as HTMLDivElement;
+    e.dataTransfer.effectAllowed = 'move';
+    // Add a slight delay to allow the drag image to be captured
+    setTimeout(() => {
+      if (dragNodeRef.current) {
+        dragNodeRef.current.style.opacity = '0.5';
+      }
+    }, 0);
+  };
+
+  const handleDragEnd = () => {
+    if (dragNodeRef.current) {
+      dragNodeRef.current.style.opacity = '1';
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    dragNodeRef.current = null;
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex || !onReorder) {
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newItems = [...items];
+    const [draggedItem] = newItems.splice(draggedIndex, 1);
+    newItems.splice(dropIndex, 0, draggedItem);
+
+    onReorder(newItems);
+    setDragOverIndex(null);
+  };
+
   return (
     <div className="flex w-full flex-col items-center gap-2">
       {/* Home button for servers variant */}
@@ -45,7 +102,7 @@ export function IconList({
           <button
             onClick={onHomeClick}
             className={cn(
-              'flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-200',
+              'flex h-12 w-12 aspect-square items-center justify-center rounded-2xl transition-all duration-200',
               'bg-gray-700 text-gray-300 hover:bg-green-600 hover:text-white hover:rounded-xl'
             )}
             aria-label="Direct Messages"
@@ -61,13 +118,37 @@ export function IconList({
       )}
 
       {/* Items */}
-      {items.map((item) => (
-        <IconListItem
+      {items.map((item, index) => (
+        <div
           key={item.id}
-          item={item}
-          isActive={item.id === activeId}
-          onClick={() => onItemClick(item.id)}
-        />
+          draggable={!!onReorder}
+          onDragStart={(e) => handleDragStart(e, index)}
+          onDragEnd={handleDragEnd}
+          onDragOver={(e) => handleDragOver(e, index)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, index)}
+          className={cn(
+            'relative w-full flex justify-center',
+            dragOverIndex === index && draggedIndex !== null && draggedIndex < index && 'translate-y-2',
+            dragOverIndex === index && draggedIndex !== null && draggedIndex > index && '-translate-y-2',
+          )}
+        >
+          {/* Drop indicator above */}
+          {dragOverIndex === index && draggedIndex !== null && draggedIndex > index && (
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-10 h-1 bg-white rounded-full" />
+          )}
+          <IconListItem
+            item={item}
+            isActive={item.id === activeId}
+            isDragging={draggedIndex === index}
+            onClick={() => onItemClick(item.id)}
+            onContextMenu={onItemContextMenu}
+          />
+          {/* Drop indicator below */}
+          {dragOverIndex === index && draggedIndex !== null && draggedIndex < index && (
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-10 h-1 bg-white rounded-full" />
+          )}
+        </div>
       ))}
 
       {/* Add button */}
@@ -92,14 +173,24 @@ export function IconList({
 function IconListItem({
   item,
   isActive,
+  isDragging,
   onClick,
+  onContextMenu,
 }: {
   item: IconItem;
   isActive: boolean;
+  isDragging: boolean;
   onClick: () => void;
+  onContextMenu?: (e: React.MouseEvent, item: IconItem) => void;
 }) {
   const showUnreadBadge = item.unread && item.unread > 0;
   const showNotificationDot = item.hasNotification && !showUnreadBadge;
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (onContextMenu) {
+      onContextMenu(e, item);
+    }
+  };
 
   return (
     <Tooltip content={item.name} position="right">
@@ -115,12 +206,14 @@ function IconListItem({
 
         <button
           onClick={onClick}
+          onContextMenu={handleContextMenu}
           className={cn(
             'relative flex h-12 w-12 items-center justify-center transition-all duration-200',
             'rounded-2xl hover:rounded-xl overflow-hidden',
             isActive
               ? 'rounded-xl bg-gray-600'
-              : 'bg-gray-700 hover:bg-gray-600'
+              : 'bg-gray-700 hover:bg-gray-600',
+            isDragging && 'opacity-50 cursor-grabbing'
           )}
           style={item.color ? { backgroundColor: isActive ? item.color : undefined } : undefined}
           aria-label={item.name}

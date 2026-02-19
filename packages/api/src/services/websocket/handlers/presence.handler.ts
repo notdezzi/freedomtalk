@@ -17,14 +17,20 @@ const statusChangeSchema = z.object({
  * Typing start data schema
  */
 const typingStartSchema = z.object({
-  channelId: z.string().min(1),
+  channelId: z.string().optional(),
+  dmChannelId: z.string().optional(),
+}).refine(data => data.channelId || data.dmChannelId, {
+  message: 'Either channelId or dmChannelId is required',
 });
 
 /**
  * Typing stop data schema
  */
 const typingStopSchema = z.object({
-  channelId: z.string().min(1),
+  channelId: z.string().optional(),
+  dmChannelId: z.string().optional(),
+}).refine(data => data.channelId || data.dmChannelId, {
+  message: 'Either channelId or dmChannelId is required',
 });
 
 /**
@@ -103,7 +109,7 @@ export async function handleStatusChange(socket: Socket, data: unknown): Promise
 export async function handleTypingStart(socket: Socket, data: unknown): Promise<void> {
   try {
     const user = socket.data.user;
-    
+
     if (!user) {
       socket.emit(WS_EVENTS.ERROR, {
         code: 'UNAUTHORIZED',
@@ -123,14 +129,16 @@ export async function handleTypingStart(socket: Socket, data: unknown): Promise<
       return;
     }
 
-    const { channelId } = validation.data;
+    const { channelId, dmChannelId } = validation.data;
+    const effectiveChannelId = channelId || dmChannelId!;
+    const channelType = dmChannelId ? 'dm' : 'channel';
 
     // Start typing indicator
     // Note: We don't check subscription here because typing indicators are broadcast
     // to the channel room, and room membership provides sufficient access control
-    await typingManager.startTyping(user.id, channelId);
+    await typingManager.startTyping(user.id, effectiveChannelId, channelType);
 
-    logger.debug({ userId: user.id, channelId }, 'User started typing');
+    logger.debug({ userId: user.id, channelId: effectiveChannelId, channelType }, 'User started typing');
   } catch (error) {
     logger.error({ error, socketId: socket.id }, 'Error handling typing start');
   }
@@ -144,7 +152,7 @@ export async function handleTypingStart(socket: Socket, data: unknown): Promise<
 export async function handleTypingStop(socket: Socket, data: unknown): Promise<void> {
   try {
     const user = socket.data.user;
-    
+
     if (!user) {
       return;
     }
@@ -155,12 +163,14 @@ export async function handleTypingStop(socket: Socket, data: unknown): Promise<v
       return;
     }
 
-    const { channelId } = validation.data;
+    const { channelId, dmChannelId } = validation.data;
+    const effectiveChannelId = channelId || dmChannelId!;
+    const channelType = dmChannelId ? 'dm' : 'channel';
 
     // Stop typing indicator
-    await typingManager.stopTyping(user.id, channelId);
+    await typingManager.stopTyping(user.id, effectiveChannelId, channelType);
 
-    logger.debug({ userId: user.id, channelId }, 'User stopped typing');
+    logger.debug({ userId: user.id, channelId: effectiveChannelId, channelType }, 'User stopped typing');
   } catch (error) {
     logger.error({ error, socketId: socket.id }, 'Error handling typing stop');
   }

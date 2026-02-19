@@ -3,3 +3,4 @@ export { useAuthStore } from './auth-store';
 export { useUIStore, type ModalType } from './ui-store';
 export { useVoiceStore } from './voice-store';
 export { useSocketStore, type ConnectionStatus } from './socket-store';
+export { useTypingStore, useTypingUsers, type TypingUser } from './typing-store';

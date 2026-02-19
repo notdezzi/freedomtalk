@@ -17,6 +17,7 @@ export type ModalType =
   | 'user-profile'
   | 'pinned-messages'
   | 'search'
+  | 'add-friend'
   | null;
 
 interface ModalState {

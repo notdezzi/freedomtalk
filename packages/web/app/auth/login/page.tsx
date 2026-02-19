@@ -25,6 +25,7 @@ function LoginForm() {
   });
 
   const registered = searchParams.get('registered');
+  const redirectUrl = searchParams.get('redirect') || '/app';
 
   // Check if MFA code input should auto-focus
   useEffect(() => {
@@ -75,8 +76,8 @@ function LoginForm() {
       if (!result.success) {
         setMfaError(result.error || 'Verification failed');
       } else {
-        // Success - redirect to app
-        router.push('/app');
+        // Success - redirect to the requested URL or app
+        router.push(redirectUrl);
       }
     } catch (err) {
       setMfaError(err instanceof Error ? err.message : 'MFA verification failed');

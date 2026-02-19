@@ -27,6 +27,17 @@ interface RemoteStream {
   screen?: MediaStream;
 }
 
+export interface ExistingUser {
+  userId: string;
+  sessionId: string;
+  username: string;
+  avatar: string | null;
+  selfMute: boolean;
+  selfDeaf: boolean;
+  selfVideo: boolean;
+  selfStream: boolean;
+}
+
 export class VoiceClient {
   private socket: Socket;
   private channelId: string | null = null;
@@ -59,17 +70,27 @@ export class VoiceClient {
   private sendTransportConnected: boolean = false;
   private recvTransportConnected: boolean = false;
 
+  // Speaking detection
+  private audioContext: AudioContext | null = null;
+  private analyser: AnalyserNode | null = null;
+  private speakingCheckInterval: NodeJS.Timeout | null = null;
+  private isSpeaking: boolean = false;
+  private speakingThreshold: number = 0.3; // 30% volume
+  private speakingDebounceMs: number = 300;
+  private lastSpeakingChange: number = 0;
+
   // Callbacks
   public onProducerCreated?: (producerId: string, kind: 'audio' | 'video', sessionId: string) => void;
   public onProducerClosed?: (producerId: string) => void;
-  public onUserJoined?: (userId: string, sessionId: string) => void;
+  public onUserJoined?: (userId: string, sessionId: string, username: string, avatar: string | null) => void;
   public onUserLeft?: (sessionId: string) => void;
   public onUserStateChange?: (sessionId: string, state: any) => void;
   public onUserSpeaking?: (sessionId: string, speaking: boolean) => void;
   public onError?: (error: string) => void;
-  public onConnected?: () => void;
+  public onConnected?: (existingUsers: ExistingUser[]) => void;
   public onDisconnected?: () => void;
   public onRemoteStreamChanged?: (sessionId: string, kind: 'audio' | 'video' | 'screen', stream: MediaStream | null) => void;
+  public onSpeaking?: (speaking: boolean) => void;
 
   constructor(socket: Socket) {
     this.socket = socket;
@@ -88,8 +109,8 @@ export class VoiceClient {
       this.socket.emit('pong', { timestamp: Date.now() });
     });
 
-    this.socket.on('voice:user_joined', (data: { userId: string; sessionId: string }) => {
-      this.onUserJoined?.(data.userId, data.sessionId);
+    this.socket.on('voice:user_joined', (data: { userId: string; sessionId: string; username: string; avatar: string | null }) => {
+      this.onUserJoined?.(data.userId, data.sessionId, data.username, data.avatar);
     });
 
     this.socket.on('voice:user_left', (data: { sessionId: string }) => {
@@ -194,6 +215,11 @@ export class VoiceClient {
           // Step 4: Create Recv Transport
           await this.createRecvTransport();
 
+          // IMPORTANT: Call onConnected BEFORE consuming so users are in the store
+          // when onRemoteStreamChanged is triggered
+          const existingUsers: ExistingUser[] = response.data.existingUsers || [];
+          this.onConnected?.(existingUsers);
+
           // Step 5: Start Consuming existing producers
           this.isConsuming = true;
           const existingProducers = response.data.producers || [];
@@ -226,7 +252,7 @@ export class VoiceClient {
           }
 
           console.log('[VoiceClient] Join complete, sessionId:', this.sessionId);
-          this.onConnected?.();
+
           this.isJoining = false;
           resolve();
         } catch (error: any) {
@@ -525,6 +551,9 @@ export class VoiceClient {
       this.audioProducer.on('trackended', () => {
         this.stopAudio();
       });
+
+      // Start speaking detection
+      this.startSpeakingDetection();
     } catch (error: any) {
       console.error('Error starting audio:', error);
       this.onError?.(error.message || 'Failed to start audio');
@@ -533,9 +562,86 @@ export class VoiceClient {
   }
 
   /**
+   * Start detecting speaking from local audio stream
+   */
+  private startSpeakingDetection(): void {
+    if (!this._localAudioStream) return;
+
+    try {
+      // Create audio context and analyser
+      this.audioContext = new AudioContext();
+      const source = this.audioContext.createMediaStreamSource(this._localAudioStream);
+      this.analyser = this.audioContext.createAnalyser();
+      this.analyser.fftSize = 256;
+      this.analyser.smoothingTimeConstant = 0.8;
+      source.connect(this.analyser);
+
+      // Start polling for audio levels
+      const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+
+      this.speakingCheckInterval = setInterval(() => {
+        if (!this.analyser) return;
+
+        this.analyser.getByteFrequencyData(dataArray);
+
+        // Calculate average volume (0-1)
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / (dataArray.length * 255);
+
+        // Determine if speaking (with debounce)
+        const now = Date.now();
+        const isCurrentlySpeaking = average > this.speakingThreshold;
+
+        if (isCurrentlySpeaking !== this.isSpeaking) {
+          // Only change state after debounce period
+          if (now - this.lastSpeakingChange >= this.speakingDebounceMs) {
+            this.isSpeaking = isCurrentlySpeaking;
+            this.lastSpeakingChange = now;
+
+            // Emit speaking event to server
+            this.socket.emit('voice:speaking', { speaking: isCurrentlySpeaking });
+
+            // Call local callback for immediate UI feedback
+            this.onSpeaking?.(isCurrentlySpeaking);
+          }
+        } else {
+          // Reset debounce timer if state stays the same
+          this.lastSpeakingChange = now;
+        }
+      }, 100); // Check every 100ms
+    } catch (error) {
+      console.error('Error starting speaking detection:', error);
+    }
+  }
+
+  /**
+   * Stop speaking detection
+   */
+  private stopSpeakingDetection(): void {
+    if (this.speakingCheckInterval) {
+      clearInterval(this.speakingCheckInterval);
+      this.speakingCheckInterval = null;
+    }
+
+    if (this.audioContext) {
+      this.audioContext.close();
+      this.audioContext = null;
+    }
+
+    this.analyser = null;
+    this.isSpeaking = false;
+  }
+
+  /**
    * Stop producing audio
    */
   async stopAudio(): Promise<void> {
+    // Stop speaking detection
+    this.stopSpeakingDetection();
+
     if (this.audioProducer) {
       this.audioProducer.close();
       this.audioProducer = null;

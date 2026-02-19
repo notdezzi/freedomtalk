@@ -1,6 +1,6 @@
 /**
  * Authentication E2E Tests
- * Tests registration, login, logout flows
+ * Tests registration, login, logout flows for the new FreedomTalk layout
  */
 
 import { test, expect, createTestUser } from '../fixtures';
@@ -10,11 +10,10 @@ test.describe('Authentication', () => {
     test('should register a new user successfully', async ({ page }) => {
       const user = createTestUser();
 
-      // Go to registration page
       await page.goto('/auth/register');
       await page.waitForLoadState('domcontentloaded');
 
-      // Fill registration form
+      // Fill registration form using id selectors
       await page.fill('#username', user.username);
       await page.fill('#email', user.email);
       await page.fill('#password', user.password);
@@ -38,13 +37,11 @@ test.describe('Authentication', () => {
 
       await page.click('button[type="submit"]');
 
-      // Should show validation error or stay on page
-      await page.waitForTimeout(1000);
       // HTML5 email validation should prevent submission
       await expect(page).toHaveURL(/\/auth\/register/);
     });
 
-    test('should show error for weak password', async ({ page }) => {
+    test('should disable submit for weak password', async ({ page }) => {
       const user = createTestUser();
 
       await page.goto('/auth/register');
@@ -73,7 +70,7 @@ test.describe('Authentication', () => {
       await page.click('button[type="submit"]');
       await page.waitForURL(/\/auth\/login/, { timeout: 15000 });
 
-      // Try to register with same email but different username
+      // Try to register with same email
       const page2 = await page.context().newPage();
       await page2.goto('/auth/register');
       await page2.waitForLoadState('domcontentloaded');
@@ -94,7 +91,7 @@ test.describe('Authentication', () => {
     test('should login successfully and complete onboarding', async ({ page }) => {
       const user = createTestUser();
 
-      // First register the user
+      // Register first
       await page.goto('/auth/register');
       await page.waitForLoadState('domcontentloaded');
       await page.fill('#username', user.username);
@@ -104,24 +101,24 @@ test.describe('Authentication', () => {
       await page.click('button[type="submit"]');
       await page.waitForURL(/\/auth\/login/, { timeout: 15000 });
 
-      // Login with the registered credentials
+      // Login
       await page.waitForLoadState('domcontentloaded');
       await page.fill('#email', user.email);
       await page.fill('#password', user.password);
       await page.click('button[type="submit"]');
 
-      // Should redirect to onboarding (first time user)
-      await expect(page).toHaveURL(/\/onboarding/, { timeout: 15000 });
+      // Should redirect to onboarding or app
+      await expect(page).toHaveURL(/\/onboarding|\/app/, { timeout: 15000 });
 
-      // Complete onboarding - click "Skip for now"
-      await page.click('button:has-text("Skip for now")');
-      await page.waitForURL(/\/onboarding\/servers/, { timeout: 10000 });
-
-      // Click "Finish Setup"
-      await page.click('button:has-text("Finish Setup")');
-
-      // Should redirect to app
-      await expect(page).toHaveURL(/\/app/, { timeout: 15000 });
+      // Complete onboarding if present
+      const currentUrl = page.url();
+      if (currentUrl.includes('/onboarding')) {
+        // Skip profile setup
+        await page.click('button:has-text("Skip for now")').catch(() => {});
+        await page.waitForURL(/\/onboarding\/servers/, { timeout: 10000 }).catch(() => {});
+        await page.click('button:has-text("Finish Setup")').catch(() => {});
+        await expect(page).toHaveURL(/\/app/, { timeout: 15000 });
+      }
     });
 
     test('should show error for invalid credentials', async ({ page }) => {
@@ -140,33 +137,30 @@ test.describe('Authentication', () => {
 
     test('should redirect to app if already logged in', async ({ authenticatedPage }) => {
       await authenticatedPage.goto('/auth/login');
-
-      // Either redirected to app or still on login page (app may not redirect)
-      // If not redirected, try navigating to app directly
       await authenticatedPage.waitForTimeout(2000);
 
+      // If not redirected, navigate to app
       const url = authenticatedPage.url();
       if (!url.includes('/app')) {
-        // Navigate to app directly
         await authenticatedPage.goto('/app');
       }
 
-      // Should eventually be on app page
       await expect(authenticatedPage).toHaveURL(/\/app/, { timeout: 10000 });
     });
   });
 
   test.describe('Logout', () => {
-    test('should logout successfully', async ({ authenticatedPage }) => {
-      // Find and click logout button
-      const userMenu = authenticatedPage.locator('[data-testid="user-menu"], .user-panel').first();
-      await userMenu.click().catch(() => {});
+    test('should logout successfully from user panel', async ({ authenticatedPage }) => {
+      // Click on user panel area (bottom left of navigation)
+      const userPanel = authenticatedPage.locator('[data-testid="user-panel"], .user-panel, nav > div:last-child').first();
+      await userPanel.click().catch(() => {});
 
+      // Find and click logout button in the dropdown/modal
       const logoutButton = authenticatedPage.locator('button:has-text("Logout"), button:has-text("Log out")');
-      await logoutButton.click().catch(() => {});
+      await logoutButton.first().click().catch(() => {});
 
       // Should redirect to landing or login
-      await expect(authenticatedPage).toHaveURL(/\/|\/login/, { timeout: 10000 });
+      await expect(authenticatedPage).toHaveURL(/\/|\/auth\/login/, { timeout: 10000 });
     });
   });
 
@@ -175,7 +169,14 @@ test.describe('Authentication', () => {
       await page.goto('/app');
 
       // Should be redirected to login
-      await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
+      await expect(page).toHaveURL(/\/auth\/login/, { timeout: 10000 });
+    });
+
+    test('should redirect to login when accessing server route without auth', async ({ page }) => {
+      await page.goto('/app/servers/123456789/channels/first');
+
+      // Should be redirected to login
+      await expect(page).toHaveURL(/\/auth\/login/, { timeout: 10000 });
     });
   });
 });

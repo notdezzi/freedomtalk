@@ -3,16 +3,21 @@
 import { useState } from 'react';
 import { Modal, Button, Input } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { JoinServerModal } from './join-server-modal';
+import { useCreateServer } from '@/features/servers';
+import { useRouter } from 'next/navigation';
 
 interface CreateServerModalProps {
   onClose: () => void;
 }
 
 export function CreateServerModal({ onClose }: CreateServerModalProps) {
+  const router = useRouter();
   const [step, setStep] = useState<'choose' | 'create' | 'join'>('choose');
   const [name, setName] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const createServer = useCreateServer();
 
   const handleCreate = async () => {
     if (!name.trim()) {
@@ -20,18 +25,23 @@ export function CreateServerModal({ onClose }: CreateServerModalProps) {
       return;
     }
 
-    setLoading(true);
     setError('');
 
-    try {
-      // TODO: Call API to create server
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      onClose();
-    } catch (err) {
-      setError('Failed to create server');
-    } finally {
-      setLoading(false);
-    }
+    createServer.mutate(
+      { name: name.trim() },
+      {
+        onSuccess: (data) => {
+          // Navigate to the new server
+          if (data && 'id' in data) {
+            router.push(`/app/servers/${data.id}/channels/first`);
+          }
+          onClose();
+        },
+        onError: (err: any) => {
+          setError(err.message || 'Failed to create server');
+        },
+      }
+    );
   };
 
   if (step === 'choose') {
@@ -100,7 +110,7 @@ export function CreateServerModal({ onClose }: CreateServerModalProps) {
             <Button variant="ghost" onClick={() => setStep('choose')}>
               Back
             </Button>
-            <Button onClick={handleCreate} loading={loading}>
+            <Button onClick={handleCreate} loading={createServer.isPending}>
               Create
             </Button>
           </div>

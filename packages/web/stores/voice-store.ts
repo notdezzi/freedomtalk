@@ -21,10 +21,10 @@ interface VoiceStore {
   localVideoStream: MediaStream | null;
   localScreenStream: MediaStream | null;
 
-  // Users in channel
+  // Users in current voice channel
   users: VoiceUser[];
 
-  // Channel states (for showing who's in which channel)
+  // Channel states (for showing who's in which channel across server)
   channelStates: Record<string, VoiceUser[]>;
 
   // Selected devices
@@ -56,6 +56,14 @@ interface VoiceStore {
   removeUser: (userId: string) => void;
   updateUser: (userId: string, updates: Partial<VoiceUser>) => void;
   updateUserStream: (userId: string, streamType: 'audio' | 'video' | 'screen', stream: MediaStream | null) => void;
+
+  // Channel states actions
+  setChannelStates: (channelStates: Record<string, VoiceUser[]>) => void;
+  updateChannelState: (channelId: string, users: VoiceUser[]) => void;
+  addUserToChannelState: (channelId: string, user: VoiceUser) => void;
+  removeUserFromChannelState: (channelId: string, sessionId: string) => void;
+  updateUserInChannelState: (channelId: string, sessionId: string, updates: Partial<VoiceUser>) => void;
+  clearChannelStates: () => void;
 
   setAudioInput: (deviceId: string | null) => void;
   setAudioOutput: (deviceId: string | null) => void;
@@ -147,9 +155,9 @@ export const useVoiceStore = create<VoiceStore>((set, get) => ({
   addUser: (user) =>
     set((state) => ({ users: [...state.users, user] })),
 
-  removeUser: (userId) =>
+  removeUser: (sessionId) =>
     set((state) => ({
-      users: state.users.filter((u) => u.userId !== userId),
+      users: state.users.filter((u) => u.sessionId !== sessionId),
     })),
 
   updateUser: (userId, updates) =>
@@ -172,6 +180,44 @@ export const useVoiceStore = create<VoiceStore>((set, get) => ({
       }),
     })),
 
+  // Channel states actions
+  setChannelStates: (channelStates) => set({ channelStates }),
+
+  updateChannelState: (channelId, users) =>
+    set((state) => ({
+      channelStates: { ...state.channelStates, [channelId]: users },
+    })),
+
+  addUserToChannelState: (channelId, user) =>
+    set((state) => ({
+      channelStates: {
+        ...state.channelStates,
+        [channelId]: [...(state.channelStates[channelId] || []), user],
+      },
+    })),
+
+  removeUserFromChannelState: (channelId, sessionId) =>
+    set((state) => ({
+      channelStates: {
+        ...state.channelStates,
+        [channelId]: (state.channelStates[channelId] || []).filter(
+          (u) => u.sessionId !== sessionId
+        ),
+      },
+    })),
+
+  updateUserInChannelState: (channelId, sessionId, updates) =>
+    set((state) => ({
+      channelStates: {
+        ...state.channelStates,
+        [channelId]: (state.channelStates[channelId] || []).map((u) =>
+          u.sessionId === sessionId ? { ...u, ...updates } : u
+        ),
+      },
+    })),
+
+  clearChannelStates: () => set({ channelStates: {} }),
+
   setAudioInput: (deviceId) => set({ audioInput: deviceId }),
   setAudioOutput: (deviceId) => set({ audioOutput: deviceId }),
   setVideoInput: (deviceId) => set({ videoInput: deviceId }),
@@ -182,9 +228,20 @@ export const useVoiceStore = create<VoiceStore>((set, get) => ({
       lastTextChannelServerId: serverId,
     }),
 
-  getUsersByChannel: (channelId) =>
-    get().users.filter((u) => u.channelId === channelId),
+  getUsersByChannel: (channelId) => {
+    const state = get();
+    // First check channelStates (server-wide view), then fall back to users (current channel)
+    if (state.channelStates[channelId]) {
+      return state.channelStates[channelId];
+    }
+    return state.users.filter((u) => u.channelId === channelId);
+  },
 
-  isUserInChannel: (userId, channelId) =>
-    get().users.some((u) => u.userId === userId && u.channelId === channelId),
+  isUserInChannel: (userId, channelId) => {
+    const state = get();
+    if (state.channelStates[channelId]) {
+      return state.channelStates[channelId].some((u) => u.userId === userId);
+    }
+    return state.users.some((u) => u.userId === userId && u.channelId === channelId);
+  },
 }));

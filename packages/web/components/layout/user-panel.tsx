@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui';
 import { Dropdown } from '@/components/ui/dropdown';
 import { useAuthStore, useVoiceStore, useUIStore } from '@/stores';
+import { useVoiceConnection } from '@/hooks';
 import {
   Mic,
   MicOff,
@@ -21,8 +22,9 @@ export function UserPanel() {
 
   const selfMute = useVoiceStore((s) => s.selfMute);
   const selfDeaf = useVoiceStore((s) => s.selfDeaf);
-  const setSelfMute = useVoiceStore((s) => s.setSelfMute);
-  const setSelfDeaf = useVoiceStore((s) => s.setSelfDeaf);
+  const isConnectedToVoice = useVoiceStore((s) => s.isConnected);
+
+  const { toggleMute, toggleDeafen } = useVoiceConnection();
 
   const settingsItems = [
     {
@@ -44,7 +46,7 @@ export function UserPanel() {
     <div
       className={cn(
         'flex items-center gap-2 px-2 py-2',
-        'bg-gray-850 border-t border-gray-700'
+        'bg-transparent border border-gray-700 mb-1 ml-1 mr-1 rounded-lg'
       )}
       style={{ backgroundColor: '#232428' }}
     >
@@ -69,17 +71,19 @@ export function UserPanel() {
 
       {/* Controls */}
       <div className="flex items-center gap-0.5">
-        {/* Mute button */}
+        {/* Mute button - only functional when in voice */}
         <button
-          onClick={() => setSelfMute(!selfMute)}
+          onClick={toggleMute}
+          disabled={!isConnectedToVoice}
           className={cn(
             'rounded p-1.5 transition-colors',
-            selfMute
+            selfMute && isConnectedToVoice
               ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-              : 'text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+              : 'text-gray-400 hover:bg-gray-700 hover:text-gray-200',
+            !isConnectedToVoice && 'opacity-50 cursor-not-allowed'
           )}
           aria-label={selfMute ? 'Unmute' : 'Mute'}
-          title={selfMute ? 'Unmute' : 'Mute'}
+          title={isConnectedToVoice ? (selfMute ? 'Unmute' : 'Mute') : 'Join voice to mute'}
         >
           {selfMute ? (
             <MicOff className="h-4 w-4" />
@@ -88,17 +92,19 @@ export function UserPanel() {
           )}
         </button>
 
-        {/* Deafen button */}
+        {/* Deafen button - only functional when in voice */}
         <button
-          onClick={() => setSelfDeaf(!selfDeaf)}
+          onClick={toggleDeafen}
+          disabled={!isConnectedToVoice}
           className={cn(
             'rounded p-1.5 transition-colors',
-            selfDeaf
+            selfDeaf && isConnectedToVoice
               ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-              : 'text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+              : 'text-gray-400 hover:bg-gray-700 hover:text-gray-200',
+            !isConnectedToVoice && 'opacity-50 cursor-not-allowed'
           )}
           aria-label={selfDeaf ? 'Undeafen' : 'Deafen'}
-          title={selfDeaf ? 'Undeafen' : 'Deafen'}
+          title={isConnectedToVoice ? (selfDeaf ? 'Undeafen' : 'Deafen') : 'Join voice to deafen'}
         >
           {selfDeaf ? (
             <VolumeX className="h-4 w-4" />
@@ -119,6 +125,7 @@ export function UserPanel() {
           }
           items={settingsItems}
           align="end"
+          direction="up"
         />
       </div>
     </div>

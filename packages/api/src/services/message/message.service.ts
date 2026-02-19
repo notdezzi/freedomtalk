@@ -347,46 +347,46 @@ class MessageService {
       const limit = Math.min(cursor.limit || 50, 100); // Default 50, max 100
 
       // Build base query
-      let query = db('messages').where({ is_deleted: false });
+      let query = db('messages').where('messages.is_deleted', false);
 
       // Apply filters
       if (filter.authorId) {
-        query = query.where({ author_id: filter.authorId });
+        query = query.where('messages.author_id', filter.authorId);
       }
 
       if (filter.channelId) {
-        query = query.where({ channel_id: filter.channelId });
+        query = query.where('messages.channel_id', filter.channelId);
       }
 
       if (filter.dmChannelId) {
-        query = query.where({ dm_channel_id: filter.dmChannelId });
+        query = query.where('messages.dm_channel_id', filter.dmChannelId);
       }
 
       if (filter.isPinned !== undefined) {
-        query = query.where({ is_pinned: filter.isPinned });
+        query = query.where('messages.is_pinned', filter.isPinned);
       }
 
       if (filter.search) {
-        query = query.where('content', 'ilike', `%${filter.search}%`);
+        query = query.where('messages.content', 'ilike', `%${filter.search}%`);
       }
 
       if (filter.startDate) {
-        query = query.where('created_at', '>=', filter.startDate);
+        query = query.where('messages.created_at', '>=', filter.startDate);
       }
 
       if (filter.endDate) {
-        query = query.where('created_at', '<=', filter.endDate);
+        query = query.where('messages.created_at', '<=', filter.endDate);
       }
 
       // Apply cursor-based pagination
       if (cursor.before) {
         const beforeMessage = await this.getMessage(cursor.before, false);
-        query = query.where('created_at', '<', beforeMessage.created_at);
+        query = query.where('messages.created_at', '<', beforeMessage.created_at);
       }
 
       if (cursor.after) {
         const afterMessage = await this.getMessage(cursor.after, false);
-        query = query.where('created_at', '>', afterMessage.created_at);
+        query = query.where('messages.created_at', '>', afterMessage.created_at);
       }
 
       // Fetch limit + 1 to determine if there are more messages

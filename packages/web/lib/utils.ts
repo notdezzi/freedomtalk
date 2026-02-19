@@ -4,9 +4,15 @@ export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
 }
 
-export function formatRelativeTime(date: string | Date): string {
+export function formatRelativeTime(date: string | Date | undefined | null): string {
+  if (!date) return 'unknown';
+
   const now = new Date();
   const then = new Date(date);
+
+  // Check for invalid date
+  if (isNaN(then.getTime())) return 'unknown';
+
   const diff = now.getTime() - then.getTime();
 
   const seconds = Math.floor(diff / 1000);
@@ -26,23 +32,44 @@ export function formatRelativeTime(date: string | Date): string {
   });
 }
 
-export function formatDate(date: string | Date): string {
-  return new Date(date).toLocaleDateString('en-US', {
+export function formatDate(date: string | Date | undefined | null): string {
+  if (!date) return 'Unknown date';
+
+  const d = new Date(date);
+
+  // Check for invalid date
+  if (isNaN(d.getTime())) return 'Unknown date';
+
+  return d.toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
   });
 }
 
-export function formatTime(date: string | Date): string {
-  return new Date(date).toLocaleTimeString('en-US', {
+export function formatTime(date: string | Date | undefined | null): string {
+  if (!date) return '';
+
+  const d = new Date(date);
+
+  // Check for invalid date
+  if (isNaN(d.getTime())) return '';
+
+  return d.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
   });
 }
 
-export function formatDateTime(date: string | Date): string {
-  return `${formatDate(date)} at ${formatTime(date)}`;
+export function formatDateTime(date: string | Date | undefined | null): string {
+  if (!date) return 'Unknown';
+
+  const formattedDate = formatDate(date);
+  const formattedTime = formatTime(date);
+
+  if (!formattedTime) return formattedDate;
+
+  return `${formattedDate} at ${formattedTime}`;
 }
 
 export function formatBytes(bytes: number): string {

@@ -6,6 +6,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
+import { db } from '../../config/database';
 import { requireAuth } from '../../middleware/auth.middleware';
 import { validateBody } from '../../middleware/validation.middleware';
 import { successResponse } from '../../utils/errors';
@@ -47,6 +48,97 @@ export default async function voiceRoutes(app: FastifyInstance) {
   // ============================================
   // Voice Channel Operations
   // ============================================
+
+  /**
+   * GET /api/v1/voice/servers/:serverId/states
+   * Get all voice states for a server (who's in which channel)
+   */
+  app.get(
+    '/servers/:serverId/states',
+    {
+      schema: {
+        description: 'Get all voice states for a server',
+        tags: ['Voice'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['serverId'],
+          properties: {
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+          },
+        },
+        response: {
+          200: { type: 'object' },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
+      try {
+        const { serverId } = request.params;
+        const userId = request.user!.id;
+
+        // Check if member
+        const isMember = await serverService.isMember(serverId, userId);
+        if (!isMember) {
+          return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'Not a member of this server' } });
+        }
+
+        // Get all voice states with user info
+        const states = await db('voice_states')
+          .where({ server_id: serverId })
+          .leftJoin('users', 'voice_states.user_id', 'users.id')
+          .leftJoin('user_profiles', 'voice_states.user_id', 'user_profiles.user_id')
+          .select(
+            'voice_states.channel_id',
+            'voice_states.user_id',
+            'voice_states.session_id',
+            'voice_states.self_mute',
+            'voice_states.self_deaf',
+            'voice_states.self_video',
+            'voice_states.self_stream',
+            'users.username',
+            'user_profiles.avatar_url as avatar'
+          );
+
+        // Group by channel
+        const channelStates: Record<string, Array<{
+          userId: string;
+          sessionId: string;
+          username: string;
+          avatar: string | null;
+          selfMute: boolean;
+          selfDeaf: boolean;
+          selfVideo: boolean;
+          selfStream: boolean;
+        }>> = {};
+
+        for (const state of states) {
+          const channelId = state.channel_id;
+          if (!channelStates[channelId]) {
+            channelStates[channelId] = [];
+          }
+          const channelUsers = channelStates[channelId];
+          if (channelUsers) {
+            channelUsers.push({
+              userId: state.user_id,
+              sessionId: state.session_id,
+              username: state.username || 'User',
+              avatar: state.avatar,
+              selfMute: state.self_mute,
+              selfDeaf: state.self_deaf,
+              selfVideo: state.self_video,
+              selfStream: state.self_stream,
+            });
+          }
+        }
+
+        return reply.send(successResponse({ channelStates }));
+      } catch (error) {
+        request.log.error(error);
+        return reply.code(500).send({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to get server voice states' } });
+      }
+    }
+  );
 
   /**
    * POST /api/v1/voice/channels/:channelId/join

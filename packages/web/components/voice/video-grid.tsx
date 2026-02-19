@@ -26,8 +26,10 @@ interface VideoUserDisplay extends Partial<VoiceUser> {
   selfStream?: boolean;
   videoStream?: MediaStream;
   screenStream?: MediaStream;
+  audioStream?: MediaStream;
   isSpeaking?: boolean;
   avatar?: string;
+  isSelf?: boolean;
 }
 
 export function VideoGrid({
@@ -54,6 +56,7 @@ export function VideoGrid({
           selfStream: false,
           videoStream: localVideoStream || undefined,
           isSpeaking: false,
+          isSelf: true,
         },
         ...videoUsers,
       ]
@@ -75,7 +78,7 @@ export function VideoGrid({
       )}
       {streamUsers.map((user) => (
         <ScreenShareItem
-          key={`stream-${user.userId}`}
+          key={`stream-${user.sessionId || user.userId}`}
           stream={user.screenStream}
           username={user.username}
         />
@@ -83,7 +86,7 @@ export function VideoGrid({
 
       {/* Video users */}
       {allVideoUsers.map((user) => (
-        <VideoItem key={user.userId} user={user} />
+        <VideoItem key={user.sessionId || user.userId} user={user} />
       ))}
     </div>
   );
@@ -91,26 +94,67 @@ export function VideoGrid({
 
 function VideoItem({ user }: { user: VideoUserDisplay }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [hasVideo, setHasVideo] = useState(false);
 
+  // Handle video stream
   useEffect(() => {
-    if (videoRef.current && user.videoStream) {
-      videoRef.current.srcObject = user.videoStream;
-      setHasVideo(true);
+    const video = videoRef.current;
+    if (video && user.videoStream) {
+      video.srcObject = user.videoStream;
+      // Check if video track is actually playing
+      const videoTrack = user.videoStream.getVideoTracks()[0];
+      if (videoTrack && videoTrack.readyState === 'live') {
+        setHasVideo(true);
+      } else {
+        setHasVideo(false);
+      }
+    } else {
+      // No video stream - hide video element
+      setHasVideo(false);
+      if (video) {
+        video.srcObject = null;
+      }
     }
+    return () => {
+      if (video) {
+        video.srcObject = null;
+      }
+    };
   }, [user.videoStream]);
+
+  // Handle audio stream (separate from video for remote users)
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio && user.audioStream && !user.isSelf) {
+      audio.srcObject = user.audioStream;
+    }
+    return () => {
+      if (audio) {
+        audio.srcObject = null;
+      }
+    };
+  }, [user.audioStream, user.isSelf]);
 
   return (
     <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
-      {hasVideo && user.videoStream ? (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted={user.userId === 'self'}
-          className="h-full w-full object-cover"
-        />
-      ) : (
+      {/* Always render video element so ref can be set */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted // Always mute video element - we use separate audio element
+        className={cn(
+          "h-full w-full object-cover",
+          !hasVideo && "hidden"
+        )}
+      />
+
+      {/* Separate audio element for remote users */}
+      {!user.isSelf && <audio ref={audioRef} autoPlay />}
+
+      {/* Show avatar when no video */}
+      {!hasVideo && (
         <div className="flex h-full w-full items-center justify-center">
           <Avatar
             src={user.avatar}
@@ -136,10 +180,21 @@ function VideoItem({ user }: { user: VideoUserDisplay }) {
 
 function ScreenShareItem({ stream, username }: { stream?: MediaStream; username: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+
+  // Handle audio in screen share (if present)
+  useEffect(() => {
+    if (audioRef.current && stream) {
+      const audioTracks = stream.getAudioTracks();
+      if (audioTracks.length > 0) {
+        audioRef.current.srcObject = stream;
+      }
     }
   }, [stream]);
 
@@ -149,8 +204,10 @@ function ScreenShareItem({ stream, username }: { stream?: MediaStream; username:
         ref={videoRef}
         autoPlay
         playsInline
+        muted // Mute video, use separate audio element
         className="h-full w-full object-contain"
       />
+      <audio ref={audioRef} autoPlay />
       <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1">
         <span className="text-xs text-white">{username}'s screen</span>
       </div>

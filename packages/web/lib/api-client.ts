@@ -538,11 +538,16 @@ class ApiClient {
   }
 
   // Server invites
-  async getInvites(serverId: string): Promise<ApiResponse<{ invites: InviteResponse[] }>> {
-    return this.request<{ invites: InviteResponse[] }>(`/api/v1/servers/${serverId}/invites`);
+  async getInvites(serverId: string): Promise<ApiResponse<{ invites: InviteResponse[] } | InviteResponse[]>> {
+    return this.request<{ invites: InviteResponse[] } | InviteResponse[]>(`/api/v1/servers/${serverId}/invites`);
   }
 
-  async createInvite(serverId: string, data?: { maxUses?: number; expiresAt?: string }): Promise<ApiResponse<InviteResponse>> {
+  async createInvite(serverId: string, data?: {
+    channelId?: string;
+    maxUses?: number;
+    maxAge?: number;  // Seconds until expiration (0 = never)
+    temporary?: boolean;
+  }): Promise<ApiResponse<InviteResponse>> {
     return this.request<InviteResponse>(`/api/v1/servers/${serverId}/invites`, {
       method: 'POST',
       body: JSON.stringify(data || {}),

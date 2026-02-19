@@ -18,6 +18,8 @@ import {
 export interface MessageInputProps {
   channelId: string;
   onSend: (content: string, attachments?: File[]) => void;
+  onTypingStart?: () => void;
+  onTypingStop?: () => void;
   disabled?: boolean;
   placeholder?: string;
   className?: string;
@@ -26,6 +28,8 @@ export interface MessageInputProps {
 export function MessageInput({
   channelId,
   onSend,
+  onTypingStart,
+  onTypingStop,
   disabled,
   placeholder = 'Message #general',
   className,
@@ -45,8 +49,31 @@ export function MessageInput({
       onSend(content.trim(), attachments);
       setContent('');
       setAttachments([]);
+      // Stop typing when sending
+      onTypingStop?.();
     },
-    [content, attachments, disabled, onSend]
+    [content, attachments, disabled, onSend, onTypingStop]
+  );
+
+  // Handle content changes and send typing indicator
+  const handleContentChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newValue = e.target.value;
+      const wasEmpty = content.trim().length === 0;
+      const isNowEmpty = newValue.trim().length === 0;
+
+      setContent(newValue);
+
+      // Send typing start when user starts typing
+      if (wasEmpty && !isNowEmpty) {
+        onTypingStart?.();
+      }
+      // Send typing stop when user clears the input
+      if (!wasEmpty && isNowEmpty) {
+        onTypingStop?.();
+      }
+    },
+    [content, onTypingStart, onTypingStop]
   );
 
   const handleKeyDown = useCallback(
@@ -144,7 +171,7 @@ export function MessageInput({
           <textarea
             ref={textareaRef}
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={handleContentChange}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}

@@ -222,7 +222,10 @@ class ServerMemberService {
         'server_members.*',
         'users.id as user_id',
         'users.username as user_username',
-        'user_profiles.avatar_url as user_avatar'
+        'user_profiles.avatar_url as user_avatar',
+        'user_profiles.display_name as user_display_name',
+        'user_profiles.bio as user_bio',
+        'user_profiles.banner_url as user_banner_url'
       )
       .orderBy('server_members.joined_at', 'asc')
       .limit(limit)
@@ -247,29 +250,49 @@ class ServerMemberService {
       rolesByUser[userId].push(role);
     }
 
-    // Format response
-    const formattedMembers: ServerMemberWithUser[] = members.map(m => ({
-      id: m.id,
-      server_id: m.server_id,
-      user_id: m.user_id,
-      nickname: m.nickname,
-      avatar_url: m.avatar_url,
-      mute: m.mute,
-      deaf: m.deaf,
-      pending: m.pending,
-      joined_at: m.joined_at,
-      boosted_since: m.boosted_since,
-      communication_disabled_until: m.communication_disabled_until,
-      created_at: m.created_at,
-      updated_at: m.updated_at,
-      is_owner: server?.owner_id === m.user_id,
-      user: {
-        id: m.user_id,
-        username: m.user_username,
-        avatar: m.user_avatar,
-      },
-      roles: rolesByUser[m.user_id] || [],
-    }));
+    // Get presence data for all users
+    let presenceMap: Map<string, 'online' | 'offline'> = new Map();
+    try {
+      const { presenceManager } = await import('../websocket/presence.manager');
+      presenceMap = await presenceManager.getBulkPresence(userIds);
+    } catch (error) {
+      // Presence manager may not be available, default all to offline
+      userIds.forEach(id => presenceMap.set(id, 'offline'));
+    }
+
+    // Format response with camelCase keys for frontend compatibility
+    const formattedMembers: ServerMemberWithUser[] = members.map(m => {
+      const presence = presenceMap.get(m.user_id) || 'offline';
+      return {
+        id: m.id,
+        server_id: m.server_id,
+        user_id: m.user_id,
+        nickname: m.nickname,
+        avatar_url: m.avatar_url,
+        mute: m.mute,
+        deaf: m.deaf,
+        pending: m.pending,
+        joined_at: m.joined_at,
+        boosted_since: m.boosted_since,
+        communication_disabled_until: m.communication_disabled_until,
+        created_at: m.created_at,
+        updated_at: m.updated_at,
+        is_owner: server?.owner_id === m.user_id,
+        user: {
+          id: m.user_id,
+          username: m.user_username,
+          avatar: m.user_avatar,
+        },
+        roles: rolesByUser[m.user_id] || [],
+        // Presence data for frontend
+        isOnline: presence === 'online',
+        status: presence,
+        // Additional profile fields
+        display_name: m.user_display_name,
+        bio: m.user_bio,
+        banner_url: m.user_banner_url,
+      };
+    });
 
     return { members: formattedMembers, total };
   }

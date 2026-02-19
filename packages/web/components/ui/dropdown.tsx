@@ -15,12 +15,13 @@ export interface DropdownProps {
   trigger: ReactNode;
   items: DropdownItem[];
   align?: 'start' | 'end';
+  direction?: 'up' | 'down';
   className?: string;
 }
 
-export function Dropdown({ trigger, items, align = 'start', className }: DropdownProps) {
+export function Dropdown({ trigger, items, align = 'start', direction = 'down', className }: DropdownProps) {
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState({ x: 0, y: 0, dropdownHeight: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -29,11 +30,20 @@ export function Dropdown({ trigger, items, align = 'start', className }: Dropdow
       const rect = triggerRef.current.getBoundingClientRect();
       setPosition({
         x: align === 'end' ? rect.right : rect.left,
-        y: rect.bottom + 4,
+        y: rect.top, // Use top for both directions
+        dropdownHeight: 0,
       });
     }
     setOpen(!open);
   };
+
+  // Measure dropdown height after render for upward direction
+  useEffect(() => {
+    if (open && direction === 'up' && dropdownRef.current) {
+      const dropdownHeight = dropdownRef.current.offsetHeight;
+      setPosition((prev) => ({ ...prev, dropdownHeight }));
+    }
+  }, [open, direction]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -82,7 +92,7 @@ export function Dropdown({ trigger, items, align = 'start', className }: Dropdow
             )}
             style={{
               left: align === 'end' ? position.x - 180 : position.x,
-              top: position.y,
+              top: direction === 'up' ? position.y - position.dropdownHeight - 4 : position.y + 36, // 36 is approx trigger height
             }}
           >
             {items.map((item) => (

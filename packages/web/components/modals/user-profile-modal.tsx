@@ -15,6 +15,7 @@ export function UserProfileModal({ userId, serverId, onClose }: UserProfileModal
   const user: User = {
     id: userId,
     username: 'Unknown User',
+    email: '',
     displayName: 'Unknown User',
     bio: 'This is a sample bio.',
     status: 'online',
