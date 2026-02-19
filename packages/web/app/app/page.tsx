@@ -62,8 +62,8 @@ export default function AppPage() {
       case 'add':
         return (
           <div className="p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Add Friend</h2>
-            <p className="text-gray-400 text-sm mb-4">
+            <h2 className="text-xl font-semibold text-foreground mb-4">Add Friend</h2>
+            <p className="text-foreground-muted text-sm mb-4">
               You can add friends by their username.
             </p>
             <div className="flex gap-2">
@@ -82,10 +82,10 @@ export default function AppPage() {
               </Button>
             </div>
             {sendFriendRequest.isSuccess && (
-              <p className="text-green-500 mt-2">Friend request sent!</p>
+              <p className="text-success mt-2">Friend request sent!</p>
             )}
             {sendFriendRequest.isError && (
-              <p className="text-red-500 mt-2">Failed to send friend request. User not found.</p>
+              <p className="text-error mt-2">Failed to send friend request. User not found.</p>
             )}
           </div>
         );
@@ -94,22 +94,22 @@ export default function AppPage() {
         return (
           <div className="p-4">
             {requestsLoading ? (
-              <div className="text-center text-gray-400 py-8">Loading...</div>
+              <div className="text-center text-foreground-muted py-8">Loading...</div>
             ) : pendingRequests.length === 0 && sentRequests.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
+              <div className="text-center text-foreground-muted py-8">
                 No pending friend requests
               </div>
             ) : (
               <div className="space-y-6">
                 {pendingRequests.length > 0 && (
                   <div>
-                    <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                    <h3 className="text-xs font-semibold text-foreground-subtle uppercase mb-2">
                       Incoming Requests — {pendingRequests.length}
                     </h3>
                     {pendingRequests.map((request) => (
                       <div
                         key={request.id}
-                        className="flex items-center justify-between p-2 rounded hover:bg-gray-700"
+                        className="flex items-center justify-between p-2 rounded hover:bg-background-surface"
                       >
                         <div className="flex items-center gap-3">
                           <Avatar
@@ -118,10 +118,10 @@ export default function AppPage() {
                             size="md"
                           />
                           <div>
-                            <p className="text-white font-medium">
+                            <p className="text-foreground font-medium">
                               {request.displayName || request.username}
                             </p>
-                            <p className="text-gray-400 text-sm">@{request.username}</p>
+                            <p className="text-foreground-muted text-sm">@{request.username}</p>
                           </div>
                         </div>
                         <div className="flex gap-2">
@@ -148,13 +148,13 @@ export default function AppPage() {
 
                 {sentRequests.length > 0 && (
                   <div>
-                    <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                    <h3 className="text-xs font-semibold text-foreground-subtle uppercase mb-2">
                       Outgoing Requests — {sentRequests.length}
                     </h3>
                     {sentRequests.map((request) => (
                       <div
                         key={request.id}
-                        className="flex items-center justify-between p-2 rounded hover:bg-gray-700"
+                        className="flex items-center justify-between p-2 rounded hover:bg-background-surface"
                       >
                         <div className="flex items-center gap-3">
                           <Avatar
@@ -163,13 +163,13 @@ export default function AppPage() {
                             size="md"
                           />
                           <div>
-                            <p className="text-white font-medium">
+                            <p className="text-foreground font-medium">
                               {request.displayName || request.username}
                             </p>
-                            <p className="text-gray-400 text-sm">@{request.username}</p>
+                            <p className="text-foreground-muted text-sm">@{request.username}</p>
                           </div>
                         </div>
-                        <div className="text-gray-400 text-sm flex items-center gap-1">
+                        <div className="text-foreground-muted text-sm flex items-center gap-1">
                           <Clock className="h-4 w-4" />
                           Pending
                         </div>
@@ -186,18 +186,18 @@ export default function AppPage() {
         return (
           <div className="p-4">
             {blockedUsers.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
+              <div className="text-center text-foreground-muted py-8">
                 You haven't blocked anyone
               </div>
             ) : (
               <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                <h3 className="text-xs font-semibold text-foreground-subtle uppercase mb-2">
                   Blocked Users — {blockedUsers.length}
                 </h3>
                 {blockedUsers.map((user) => (
                   <div
                     key={user.id}
-                    className="flex items-center justify-between p-2 rounded hover:bg-gray-700"
+                    className="flex items-center justify-between p-2 rounded hover:bg-background-surface"
                   >
                     <div className="flex items-center gap-3">
                       <Avatar
@@ -205,7 +205,7 @@ export default function AppPage() {
                         alt={user.displayName || user.username}
                         size="md"
                       />
-                      <p className="text-white font-medium">
+                      <p className="text-foreground font-medium">
                         {user.displayName || user.username}
                       </p>
                     </div>
@@ -221,33 +221,33 @@ export default function AppPage() {
           <div className="p-4">
             {/* Search */}
             <div className="mb-4 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-foreground-muted" />
               <input
                 type="text"
                 placeholder="Search friends"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-gray-700 text-white rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-background-surface text-foreground rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
 
             {friendsLoading ? (
-              <div className="text-center text-gray-400 py-8">Loading friends...</div>
+              <div className="text-center text-foreground-muted py-8">Loading friends...</div>
             ) : filteredFriends.length === 0 ? (
-              <div className="text-center text-gray-400 py-8">
+              <div className="text-center text-foreground-muted py-8">
                 {searchQuery
                   ? 'No friends match your search'
                   : 'No friends yet. Add some friends to get started!'}
               </div>
             ) : (
               <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                <h3 className="text-xs font-semibold text-foreground-subtle uppercase mb-2">
                   All Friends — {filteredFriends.length}
                 </h3>
                 {filteredFriends.map((friend) => (
                   <div
                     key={friend.id}
-                    className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-700"
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-background-surface"
                   >
                     <button
                       className="flex items-center gap-3 flex-1 text-left"
@@ -259,17 +259,17 @@ export default function AppPage() {
                         size="md"
                       />
                       <div>
-                        <p className="text-white font-medium">
+                        <p className="text-foreground font-medium">
                           {friend.displayName || friend.username}
                         </p>
-                        <p className="text-gray-400 text-sm">
+                        <p className="text-foreground-muted text-sm">
                           {friend.customStatus || `Friends since ${new Date(friend.friendSince).toLocaleDateString()}`}
                         </p>
                       </div>
                     </button>
                     <button
                       onClick={() => handleStartDM(friend.id)}
-                      className="p-2 text-gray-400 hover:text-white hover:bg-gray-600 rounded"
+                      className="p-2 text-foreground-muted hover:text-foreground hover:bg-background-elevated rounded"
                       aria-label="Message"
                     >
                       <MessageCircle className="h-5 w-5" />
@@ -287,12 +287,12 @@ export default function AppPage() {
     <AppShell sectionName="Friends">
       <div className="flex h-full flex-col">
         {/* Friends list header */}
-        <div className="flex items-center justify-between border-b border-gray-700 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex gap-4">
             <button
               onClick={() => setActiveTab('all')}
               className={`font-medium ${
-                activeTab === 'all' ? 'text-white' : 'text-gray-400 hover:text-white'
+                activeTab === 'all' ? 'text-foreground' : 'text-foreground-muted hover:text-foreground'
               }`}
             >
               All
@@ -300,7 +300,7 @@ export default function AppPage() {
             <button
               onClick={() => setActiveTab('online')}
               className={`font-medium ${
-                activeTab === 'online' ? 'text-white' : 'text-gray-400 hover:text-white'
+                activeTab === 'online' ? 'text-foreground' : 'text-foreground-muted hover:text-foreground'
               }`}
             >
               Online
@@ -308,12 +308,12 @@ export default function AppPage() {
             <button
               onClick={() => setActiveTab('pending')}
               className={`font-medium flex items-center gap-1 ${
-                activeTab === 'pending' ? 'text-white' : 'text-gray-400 hover:text-white'
+                activeTab === 'pending' ? 'text-foreground' : 'text-foreground-muted hover:text-foreground'
               }`}
             >
               Pending
               {pendingRequests.length > 0 && (
-                <span className="bg-red-500 text-white text-xs rounded-full px-1.5">
+                <span className="bg-error text-foreground text-xs rounded-full px-1.5">
                   {pendingRequests.length}
                 </span>
               )}
@@ -321,7 +321,7 @@ export default function AppPage() {
             <button
               onClick={() => setActiveTab('blocked')}
               className={`font-medium ${
-                activeTab === 'blocked' ? 'text-white' : 'text-gray-400 hover:text-white'
+                activeTab === 'blocked' ? 'text-foreground' : 'text-foreground-muted hover:text-foreground'
               }`}
             >
               Blocked
@@ -329,7 +329,7 @@ export default function AppPage() {
             <button
               onClick={() => setActiveTab('add')}
               className={`font-medium ${
-                activeTab === 'add' ? 'text-white' : 'text-green-500 hover:text-green-400'
+                activeTab === 'add' ? 'text-foreground' : 'text-success hover:text-success'
               }`}
             >
               Add Friend

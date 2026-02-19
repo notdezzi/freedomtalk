@@ -43,7 +43,7 @@ export function VoiceControls({ className }: VoiceControlsProps) {
   return (
     <div
       className={cn(
-        'flex items-center justify-center gap-3 border-t border-gray-700 bg-gray-850 px-4 py-3',
+        'flex items-center justify-center gap-3 border-t border-border bg-background-elevated px-4 py-3',
         className
       )}
       style={{ backgroundColor: '#1e1f22' }}
@@ -118,9 +118,9 @@ function VoiceControlButton({
         'rounded-full p-3 transition-colors',
         active
           ? activeColor === 'green'
-            ? 'bg-green-600 text-white hover:bg-green-700'
-            : 'bg-red-600 text-white hover:bg-red-700'
-          : 'bg-gray-600 text-gray-300 hover:bg-gray-500 hover:text-white'
+            ? 'bg-success text-foreground hover:bg-success/80'
+            : 'bg-error text-foreground hover:bg-error/80'
+          : 'bg-background-elevated text-foreground hover:bg-background-surface hover:text-foreground'
       )}
       title={title}
     >

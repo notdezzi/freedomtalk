@@ -48,7 +48,7 @@ export function CreateServerModal({ onClose }: CreateServerModalProps) {
     return (
       <Modal open onClose={onClose} title="Create a Server" size="lg">
         <div className="py-4">
-          <p className="text-gray-400 text-center mb-6">
+          <p className="text-foreground-muted text-center mb-6">
             Your server is where you and your friends hang out. Make yours and start talking.
           </p>
 
@@ -56,23 +56,23 @@ export function CreateServerModal({ onClose }: CreateServerModalProps) {
             <button
               onClick={() => setStep('create')}
               className={cn(
-                'flex flex-col items-center gap-3 rounded-lg border-2 border-gray-600 p-4',
-                'hover:border-blue-500 hover:bg-blue-500/10 transition-colors'
+                'flex flex-col items-center gap-3 rounded-lg border-2 border-border p-4',
+                'hover:border-blue-500 hover:bg-accent/10 transition-colors'
               )}
             >
               <div className="text-4xl">🎮</div>
-              <span className="font-medium text-white">Create My Own</span>
+              <span className="font-medium text-foreground">Create My Own</span>
             </button>
 
             <button
               onClick={() => setStep('join')}
               className={cn(
-                'flex flex-col items-center gap-3 rounded-lg border-2 border-gray-600 p-4',
-                'hover:border-blue-500 hover:bg-blue-500/10 transition-colors'
+                'flex flex-col items-center gap-3 rounded-lg border-2 border-border p-4',
+                'hover:border-blue-500 hover:bg-accent/10 transition-colors'
               )}
             >
               <div className="text-4xl">👥</div>
-              <span className="font-medium text-white">Join a Server</span>
+              <span className="font-medium text-foreground">Join a Server</span>
             </button>
           </div>
         </div>
@@ -89,13 +89,13 @@ export function CreateServerModal({ onClose }: CreateServerModalProps) {
   return (
     <Modal open onClose={onClose} title="Create a Server" size="md">
       <div className="py-4">
-        <p className="text-gray-400 text-sm mb-4">
+        <p className="text-foreground-muted text-sm mb-4">
           Give your new server a personality with a name and an icon. You can always change it later.
         </p>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-300 uppercase mb-2">
+            <label className="block text-xs font-semibold text-foreground uppercase mb-2">
               Server Name
             </label>
             <Input

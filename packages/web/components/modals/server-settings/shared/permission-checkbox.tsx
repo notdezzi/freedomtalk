@@ -80,9 +80,9 @@ export function PermissionCheckbox({
           // Neutral state - gray outline with empty circle
           state === 'neutral' && 'border-border bg-transparent',
           // Allow state - green with checkmark
-          state === 'allow' && 'border-green-500 bg-green-500/20',
+          state === 'allow' && 'border-green-500 bg-success/20',
           // Deny state - red with X
-          state === 'deny' && 'border-red-500 bg-red-500/20'
+          state === 'deny' && 'border-red-500 bg-error/20'
         )}
       >
         {state === 'neutral' && (
@@ -90,7 +90,7 @@ export function PermissionCheckbox({
         )}
         {state === 'allow' && (
           <svg
-            className="w-4 h-4 text-green-500"
+            className="w-4 h-4 text-success"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -105,7 +105,7 @@ export function PermissionCheckbox({
         )}
         {state === 'deny' && (
           <svg
-            className="w-4 h-4 text-red-500"
+            className="w-4 h-4 text-error"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"

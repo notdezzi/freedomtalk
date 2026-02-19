@@ -263,7 +263,8 @@ export function useUpdateChannelPositions(serverId: string | undefined) {
     },
     onSuccess: () => {
       // Invalidate channels query to refetch with new positions
-      queryClient.invalidateQueries({ queryKey: queryKeys.servers.channels(serverId || '') });
+      // Use the exact query key that useServerChannelsAndCategories uses
+      queryClient.invalidateQueries({ queryKey: [...queryKeys.servers.channels(serverId || ''), 'with-categories'] });
     },
   });
 }
@@ -280,7 +281,7 @@ export function useUpdateCategoryPositions(serverId: string | undefined) {
     },
     onSuccess: () => {
       // Invalidate channels query to refetch with new positions (categories are included)
-      queryClient.invalidateQueries({ queryKey: queryKeys.servers.channels(serverId || '') });
+      queryClient.invalidateQueries({ queryKey: [...queryKeys.servers.channels(serverId || ''), 'with-categories'] });
     },
   });
 }

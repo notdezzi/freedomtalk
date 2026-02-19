@@ -35,23 +35,23 @@ export function OverviewTab({ serverId }: OverviewTabProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
       </div>
     );
   }
 
   return (
     <div>
-      <h3 className="text-xl font-semibold text-white mb-6">Server Overview</h3>
+      <h3 className="text-xl font-semibold text-foreground mb-6">Server Overview</h3>
 
       <div className="space-y-6">
         {/* Server Icon */}
         <div>
-          <label className="text-xs font-semibold text-gray-400 uppercase mb-2 block">
+          <label className="text-xs font-semibold text-foreground-muted uppercase mb-2 block">
             Server Icon
           </label>
           <div className="flex items-center gap-4">
-            <div className="h-20 w-20 rounded-lg bg-gray-700 flex items-center justify-center text-3xl">
+            <div className="h-20 w-20 rounded-lg bg-background-surface flex items-center justify-center text-3xl">
               {server?.icon ? (
                 <img
                   src={server.icon}
@@ -59,7 +59,7 @@ export function OverviewTab({ serverId }: OverviewTabProps) {
                   className="h-full w-full rounded-lg object-cover"
                 />
               ) : (
-                <span className="text-gray-400">
+                <span className="text-foreground-muted">
                   {name.charAt(0).toUpperCase() || '?'}
                 </span>
               )}
@@ -72,7 +72,7 @@ export function OverviewTab({ serverId }: OverviewTabProps) {
 
         {/* Server Name */}
         <div>
-          <label className="text-xs font-semibold text-gray-400 uppercase mb-2 block">
+          <label className="text-xs font-semibold text-foreground-muted uppercase mb-2 block">
             Server Name
           </label>
           <Input
@@ -84,7 +84,7 @@ export function OverviewTab({ serverId }: OverviewTabProps) {
 
         {/* Description */}
         <div>
-          <label className="text-xs font-semibold text-gray-400 uppercase mb-2 block">
+          <label className="text-xs font-semibold text-foreground-muted uppercase mb-2 block">
             Description
           </label>
           <textarea

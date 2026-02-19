@@ -95,7 +95,7 @@ export function EditChannelModal({ serverId, channelId, onClose }: EditChannelMo
     return (
       <Modal open onClose={onClose} className="max-w-md">
         <div className="p-6 flex items-center justify-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
         </div>
       </Modal>
     );
@@ -104,22 +104,22 @@ export function EditChannelModal({ serverId, channelId, onClose }: EditChannelMo
   return (
     <Modal open onClose={onClose} className="max-w-md">
       <div className="p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Edit Channel</h2>
+        <h2 className="text-xl font-semibold text-foreground mb-4">Edit Channel</h2>
 
         {error && (
-          <p className="text-red-400 text-sm mb-4">{error}</p>
+          <p className="text-error text-sm mb-4">{error}</p>
         )}
 
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-semibold text-gray-400 uppercase mb-2 block">
+            <label className="text-xs font-semibold text-foreground-muted uppercase mb-2 block">
               Channel Name
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-gray-700 text-white rounded px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
+              className="w-full bg-background-surface text-foreground rounded px-3 py-2 border border-border focus:border-accent focus:outline-none"
               placeholder="channel-name"
             />
           </div>
@@ -127,20 +127,20 @@ export function EditChannelModal({ serverId, channelId, onClose }: EditChannelMo
           {!isVoice && (
             <>
               <div>
-                <label className="text-xs font-semibold text-gray-400 uppercase mb-2 block">
+                <label className="text-xs font-semibold text-foreground-muted uppercase mb-2 block">
                   Topic
                 </label>
                 <input
                   type="text"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  className="w-full bg-gray-700 text-white rounded px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                  className="w-full bg-background-surface text-foreground rounded px-3 py-2 border border-border focus:border-accent focus:outline-none"
                   placeholder="Channel topic (optional)"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-400 uppercase mb-2 block">
+                <label className="text-xs font-semibold text-foreground-muted uppercase mb-2 block">
                   Slow Mode (seconds)
                 </label>
                 <input
@@ -149,9 +149,9 @@ export function EditChannelModal({ serverId, channelId, onClose }: EditChannelMo
                   max="21600"
                   value={rateLimitPerUser}
                   onChange={(e) => setRateLimitPerUser(parseInt(e.target.value) || 0)}
-                  className="w-full bg-gray-700 text-white rounded px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                  className="w-full bg-background-surface text-foreground rounded px-3 py-2 border border-border focus:border-accent focus:outline-none"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-foreground-subtle mt-1">
                   Users can only send a message every X seconds (0 = disabled)
                 </p>
               </div>
@@ -162,9 +162,9 @@ export function EditChannelModal({ serverId, channelId, onClose }: EditChannelMo
                   id="nsfw"
                   checked={nsfw}
                   onChange={(e) => setNsfw(e.target.checked)}
-                  className="rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
+                  className="rounded bg-background-surface border-border text-accent focus:ring-accent"
                 />
-                <label htmlFor="nsfw" className="text-sm text-gray-300">
+                <label htmlFor="nsfw" className="text-sm text-foreground">
                   NSFW Channel
                 </label>
               </div>

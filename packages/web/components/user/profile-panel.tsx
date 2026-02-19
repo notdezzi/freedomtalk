@@ -35,14 +35,14 @@ export function ProfilePanel({
     <div
       className={cn(
         'flex flex-col overflow-hidden',
-        variant === 'sidebar' && 'h-full bg-gray-800',
-        variant === 'modal' && 'w-80 rounded-lg bg-gray-800',
-        variant === 'dm-profile' && 'h-full bg-gray-800',
+        variant === 'sidebar' && 'h-full bg-background-elevated',
+        variant === 'modal' && 'w-80 rounded-lg bg-background-elevated',
+        variant === 'dm-profile' && 'h-full bg-background-elevated',
         className
       )}
     >
       {/* Banner */}
-      <div className="relative h-16 bg-gray-700">
+      <div className="relative h-16 bg-background-surface">
         {user.banner && (
           <img
             src={user.banner}
@@ -60,7 +60,7 @@ export function ProfilePanel({
           size="xl"
           status={user.status}
           showStatus
-          className="-mt-10 border-4 border-gray-800"
+          className="-mt-10 border-4 border-background-elevated"
         />
       </div>
 
@@ -72,17 +72,17 @@ export function ProfilePanel({
             {user.displayName || user.username}
           </h2>
           {user.displayName && (
-            <p className="text-sm text-gray-400">{user.username}</p>
+            <p className="text-sm text-foreground-muted">{user.username}</p>
           )}
         </div>
 
         {/* Custom status */}
         {user.customStatus && (
-          <p className="mt-2 text-sm text-gray-300">{user.customStatus}</p>
+          <p className="mt-2 text-sm text-foreground">{user.customStatus}</p>
         )}
 
         {/* Divider */}
-        <div className="my-3 border-t border-gray-700" />
+        <div className="my-3 border-t border-border" />
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2">
@@ -111,12 +111,12 @@ export function ProfilePanel({
         {/* Bio */}
         {user.bio && (
           <>
-            <div className="my-3 border-t border-gray-700" />
+            <div className="my-3 border-t border-border" />
             <div>
-              <h3 className="text-xs font-semibold uppercase text-gray-400 mb-1">
+              <h3 className="text-xs font-semibold uppercase text-foreground-muted mb-1">
                 About Me
               </h3>
-              <p className="text-sm text-gray-300 whitespace-pre-wrap">
+              <p className="text-sm text-foreground whitespace-pre-wrap">
                 {user.bio}
               </p>
             </div>
@@ -126,9 +126,9 @@ export function ProfilePanel({
         {/* Roles (for server context) */}
         {user.roles && user.roles.length > 0 && (
           <>
-            <div className="my-3 border-t border-gray-700" />
+            <div className="my-3 border-t border-border" />
             <div>
-              <h3 className="text-xs font-semibold uppercase text-gray-400 mb-1">
+              <h3 className="text-xs font-semibold uppercase text-foreground-muted mb-1">
                 Roles
               </h3>
               <div className="flex flex-wrap gap-1">
@@ -152,12 +152,12 @@ export function ProfilePanel({
         {/* Member since */}
         {user.joinedAt && (
           <>
-            <div className="my-3 border-t border-gray-700" />
+            <div className="my-3 border-t border-border" />
             <div>
-              <h3 className="text-xs font-semibold uppercase text-gray-400 mb-1">
+              <h3 className="text-xs font-semibold uppercase text-foreground-muted mb-1">
                 Member Since
               </h3>
-              <p className="text-sm text-gray-300">
+              <p className="text-sm text-foreground">
                 {new Date(user.joinedAt).toLocaleDateString('en-US', {
                   month: 'long',
                   day: 'numeric',
@@ -169,14 +169,14 @@ export function ProfilePanel({
         )}
 
         {/* Note */}
-        <div className="my-3 border-t border-gray-700" />
+        <div className="my-3 border-t border-border" />
         <div>
-          <h3 className="text-xs font-semibold uppercase text-gray-400 mb-1">
+          <h3 className="text-xs font-semibold uppercase text-foreground-muted mb-1">
             Note
           </h3>
           <textarea
             placeholder="Click to add a note"
-            className="w-full rounded bg-gray-700 p-2 text-sm text-gray-300 placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded bg-background-surface p-2 text-sm text-foreground placeholder:text-foreground-subtle resize-none focus:outline-none focus:ring-2 focus:ring-accent"
             rows={2}
           />
         </div>

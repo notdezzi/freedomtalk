@@ -137,9 +137,9 @@ export function PermissionEditor({
             <span className="text-xs text-foreground-muted">Neutral (inherit)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded border-2 border-green-500 bg-green-500/20 flex items-center justify-center">
+            <div className="w-5 h-5 rounded border-2 border-green-500 bg-success/20 flex items-center justify-center">
               <svg
-                className="w-3 h-3 text-green-500"
+                className="w-3 h-3 text-success"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -155,9 +155,9 @@ export function PermissionEditor({
             <span className="text-xs text-foreground-muted">Allow</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded border-2 border-red-500 bg-red-500/20 flex items-center justify-center">
+            <div className="w-5 h-5 rounded border-2 border-red-500 bg-error/20 flex items-center justify-center">
               <svg
-                className="w-3 h-3 text-red-500"
+                className="w-3 h-3 text-error"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"

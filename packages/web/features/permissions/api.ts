@@ -9,6 +9,7 @@ export function usePermissionBreakdown(serverId: string | undefined) {
     queryFn: async (): Promise<PermissionBreakdownResponse | null> => {
       if (!serverId) return null;
       const response = await apiClient.getPermissionBreakdown(serverId);
+      console.log('usePermissionBreakdown response:', response);
       return response.success ? response.data || null : null;
     },
     enabled: !!serverId,

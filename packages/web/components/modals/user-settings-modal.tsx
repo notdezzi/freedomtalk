@@ -18,6 +18,7 @@ import {
   Loader2,
   Check,
   X,
+  LogOut,
 } from 'lucide-react';
 
 interface UserSettingsModalProps {
@@ -29,6 +30,7 @@ type SettingsSection = 'my-account' | 'security' | 'voice-video';
 export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
+  const logout = useAuthStore((s) => s.logout);
   const [activeSection, setActiveSection] = useState<SettingsSection>('my-account');
 
   // Profile state
@@ -333,12 +335,12 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
   ];
 
   return (
-    <Modal open onClose={onClose} className="!p-0 !max-w-4xl !bg-gray-800">
+    <Modal open onClose={onClose} className="!p-0 !max-w-4xl !bg-background-elevated">
       <div className="flex h-[600px]">
         {/* Sidebar */}
-        <div className="w-56 bg-gray-900 flex flex-col">
+        <div className="w-56 bg-background flex flex-col">
           <div className="p-4">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+            <h2 className="text-xs font-semibold text-foreground-muted uppercase tracking-wide mb-2">
               User Settings
             </h2>
           </div>
@@ -351,8 +353,8 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                   'flex items-center gap-2 w-full px-3 py-2 rounded text-sm text-left',
                   'transition-colors',
                   activeSection === section.id
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                    ? 'bg-background-surface text-foreground'
+                    : 'text-foreground-muted hover:text-foreground hover:bg-background-surface/50'
                 )}
               >
                 {section.icon}
@@ -360,16 +362,33 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
               </button>
             ))}
           </nav>
+
+          {/* Divider */}
+          <div className="mx-4 border-t border-border" />
+
+          {/* Logout button */}
+          <div className="p-2">
+            <button
+              onClick={() => {
+                logout();
+                onClose();
+              }}
+              className="flex items-center gap-2 w-full px-3 py-2 rounded text-sm text-left text-error hover:bg-error/10 transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              Log Out
+            </button>
+          </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
           {activeSection === 'my-account' && (
             <div className="p-6">
-              <h3 className="text-xl font-semibold text-white mb-6">My Account</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-6">My Account</h3>
 
               {/* User info card with avatar */}
-              <div className="bg-gray-900 rounded-lg p-4 mb-4">
+              <div className="bg-background rounded-lg p-4 mb-4">
                 <div className="flex items-center gap-4">
                   <div className="relative">
                     {avatarUrl ? (
@@ -379,15 +398,15 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                         className="h-20 w-20 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="h-20 w-20 rounded-full bg-gray-700 flex items-center justify-center text-2xl font-semibold text-white">
+                      <div className="h-20 w-20 rounded-full bg-background-surface flex items-center justify-center text-2xl font-semibold text-foreground">
                         {(user?.displayName || user?.username || 'U').charAt(0).toUpperCase()}
                       </div>
                     )}
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="absolute bottom-0 right-0 p-1.5 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors"
+                      className="absolute bottom-0 right-0 p-1.5 bg-background-surface hover:bg-background-surface/80 rounded-full transition-colors"
                     >
-                      <Camera className="h-4 w-4 text-white" />
+                      <Camera className="h-4 w-4 text-foreground" />
                     </button>
                     <input
                       ref={fileInputRef}
@@ -398,48 +417,48 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                     />
                   </div>
                   <div className="flex-1">
-                    <p className="text-lg font-semibold text-white">
+                    <p className="text-lg font-semibold text-foreground">
                       {user?.displayName || user?.username}
                     </p>
-                    <p className="text-sm text-gray-400">@{user?.username}</p>
+                    <p className="text-sm text-foreground-muted">@{user?.username}</p>
                   </div>
                 </div>
               </div>
 
               {/* Editable fields */}
               <div className="space-y-4">
-                <div className="bg-gray-900 rounded-lg p-4">
-                  <label className="text-xs font-semibold text-gray-400 uppercase mb-2 block">
+                <div className="bg-background rounded-lg p-4">
+                  <label className="text-xs font-semibold text-foreground-muted uppercase mb-2 block">
                     Display Name
                   </label>
                   <input
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full bg-gray-700 text-white rounded px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    className="w-full bg-background-surface text-foreground rounded px-3 py-2 border border-border focus:border-accent focus:outline-none"
                     placeholder={user?.username}
                   />
                 </div>
 
-                <div className="bg-gray-900 rounded-lg p-4">
-                  <label className="text-xs font-semibold text-gray-400 uppercase mb-2 block">
+                <div className="bg-background rounded-lg p-4">
+                  <label className="text-xs font-semibold text-foreground-muted uppercase mb-2 block">
                     Bio
                   </label>
                   <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     rows={3}
-                    className="w-full bg-gray-700 text-white rounded px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none resize-none"
+                    className="w-full bg-background-surface text-foreground rounded px-3 py-2 border border-border focus:border-accent focus:outline-none resize-none"
                     placeholder="Tell us about yourself..."
                   />
                 </div>
 
-                <div className="bg-gray-900 rounded-lg p-4">
-                  <label className="text-xs font-semibold text-gray-400 uppercase mb-2 block">
+                <div className="bg-background rounded-lg p-4">
+                  <label className="text-xs font-semibold text-foreground-muted uppercase mb-2 block">
                     Email
                   </label>
-                  <p className="text-white">{user?.email || 'Not set'}</p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-foreground">{user?.email || 'Not set'}</p>
+                  <p className="text-xs text-foreground-subtle mt-1">
                     Email can only be changed through account recovery
                   </p>
                 </div>
@@ -448,7 +467,7 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                   <div
                     className={cn(
                       'p-3 rounded flex items-center gap-2',
-                      profileMessage.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                      profileMessage.type === 'success' ? 'bg-success/20 text-success' : 'bg-error/20 text-error'
                     )}
                   >
                     {profileMessage.type === 'success' ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
@@ -459,7 +478,7 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                 <button
                   onClick={handleProfileSave}
                   disabled={isSavingProfile}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded text-sm transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-foreground rounded text-sm transition-colors"
                 >
                   {isSavingProfile ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -474,13 +493,13 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
 
           {activeSection === 'security' && (
             <div className="p-6">
-              <h3 className="text-xl font-semibold text-white mb-6">Security</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-6">Security</h3>
 
               {/* Change Password */}
-              <div className="bg-gray-900 rounded-lg p-4 mb-4">
+              <div className="bg-background rounded-lg p-4 mb-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <Key className="h-5 w-5 text-gray-400" />
-                  <h4 className="text-sm font-medium text-white">Change Password</h4>
+                  <Key className="h-5 w-5 text-foreground-muted" />
+                  <h4 className="text-sm font-medium text-foreground">Change Password</h4>
                 </div>
 
                 <div className="space-y-3">
@@ -488,21 +507,21 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                     type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full bg-gray-700 text-white rounded px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    className="w-full bg-background-surface text-foreground rounded px-3 py-2 border border-border focus:border-accent focus:outline-none"
                     placeholder="Current password"
                   />
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full bg-gray-700 text-white rounded px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    className="w-full bg-background-surface text-foreground rounded px-3 py-2 border border-border focus:border-accent focus:outline-none"
                     placeholder="New password"
                   />
                   <input
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full bg-gray-700 text-white rounded px-3 py-2 border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    className="w-full bg-background-surface text-foreground rounded px-3 py-2 border border-border focus:border-accent focus:outline-none"
                     placeholder="Confirm new password"
                   />
                 </div>
@@ -511,7 +530,7 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                   <div
                     className={cn(
                       'mt-3 p-3 rounded flex items-center gap-2',
-                      passwordMessage.type === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                      passwordMessage.type === 'success' ? 'bg-success/20 text-success' : 'bg-error/20 text-error'
                     )}
                   >
                     {passwordMessage.type === 'success' ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
@@ -522,7 +541,7 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                 <button
                   onClick={handlePasswordChange}
                   disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
-                  className="mt-3 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded text-sm transition-colors"
+                  className="mt-3 flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-foreground rounded text-sm transition-colors"
                 >
                   {isChangingPassword ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -534,13 +553,13 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
               </div>
 
               {/* 2FA Status */}
-              <div className="bg-gray-900 rounded-lg p-4">
+              <div className="bg-background rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-gray-400" />
+                    <Shield className="h-5 w-5 text-foreground-muted" />
                     <div>
-                      <h4 className="text-sm font-medium text-white">Two-Factor Authentication</h4>
-                      <p className="text-xs text-gray-500">
+                      <h4 className="text-sm font-medium text-foreground">Two-Factor Authentication</h4>
+                      <p className="text-xs text-foreground-subtle">
                         {user?.has2FA ? '2FA is currently enabled' : '2FA is currently disabled'}
                       </p>
                     </div>
@@ -548,13 +567,13 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                   <span
                     className={cn(
                       'px-2 py-1 rounded text-xs font-medium',
-                      user?.has2FA ? 'bg-green-500/20 text-green-400' : 'bg-gray-700 text-gray-400'
+                      user?.has2FA ? 'bg-success/20 text-success' : 'bg-background-surface text-foreground-muted'
                     )}
                   >
                     {user?.has2FA ? 'Enabled' : 'Disabled'}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-3">
+                <p className="text-xs text-foreground-subtle mt-3">
                   Two-factor authentication settings coming soon...
                 </p>
               </div>
@@ -563,18 +582,18 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
 
           {activeSection === 'voice-video' && (
             <div className="p-6">
-              <h3 className="text-xl font-semibold text-white mb-6">Voice & Video</h3>
+              <h3 className="text-xl font-semibold text-foreground mb-6">Voice & Video</h3>
 
               {/* Input Device */}
-              <div className="bg-gray-900 rounded-lg p-4 mb-4">
+              <div className="bg-background rounded-lg p-4 mb-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Mic className="h-4 w-4 text-gray-400" />
-                  <label className="text-sm font-medium text-white">Input Device</label>
+                  <Mic className="h-4 w-4 text-foreground-muted" />
+                  <label className="text-sm font-medium text-foreground">Input Device</label>
                 </div>
                 <select
                   value={selectedInput}
                   onChange={(e) => setSelectedInput(e.target.value)}
-                  className="w-full bg-gray-700 text-white rounded px-3 py-2 text-sm border border-gray-600 focus:border-blue-500 focus:outline-none"
+                  className="w-full bg-background-surface text-foreground rounded px-3 py-2 text-sm border border-border focus:border-accent focus:outline-none"
                 >
                   {inputDevices.map((device) => (
                     <option key={device.deviceId} value={device.deviceId}>
@@ -593,8 +612,8 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                     className={cn(
                       'px-3 py-1.5 rounded text-sm transition-colors',
                       isMicTesting
-                        ? 'bg-red-600 hover:bg-red-700 text-white'
-                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                        ? 'bg-error hover:bg-error/80 text-foreground'
+                        : 'bg-background-surface hover:bg-background-surface/80 text-foreground'
                     )}
                   >
                     {isMicTesting ? 'Stop Test' : 'Test Microphone'}
@@ -604,19 +623,19 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                   {isMicTesting && (
                     <div className="mt-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400">Level:</span>
-                        <div className="flex-1 h-3 bg-gray-700 rounded-full overflow-hidden">
+                        <span className="text-xs text-foreground-muted">Level:</span>
+                        <div className="flex-1 h-3 bg-background-surface rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-green-500 transition-all duration-75"
+                            className="h-full bg-success transition-all duration-75"
                             style={{ width: `${micLevel}%` }}
                           />
                         </div>
                       </div>
                       {micLevel > 10 && (
-                        <p className="text-xs text-green-400 mt-1">Microphone is working!</p>
+                        <p className="text-xs text-success mt-1">Microphone is working!</p>
                       )}
                       {micLevel < 5 && (
-                        <p className="text-xs text-gray-500 mt-1">Try speaking into your microphone</p>
+                        <p className="text-xs text-foreground-subtle mt-1">Try speaking into your microphone</p>
                       )}
                     </div>
                   )}
@@ -624,15 +643,15 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
               </div>
 
               {/* Output Device */}
-              <div className="bg-gray-900 rounded-lg p-4 mb-4">
+              <div className="bg-background rounded-lg p-4 mb-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Volume2 className="h-4 w-4 text-gray-400" />
-                  <label className="text-sm font-medium text-white">Output Device</label>
+                  <Volume2 className="h-4 w-4 text-foreground-muted" />
+                  <label className="text-sm font-medium text-foreground">Output Device</label>
                 </div>
                 <select
                   value={selectedOutput}
                   onChange={(e) => setSelectedOutput(e.target.value)}
-                  className="w-full bg-gray-700 text-white rounded px-3 py-2 text-sm border border-gray-600 focus:border-blue-500 focus:outline-none"
+                  className="w-full bg-background-surface text-foreground rounded px-3 py-2 text-sm border border-border focus:border-accent focus:outline-none"
                 >
                   {outputDevices.map((device) => (
                     <option key={device.deviceId} value={device.deviceId}>
@@ -646,10 +665,10 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
               </div>
 
               {/* Video Device */}
-              <div className="bg-gray-900 rounded-lg p-4 mb-4">
+              <div className="bg-background rounded-lg p-4 mb-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Video className="h-4 w-4 text-gray-400" />
-                  <label className="text-sm font-medium text-white">Camera</label>
+                  <Video className="h-4 w-4 text-foreground-muted" />
+                  <label className="text-sm font-medium text-foreground">Camera</label>
                 </div>
                 <select
                   value={selectedVideo}
@@ -661,7 +680,7 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                       startVideoPreview();
                     }
                   }}
-                  className="w-full bg-gray-700 text-white rounded px-3 py-2 text-sm border border-gray-600 focus:border-blue-500 focus:outline-none"
+                  className="w-full bg-background-surface text-foreground rounded px-3 py-2 text-sm border border-border focus:border-accent focus:outline-none"
                 >
                   {videoDevices.map((device) => (
                     <option key={device.deviceId} value={device.deviceId}>
@@ -675,16 +694,16 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
               </div>
 
               {/* Video Preview */}
-              <div className="bg-gray-900 rounded-lg p-4">
+              <div className="bg-background rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-medium text-white">Video Preview</h4>
+                  <h4 className="text-sm font-medium text-foreground">Video Preview</h4>
                   <button
                     onClick={isVideoEnabled ? stopVideoStream : startVideoPreview}
                     className={cn(
                       'flex items-center gap-1.5 px-3 py-1.5 rounded text-sm transition-colors',
                       isVideoEnabled
-                        ? 'bg-red-600 hover:bg-red-700 text-white'
-                        : 'bg-green-600 hover:bg-green-700 text-white'
+                        ? 'bg-error hover:bg-error/80 text-foreground'
+                        : 'bg-success hover:bg-success/80 text-foreground'
                     )}
                   >
                     {isVideoEnabled ? (
@@ -701,7 +720,7 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                   </button>
                 </div>
 
-                <div className="aspect-video bg-gray-700 rounded overflow-hidden relative">
+                <div className="aspect-video bg-background-surface rounded overflow-hidden relative">
                   {isVideoEnabled ? (
                     <video
                       ref={videoRef}
@@ -712,31 +731,21 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                     />
                   ) : (
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <Video className="h-12 w-12 text-gray-500 mb-2" />
-                      <p className="text-sm text-gray-500">
+                      <Video className="h-12 w-12 text-foreground-subtle mb-2" />
+                      <p className="text-sm text-foreground-subtle">
                         {videoError || 'Click Start to preview your camera'}
                       </p>
                     </div>
                   )}
                 </div>
 
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-foreground-subtle mt-2">
                   Camera preview is only visible to you
                 </p>
               </div>
             </div>
           )}
         </div>
-      </div>
-
-      {/* Footer */}
-      <div className="flex justify-end p-4 border-t border-gray-700 bg-gray-800">
-        <button
-          onClick={onClose}
-          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm transition-colors"
-        >
-          Done
-        </button>
       </div>
     </Modal>
   );

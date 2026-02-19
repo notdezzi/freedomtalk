@@ -16,23 +16,23 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           'inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
           // Variants
           {
-            'bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-blue-500':
+            'bg-accent text-background hover:bg-accent-hover focus-visible:ring-accent':
               variant === 'primary',
-            'bg-gray-600 text-white hover:bg-gray-500 focus-visible:ring-gray-500':
+            'bg-background-surface text-foreground hover:bg-background-elevated focus-visible:ring-accent border border-border':
               variant === 'secondary',
-            'bg-transparent text-gray-300 hover:bg-gray-700 hover:text-white focus-visible:ring-gray-500':
+            'bg-transparent text-foreground-muted hover:bg-background-surface hover:text-foreground focus-visible:ring-accent':
               variant === 'ghost',
-            'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500':
+            'bg-error text-foreground hover:bg-error/80 focus-visible:ring-error':
               variant === 'danger',
-            'text-blue-400 underline-offset-4 hover:underline focus-visible:ring-blue-500':
+            'text-accent underline-offset-4 hover:underline focus-visible:ring-accent':
               variant === 'link',
           },
           // Sizes
           {
-            'h-8 px-3 text-sm': size === 'sm',
-            'h-10 px-4 text-sm': size === 'md',
-            'h-12 px-6 text-base': size === 'lg',
-            'h-10 w-10 p-0': size === 'icon',
+            'h-8 px-3 text-sm rounded-lg': size === 'sm',
+            'h-10 px-4 text-sm rounded-lg': size === 'md',
+            'h-12 px-6 text-base rounded-xl': size === 'lg',
+            'h-10 w-10 p-0 rounded-lg': size === 'icon',
           },
           className
         )}

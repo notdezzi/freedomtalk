@@ -65,22 +65,22 @@ export function MessageItem({
     return (
       <div
         className={cn(
-          'group relative flex gap-4 px-4 py-0.5 hover:bg-gray-800/50',
-          message.pinned && 'bg-yellow-500/5'
+          'group relative flex gap-4 px-4 py-0.5 hover:bg-background-elevated/50',
+          message.pinned && 'bg-warning/5'
         )}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
       >
         {/* Timestamp on hover - same width as avatar (w-8) */}
         <div className="w-8 flex-shrink-0 flex items-center justify-center">
-          <span className="text-[10px] text-gray-500 opacity-0 group-hover:opacity-100">
+          <span className="text-[10px] text-foreground-subtle opacity-0 group-hover:opacity-100">
             {formatTime(message.createdAt)}
           </span>
         </div>
 
         {/* Content - same layout as non-grouped messages */}
         <div className="flex-1 min-w-0">
-          <p className="text-gray-200 text-sm break-words whitespace-pre-wrap pl-0">
+          <p className="text-foreground text-sm break-words whitespace-pre-wrap pl-0">
             {message.content}
           </p>
 
@@ -113,8 +113,8 @@ export function MessageItem({
   return (
     <div
       className={cn(
-        'group relative flex gap-4 px-4 py-2 hover:bg-gray-800/50',
-        message.pinned && 'bg-yellow-500/5'
+        'group relative flex gap-4 px-4 py-2 hover:bg-background-elevated/50',
+        message.pinned && 'bg-warning/5'
       )}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
@@ -142,20 +142,20 @@ export function MessageItem({
           <div className="flex items-baseline gap-2">
             <button
               onClick={() => onUserClick?.(message.author.id)}
-              className="font-medium text-white hover:underline cursor-pointer"
+              className="font-medium text-foreground hover:underline cursor-pointer"
             >
               {message.author.displayName || message.author.username}
             </button>
             <Tooltip content={formatDate(message.createdAt)}>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-foreground-subtle">
                 {formatRelativeTime(message.createdAt)}
               </span>
             </Tooltip>
             {message.editedAt && (
-              <span className="text-xs text-gray-500">(edited)</span>
+              <span className="text-xs text-foreground-subtle">(edited)</span>
             )}
             {message.pinned && (
-              <Pin className="h-3 w-3 text-yellow-500" />
+              <Pin className="h-3 w-3 text-warning" />
             )}
           </div>
         )}
@@ -166,27 +166,27 @@ export function MessageItem({
             <textarea
               value={editingContent}
               onChange={(e) => setEditingContent(e.target.value)}
-              className="w-full rounded bg-gray-700 p-2 text-white text-sm resize-none"
+              className="w-full rounded bg-background-surface p-2 text-foreground text-sm resize-none"
               rows={3}
               autoFocus
             />
             <div className="flex gap-2 mt-2">
               <button
                 onClick={handleEditSubmit}
-                className="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700"
+                className="px-3 py-1 bg-accent rounded text-sm hover:bg-accent-hover"
               >
                 Save
               </button>
               <button
                 onClick={() => onEdit(message.content)}
-                className="px-3 py-1 bg-gray-600 rounded text-sm hover:bg-gray-500"
+                className="px-3 py-1 bg-background-elevated rounded text-sm hover:bg-background-surface"
               >
                 Cancel
               </button>
             </div>
           </div>
         ) : (
-          <p className="text-gray-200 text-sm break-words whitespace-pre-wrap">
+          <p className="text-foreground text-sm break-words whitespace-pre-wrap">
             {message.content}
           </p>
         )}
@@ -206,8 +206,8 @@ export function MessageItem({
 
         {/* Reply reference */}
         {message.referencedMessage && (
-          <div className="mt-2 p-2 bg-gray-800 rounded text-sm text-gray-400 border-l-2 border-gray-600">
-            <span className="font-medium text-gray-300">
+          <div className="mt-2 p-2 bg-background-elevated rounded text-sm text-foreground-muted border-l-2 border-border">
+            <span className="font-medium text-foreground">
               @{message.referencedMessage.author?.username || 'Unknown'}
             </span>
             : {message.referencedMessage.content}
@@ -268,14 +268,14 @@ function MessageActions({
   ];
 
   return (
-    <div className="absolute right-2 -top-3 flex items-center gap-0.5 rounded bg-gray-800 shadow-lg border border-gray-700">
+    <div className="absolute right-2 -top-3 flex items-center gap-0.5 rounded bg-background-elevated shadow-lg border border-border">
       {actions.map((action, index) => (
         <Tooltip key={index} content={action.label}>
           <button
             onClick={action.onClick}
             className={cn(
-              'p-1.5 text-gray-400 hover:text-white transition-colors',
-              action.danger && 'hover:text-red-400'
+              'p-1.5 text-foreground-muted hover:text-foreground transition-colors',
+              action.danger && 'hover:text-error'
             )}
           >
             {action.icon}
@@ -298,12 +298,12 @@ function ReactionBadge({
       onClick={onClick}
       className={cn(
         'flex items-center gap-1 px-1.5 py-0.5 rounded text-sm',
-        'border border-gray-600 hover:border-gray-500',
-        reaction.me ? 'bg-blue-500/20 border-blue-500' : 'bg-gray-700'
+        'border border-border hover:bg-background-surface',
+        reaction.me ? 'bg-accent-muted border-accent' : 'bg-background-surface'
       )}
     >
       <span>{reaction.emoji.name}</span>
-      <span className={cn('text-xs', reaction.me ? 'text-blue-300' : 'text-gray-400')}>
+      <span className={cn('text-xs', reaction.me ? 'text-accent' : 'text-foreground-muted')}>
         {reaction.count}
       </span>
     </button>

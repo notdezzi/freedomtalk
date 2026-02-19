@@ -72,16 +72,16 @@ export function VoiceGridView({ channelId, channelName, className }: VoiceGridVi
   const hasStream = streamUsers.length > 0 || selfStream;
 
   return (
-    <div className={cn('flex h-full flex-col bg-gray-900', className)}>
+    <div className={cn('flex h-full flex-col bg-background', className)}>
       {/* Main content area */}
       <div className="flex-1 overflow-y-auto p-4">
         {/* Channel header */}
         <div className="mb-4 flex items-center gap-2 px-2">
-          <Volume2 className="h-5 w-5 text-green-500" />
-          <h2 className="text-lg font-semibold text-white">
+          <Volume2 className="h-5 w-5 text-success" />
+          <h2 className="text-lg font-semibold text-foreground">
             {channelName || 'Voice Channel'}
           </h2>
-          <span className="text-sm text-gray-400">
+          <span className="text-sm text-foreground-muted">
             {voiceUsers.length + (showSelfInAudioOnly ? 1 : 0)}{' '}
             {voiceUsers.length + (showSelfInAudioOnly ? 1 : 0) === 1 ? 'user' : 'users'}
           </span>
@@ -115,7 +115,7 @@ export function VoiceGridView({ channelId, channelName, className }: VoiceGridVi
 
         {/* Empty state */}
         {allAudioOnlyUsers.length === 0 && !hasVideo && !hasStream && (
-          <div className="flex h-64 items-center justify-center text-gray-500">
+          <div className="flex h-64 items-center justify-center text-foreground-subtle">
             <div className="text-center">
               <Volume2 className="mx-auto mb-2 h-12 w-12 opacity-50" />
               <p>Connected to voice</p>
@@ -162,8 +162,8 @@ function AudioOnlyTile({ user, isSelf }: AudioOnlyTileProps) {
     <div
       className={cn(
         'flex flex-col items-center rounded-lg p-4 transition-all duration-200',
-        'bg-gray-800 hover:bg-gray-750',
-        user.isSpeaking && 'ring-2 ring-green-500 bg-green-500/10'
+        'bg-background-elevated hover:bg-background-surface/80',
+        user.isSpeaking && 'ring-2 ring-success bg-success/10'
       )}
     >
       {/* Hidden audio element for remote users */}
@@ -177,33 +177,33 @@ function AudioOnlyTile({ user, isSelf }: AudioOnlyTileProps) {
           size="lg"
           className={cn(
             'transition-all duration-200',
-            user.isSpeaking && 'ring-2 ring-green-400 ring-offset-2 ring-offset-gray-800'
+            user.isSpeaking && 'ring-2 ring-success ring-offset-2 ring-offset-background-elevated'
           )}
         />
 
         {/* Mute indicator overlay */}
         {user.selfMute && (
-          <div className="absolute -bottom-1 -right-1 rounded-full bg-red-500 p-1">
-            <MicOff className="h-3 w-3 text-white" />
+          <div className="absolute -bottom-1 -right-1 rounded-full bg-error p-1">
+            <MicOff className="h-3 w-3 text-foreground" />
           </div>
         )}
 
         {/* Deafen indicator */}
         {user.selfDeaf && (
-          <div className="absolute -bottom-1 -right-1 rounded-full bg-red-500 p-1">
-            <Volume2 className="h-3 w-3 text-white line-through" />
+          <div className="absolute -bottom-1 -right-1 rounded-full bg-error p-1">
+            <Volume2 className="h-3 w-3 text-foreground line-through" />
           </div>
         )}
       </div>
 
       {/* Username */}
-      <span className="mt-2 max-w-full truncate text-sm text-gray-300">
+      <span className="mt-2 max-w-full truncate text-sm text-foreground">
         {isSelf ? 'You' : user.username}
       </span>
 
       {/* Speaking indicator text */}
       {user.isSpeaking && (
-        <span className="text-xs text-green-400">Speaking...</span>
+        <span className="text-xs text-success">Speaking...</span>
       )}
     </div>
   );

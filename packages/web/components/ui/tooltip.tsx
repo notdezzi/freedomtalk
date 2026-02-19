@@ -91,7 +91,7 @@ export function Tooltip({
           <div
             role="tooltip"
             className={cn(
-              'fixed z-50 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded shadow-lg',
+              'fixed z-50 px-2.5 py-1.5 text-xs font-medium text-foreground bg-background-elevated border border-border rounded-lg shadow-xl',
               'pointer-events-none animate-in fade-in-0 zoom-in-95',
               positionClasses[position],
               className

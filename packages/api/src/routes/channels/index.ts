@@ -49,6 +49,13 @@ const channelPositionsSchema = z.object({
   })),
 });
 
+const categoryPositionsSchema = z.object({
+  positions: z.array(z.object({
+    id: z.string().min(18).max(20),
+    position: z.number().int().min(0),
+  })),
+});
+
 export default async function channelRoutes(app: FastifyInstance) {
   // All routes require authentication
   app.addHook('onRequest', requireAuth);
@@ -295,6 +302,54 @@ export default async function channelRoutes(app: FastifyInstance) {
 
       const channels = await channelService.updateChannelPositions(serverId, positions);
       return reply.send(successResponse(channels));
+    }
+  );
+
+  /**
+   * PATCH /api/v1/servers/:serverId/categories/positions
+   * Update category positions
+   */
+  app.patch(
+    '/servers/:serverId/categories/positions',
+    {
+      schema: {
+        description: 'Update category positions',
+        tags: ['Categories'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['serverId'],
+          properties: {
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+          },
+        },
+        body: {
+          type: 'object',
+          required: ['positions'],
+          properties: {
+            positions: {
+              type: 'array',
+              items: {
+                type: 'object',
+                required: ['id', 'position'],
+                properties: {
+                  id: { type: 'string', minLength: 15, maxLength: 25 },
+                  position: { type: 'integer', minimum: 0 },
+                },
+              },
+            },
+          },
+        },
+      },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_CHANNELS)],
+      preHandler: validateBody(categoryPositionsSchema),
+    },
+    async (request, reply) => {
+      const { serverId } = request.params as { serverId: string };
+      const { positions } = request.body as z.infer<typeof categoryPositionsSchema>;
+
+      const categories = await categoryService.updateCategoryPositions(serverId, positions);
+      return reply.send(successResponse(categories));
     }
   );
 

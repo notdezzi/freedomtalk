@@ -137,10 +137,10 @@ export default function InvitePage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
-          <p className="text-gray-400">Loading invite...</p>
+          <Loader2 className="w-12 h-12 animate-spin text-accent mx-auto mb-4" />
+          <p className="text-foreground-muted">Loading invite...</p>
         </div>
       </div>
     );
@@ -149,16 +149,16 @@ export default function InvitePage() {
   // Error state
   if (error && !preview) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-        <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full text-center">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="bg-background-elevated rounded-xl p-6 max-w-md w-full text-center">
           <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Invalid Invite</h1>
-          <p className="text-gray-400 mb-6">{error}</p>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Invalid Invite</h1>
+          <p className="text-foreground-muted mb-6">{error}</p>
           <button
             onClick={handleGoHome}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
+            className="w-full px-4 py-2 bg-accent text-foreground rounded-lg hover:bg-accent transition-colors"
           >
             Go to FreedomTalk
           </button>
@@ -168,14 +168,14 @@ export default function InvitePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-      <div className="bg-gray-800 rounded-xl p-6 max-w-lg w-full">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="bg-background-elevated rounded-xl p-6 max-w-lg w-full">
         {/* Server Preview */}
         {preview?.server && (
           <>
             {/* Banner / Icon */}
             <div className="relative -m-6 mb-6 h-32 bg-gradient-to-br from-blue-600/30 to-purple-600/30 rounded-t-xl flex items-center justify-center">
-              <div className="w-24 h-24 rounded-2xl bg-gray-700 shadow-xl flex items-center justify-center overflow-hidden border-4 border-gray-800">
+              <div className="w-24 h-24 rounded-2xl bg-background-surface shadow-xl flex items-center justify-center overflow-hidden border-4 border-background">
                 {preview.server.icon_url ? (
                   <img
                     src={preview.server.icon_url}
@@ -183,7 +183,7 @@ export default function InvitePage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-4xl font-bold text-blue-500">
+                  <span className="text-4xl font-bold text-accent">
                     {preview.server.name.charAt(0).toUpperCase()}
                   </span>
                 )}
@@ -192,8 +192,8 @@ export default function InvitePage() {
 
             {/* Server Info */}
             <div className="text-center mb-6">
-              <h1 className="text-2xl font-bold text-white mb-2">{preview.server.name}</h1>
-              <div className="flex items-center justify-center gap-4 text-sm text-gray-400">
+              <h1 className="text-2xl font-bold text-foreground mb-2">{preview.server.name}</h1>
+              <div className="flex items-center justify-center gap-4 text-sm text-foreground-muted">
                 <div className="flex items-center gap-1.5">
                   <Users className="w-4 h-4" />
                   <span>{preview.server.member_count.toLocaleString()} Members</span>
@@ -207,20 +207,20 @@ export default function InvitePage() {
 
             {/* Channel info */}
             {preview.channel && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-700/50 mb-4">
-                <Hash className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-400">
-                  You'll be directed to <span className="text-white font-medium">{preview.channel.name}</span>
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-background-surface/50 mb-4">
+                <Hash className="w-4 h-4 text-foreground-muted" />
+                <span className="text-sm text-foreground-muted">
+                  You'll be directed to <span className="text-foreground font-medium">{preview.channel.name}</span>
                 </span>
               </div>
             )}
 
             {/* Inviter info */}
             {preview.inviter && (
-              <div className="flex items-center gap-2 mb-6 text-sm text-gray-400">
+              <div className="flex items-center gap-2 mb-6 text-sm text-foreground-muted">
                 <User className="w-4 h-4" />
                 <span>
-                  Invited by <span className="text-white font-medium">{preview.inviter.username}</span>
+                  Invited by <span className="text-foreground font-medium">{preview.inviter.username}</span>
                 </span>
               </div>
             )}
@@ -239,7 +239,7 @@ export default function InvitePage() {
                 onClick={handleGoHome}
                 className={cn(
                   'flex-1 px-4 py-2 rounded-lg transition-colors',
-                  'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white',
+                  'bg-background-surface text-foreground hover:bg-background-elevated hover:text-foreground',
                   (joinServer.isPending || serversLoading) && 'opacity-50 cursor-not-allowed'
                 )}
                 disabled={joinServer.isPending || serversLoading}
@@ -251,7 +251,7 @@ export default function InvitePage() {
                 disabled={joinServer.isPending || serversLoading}
                 className={cn(
                   'flex-1 px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2',
-                  'bg-blue-600 text-white hover:bg-blue-500',
+                  'bg-accent text-foreground hover:bg-accent',
                   (joinServer.isPending || serversLoading) && 'opacity-50 cursor-not-allowed'
                 )}
               >

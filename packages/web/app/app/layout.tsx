@@ -46,10 +46,10 @@ export default function AppLayout({
   // Show loading state while checking session
   if (!hasCheckedSession || isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-900">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-          <div className="text-white text-sm">Loading...</div>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
+          <div className="text-foreground text-sm">Loading...</div>
         </div>
       </div>
     );

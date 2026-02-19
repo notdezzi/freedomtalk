@@ -58,7 +58,7 @@ export default function DMPage() {
   if (channelLoading) {
     return (
       <AppShell sectionName="Loading...">
-        <div className="flex h-full items-center justify-center text-gray-400">
+        <div className="flex h-full items-center justify-center text-foreground-muted">
           Loading...
         </div>
       </AppShell>
@@ -69,7 +69,7 @@ export default function DMPage() {
   if (!dmChannel) {
     return (
       <AppShell sectionName="DM Not Found">
-        <div className="flex h-full items-center justify-center text-gray-400">
+        <div className="flex h-full items-center justify-center text-foreground-muted">
           Direct message not found
         </div>
       </AppShell>
@@ -80,7 +80,7 @@ export default function DMPage() {
     <AppShell sectionName={recipient?.displayName || recipient?.username || 'DM'}>
       <div className="flex h-full flex-col">
         {/* DM header */}
-        <div className="flex items-center justify-between border-b border-gray-700 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex items-center gap-3">
             <Avatar
               src={recipient?.avatar}
@@ -88,7 +88,7 @@ export default function DMPage() {
               size="md"
             />
             <div className="flex flex-col">
-              <span className="font-semibold text-white">
+              <span className="font-semibold text-foreground">
                 {recipient?.displayName || recipient?.username}
               </span>
             </div>

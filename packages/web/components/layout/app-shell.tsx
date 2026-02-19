@@ -21,7 +21,7 @@ export function AppShell({ children, sectionName, serverId }: AppShellProps) {
   const showMembersColumn = isMembersSidebarOpen && !isConnectedToVoice;
 
   return (
-    <div className="flex h-screen flex-col bg-gray-900 text-white">
+    <div className="flex h-screen flex-col bg-background text-foreground">
       {/* Header Row - Sticky */}
       <Header sectionName={sectionName} />
 

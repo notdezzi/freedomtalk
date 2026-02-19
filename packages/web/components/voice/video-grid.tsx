@@ -137,7 +137,7 @@ function VideoItem({ user }: { user: VideoUserDisplay }) {
   }, [user.audioStream, user.isSelf]);
 
   return (
-    <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
+    <div className="relative aspect-video rounded-lg overflow-hidden bg-background-elevated">
       {/* Always render video element so ref can be set */}
       <video
         ref={videoRef}
@@ -199,7 +199,7 @@ function ScreenShareItem({ stream, username }: { stream?: MediaStream; username:
   }, [stream]);
 
   return (
-    <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800 col-span-full">
+    <div className="relative aspect-video rounded-lg overflow-hidden bg-background-elevated col-span-full">
       <video
         ref={videoRef}
         autoPlay

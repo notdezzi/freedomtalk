@@ -9,7 +9,9 @@ export function useServerRoles(serverId: string | undefined) {
     queryFn: async (): Promise<RoleResponse[]> => {
       if (!serverId) return [];
       const response = await apiClient.getRoles(serverId);
+      console.log('useServerRoles response:', response);
       if (response.success && response.data) {
+        console.log('response.data:', response.data, 'isArray:', Array.isArray(response.data));
         if ('roles' in response.data) {
           return response.data.roles;
         }

@@ -66,8 +66,8 @@ export function DeleteChannelModal({ serverId, channelId, onClose }: DeleteChann
     return (
       <Modal open onClose={onClose} className="max-w-md">
         <div className="p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Error</h2>
-          <p className="text-red-400 mb-4">Channel not found.</p>
+          <h2 className="text-xl font-semibold text-foreground mb-4">Error</h2>
+          <p className="text-error mb-4">Channel not found.</p>
           <div className="flex justify-end">
             <Button onClick={onClose} variant="secondary">Close</Button>
           </div>
@@ -80,19 +80,19 @@ export function DeleteChannelModal({ serverId, channelId, onClose }: DeleteChann
     <Modal open onClose={onClose} className="max-w-md">
       <div className="p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-red-500/20 rounded-full">
-            <AlertTriangle className="h-6 w-6 text-red-500" />
+          <div className="p-2 bg-error/20 rounded-full">
+            <AlertTriangle className="h-6 w-6 text-error" />
           </div>
-          <h2 className="text-xl font-semibold text-white">Delete Channel</h2>
+          <h2 className="text-xl font-semibold text-foreground">Delete Channel</h2>
         </div>
 
-        <p className="text-gray-400 mb-4">
-          Are you sure you want to delete <span className="text-white font-semibold">#{channel.name}</span>?
+        <p className="text-foreground-muted mb-4">
+          Are you sure you want to delete <span className="text-foreground font-semibold">#{channel.name}</span>?
           This action cannot be undone and will permanently delete all messages in this channel.
         </p>
 
         <div className="mb-4">
-          <label className="text-xs font-semibold text-gray-400 uppercase mb-2 block">
+          <label className="text-xs font-semibold text-foreground-muted uppercase mb-2 block">
             Type "{channel.name}" to confirm
           </label>
           <input
@@ -102,13 +102,13 @@ export function DeleteChannelModal({ serverId, channelId, onClose }: DeleteChann
               setConfirmName(e.target.value);
               setError('');
             }}
-            className="w-full bg-gray-700 text-white rounded px-3 py-2 border border-gray-600 focus:border-red-500 focus:outline-none"
+            className="w-full bg-background-surface text-foreground rounded px-3 py-2 border border-border focus:border-red-500 focus:outline-none"
             placeholder={channel.name}
           />
         </div>
 
         {error && (
-          <p className="text-red-400 text-sm mb-4">{error}</p>
+          <p className="text-error text-sm mb-4">{error}</p>
         )}
 
         <div className="flex justify-end gap-2">
@@ -118,7 +118,7 @@ export function DeleteChannelModal({ serverId, channelId, onClose }: DeleteChann
           <Button
             onClick={handleDelete}
             disabled={confirmName !== channel.name || isDeleting}
-            className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-error hover:bg-error/80 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isDeleting ? 'Deleting...' : 'Delete Channel'}
           </Button>

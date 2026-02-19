@@ -45,7 +45,7 @@ export function TypingIndicator({ users, className }: TypingIndicatorProps) {
   };
 
   return (
-    <div className={cn('flex items-center gap-2 px-4 py-1 text-sm text-gray-400', className)}>
+    <div className={cn('flex items-center gap-2 px-4 py-1 text-sm text-foreground-muted', className)}>
       <TypingDots />
       <span>{getText()}</span>
     </div>
@@ -55,9 +55,9 @@ export function TypingIndicator({ users, className }: TypingIndicatorProps) {
 function TypingDots() {
   return (
     <div className="flex items-center gap-1">
-      <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:0ms]" />
-      <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:150ms]" />
-      <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:300ms]" />
+      <span className="h-2 w-2 animate-bounce rounded-full bg-foreground-muted [animation-delay:0ms]" />
+      <span className="h-2 w-2 animate-bounce rounded-full bg-foreground-muted [animation-delay:150ms]" />
+      <span className="h-2 w-2 animate-bounce rounded-full bg-foreground-muted [animation-delay:300ms]" />
     </div>
   );
 }

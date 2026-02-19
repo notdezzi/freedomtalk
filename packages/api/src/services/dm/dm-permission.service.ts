@@ -287,6 +287,57 @@ class DMPermissionService {
       recipientBlockedSender,
     };
   }
+
+  /**
+   * Check if two users share any servers
+   *
+   * @param userId1 - First user ID
+   * @param userId2 - Second user ID
+   * @returns True if users are members of at least one common server
+   */
+  async shareServer(userId1: string, userId2: string): Promise<boolean> {
+    try {
+      // Find servers where both users are members
+      const sharedServer = await db('server_members as sm1')
+        .join('server_members as sm2', 'sm1.server_id', 'sm2.server_id')
+        .where('sm1.user_id', userId1)
+        .where('sm2.user_id', userId2)
+        .select('sm1.server_id')
+        .first();
+
+      return !!sharedServer;
+    } catch (error) {
+      logger.error({ error, userId1, userId2 }, 'Error checking shared servers');
+      return false;
+    }
+  }
+
+  /**
+   * Check if user can see another user's online status
+   *
+   * Online status is visible if:
+   * - Users are friends, OR
+   * - Users share at least one server
+   *
+   * @param viewerId - User ID of the viewer
+   * @param targetId - User ID whose status is being viewed
+   * @returns True if viewer can see target's online status
+   */
+  async canSeeOnlineStatus(viewerId: string, targetId: string): Promise<boolean> {
+    // Self is always visible
+    if (viewerId === targetId) {
+      return true;
+    }
+
+    // Check if friends
+    const friends = await this.areFriends(viewerId, targetId);
+    if (friends) {
+      return true;
+    }
+
+    // Check if they share a server
+    return this.shareServer(viewerId, targetId);
+  }
 }
 
 // Export singleton instance

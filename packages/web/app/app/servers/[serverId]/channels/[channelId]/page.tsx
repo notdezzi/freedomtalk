@@ -136,8 +136,8 @@ export default function ChannelPage() {
   if (isRedirecting || channelId === 'first') {
     return (
       <AppShell sectionName="Loading..." serverId={serverId}>
-        <div className="flex h-full items-center justify-center text-gray-400">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+        <div className="flex h-full items-center justify-center text-foreground-muted">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
         </div>
       </AppShell>
     );
@@ -147,7 +147,7 @@ export default function ChannelPage() {
   if (!currentChannel) {
     return (
       <AppShell sectionName="Channel Not Found" serverId={serverId}>
-        <div className="flex h-full items-center justify-center text-gray-400">
+        <div className="flex h-full items-center justify-center text-foreground-muted">
           Channel not found
         </div>
       </AppShell>
@@ -170,14 +170,14 @@ export default function ChannelPage() {
     <AppShell sectionName={server?.name || 'Loading...'} serverId={serverId}>
       <div className="flex h-full flex-col">
         {/* Channel header */}
-        <div className="flex items-center justify-between border-b border-gray-700 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex items-center gap-2">
-            <span className="text-gray-400">#</span>
-            <span className="font-semibold text-white">{currentChannel?.name}</span>
+            <span className="text-foreground-muted">#</span>
+            <span className="font-semibold text-foreground">{currentChannel?.name}</span>
             {currentChannel?.topic && (
               <>
-                <span className="text-gray-600">|</span>
-                <span className="text-sm text-gray-400 truncate max-w-md">
+                <span className="text-foreground-subtle">|</span>
+                <span className="text-sm text-foreground-muted truncate max-w-md">
                   {currentChannel.topic}
                 </span>
               </>

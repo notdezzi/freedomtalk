@@ -92,7 +92,7 @@ export function ServerSettingsModal({ serverId, onClose }: ServerSettingsModalPr
     return (
       <Modal open onClose={onClose} className="max-w-4xl">
         <div className="p-8 flex items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
         </div>
       </Modal>
     );
@@ -102,8 +102,8 @@ export function ServerSettingsModal({ serverId, onClose }: ServerSettingsModalPr
     return (
       <Modal open onClose={onClose} className="max-w-md">
         <div className="p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Error</h2>
-          <p className="text-red-400 mb-4">Server not found.</p>
+          <h2 className="text-xl font-semibold text-foreground mb-4">Error</h2>
+          <p className="text-error mb-4">Server not found.</p>
           <div className="flex justify-end">
             <Button onClick={onClose} variant="secondary">Close</Button>
           </div>
@@ -128,7 +128,7 @@ export function ServerSettingsModal({ serverId, onClose }: ServerSettingsModalPr
                 />
               ) : (
                 <div className="h-10 w-10 rounded-lg bg-accent/20 flex items-center justify-center text-accent font-semibold">
-                  {server.name.charAt(0).toUpperCase()}
+                  {/* {server.name.charAt(0).toUpperCase()} */}
                 </div>
               )}
               <h2 className="font-semibold text-foreground truncate">

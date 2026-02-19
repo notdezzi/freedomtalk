@@ -1016,9 +1016,6 @@ export default async function serverRoutes(app: FastifyInstance) {
             serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
-        response: {
-          200: { type: 'object' },
-        },
       },
     },
     async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
@@ -1033,6 +1030,7 @@ export default async function serverRoutes(app: FastifyInstance) {
 
       const { roleService } = await import('../../services/server/role.service');
       const roles = await roleService.getServerRoles(serverId);
+      console.log('GET roles - raw roles from DB:', roles);
 
       // Transform snake_case to camelCase for frontend
       const transformedRoles = roles.map(role => ({
@@ -1045,8 +1043,12 @@ export default async function serverRoutes(app: FastifyInstance) {
         hoist: role.hoist,
         mentionable: role.mentionable,
       }));
+      console.log('GET roles - transformed roles:', transformedRoles);
 
-      return reply.send(successResponse(transformedRoles));
+      const response = successResponse(transformedRoles);
+      console.log('GET roles - response:', JSON.stringify(response, null, 2));
+
+      return reply.send(response);
     }
   );
 

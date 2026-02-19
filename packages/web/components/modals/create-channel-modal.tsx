@@ -57,8 +57,8 @@ export function CreateChannelModal({ serverId, onClose }: CreateChannelModalProp
     return (
       <Modal open onClose={onClose} className="max-w-md">
         <div className="p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Error</h2>
-          <p className="text-red-400 mb-4">Unable to create channel: Server ID is missing.</p>
+          <h2 className="text-xl font-semibold text-foreground mb-4">Error</h2>
+          <p className="text-error mb-4">Unable to create channel: Server ID is missing.</p>
           <div className="flex justify-end">
             <Button onClick={onClose} variant="secondary">Close</Button>
           </div>
@@ -70,11 +70,11 @@ export function CreateChannelModal({ serverId, onClose }: CreateChannelModalProp
   return (
     <Modal open onClose={onClose} className="max-w-md">
       <form onSubmit={handleSubmit} className="p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Create Channel</h2>
+        <h2 className="text-xl font-semibold text-foreground mb-4">Create Channel</h2>
 
         {/* Channel type */}
         <div className="mb-4">
-          <label className="text-xs font-semibold text-gray-400 uppercase mb-2 block">
+          <label className="text-xs font-semibold text-foreground-muted uppercase mb-2 block">
             Channel Type
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -84,14 +84,14 @@ export function CreateChannelModal({ serverId, onClose }: CreateChannelModalProp
               className={cn(
                 'flex items-center gap-3 p-3 rounded border transition-colors',
                 type === 'text'
-                  ? 'bg-gray-700 border-gray-600'
-                  : 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                  ? 'bg-background-surface border-border'
+                  : 'bg-background-elevated border-border hover:border-border'
               )}
             >
-              <Hash className="h-5 w-5 text-gray-400" />
+              <Hash className="h-5 w-5 text-foreground-muted" />
               <div className="text-left">
-                <p className="text-sm font-medium text-white">Text</p>
-                <p className="text-xs text-gray-400">Send messages and files</p>
+                <p className="text-sm font-medium text-foreground">Text</p>
+                <p className="text-xs text-foreground-muted">Send messages and files</p>
               </div>
             </button>
             <button
@@ -100,14 +100,14 @@ export function CreateChannelModal({ serverId, onClose }: CreateChannelModalProp
               className={cn(
                 'flex items-center gap-3 p-3 rounded border transition-colors',
                 type === 'voice'
-                  ? 'bg-gray-700 border-gray-600'
-                  : 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                  ? 'bg-background-surface border-border'
+                  : 'bg-background-elevated border-border hover:border-border'
               )}
             >
-              <Volume2 className="h-5 w-5 text-gray-400" />
+              <Volume2 className="h-5 w-5 text-foreground-muted" />
               <div className="text-left">
-                <p className="text-sm font-medium text-white">Voice</p>
-                <p className="text-xs text-gray-400">Hang out with voice and video</p>
+                <p className="text-sm font-medium text-foreground">Voice</p>
+                <p className="text-xs text-foreground-muted">Hang out with voice and video</p>
               </div>
             </button>
           </div>
@@ -115,11 +115,11 @@ export function CreateChannelModal({ serverId, onClose }: CreateChannelModalProp
 
         {/* Channel name */}
         <div className="mb-4">
-          <label className="text-xs font-semibold text-gray-400 uppercase mb-2 block">
+          <label className="text-xs font-semibold text-foreground-muted uppercase mb-2 block">
             Channel Name
           </label>
           <div className="relative">
-            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-subtle" />
             <input
               type="text"
               value={name}
@@ -129,12 +129,12 @@ export function CreateChannelModal({ serverId, onClose }: CreateChannelModalProp
               }}
               placeholder={type === 'text' ? 'new-channel' : 'General'}
               className={cn(
-                'w-full bg-gray-700 text-white rounded pl-8 pr-3 py-2 border',
-                error ? 'border-red-500' : 'border-gray-600'
+                'w-full bg-background-surface text-foreground rounded pl-8 pr-3 py-2 border',
+                error ? 'border-red-500' : 'border-border'
               )}
             />
           </div>
-          {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
+          {error && <p className="text-error text-sm mt-1">{error}</p>}
         </div>
 
         {/* Actions */}

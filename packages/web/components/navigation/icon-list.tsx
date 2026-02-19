@@ -103,7 +103,7 @@ export function IconList({
             onClick={onHomeClick}
             className={cn(
               'flex h-12 w-12 aspect-square items-center justify-center rounded-2xl transition-all duration-200',
-              'bg-gray-700 text-gray-300 hover:bg-green-600 hover:text-white hover:rounded-xl'
+              'bg-background-surface text-foreground hover:bg-success hover:text-foreground hover:rounded-xl'
             )}
             aria-label="Direct Messages"
           >
@@ -114,7 +114,7 @@ export function IconList({
 
       {/* Divider after home button */}
       {variant === 'servers' && showHomeButton && items.length > 0 && (
-        <div className="h-0.5 w-8 rounded-full bg-gray-700" />
+        <div className="h-0.5 w-8 rounded-full bg-background-surface" />
       )}
 
       {/* Items */}
@@ -135,7 +135,7 @@ export function IconList({
         >
           {/* Drop indicator above */}
           {dragOverIndex === index && draggedIndex !== null && draggedIndex > index && (
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-10 h-1 bg-white rounded-full" />
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-10 h-1 bg-foreground rounded-full" />
           )}
           <IconListItem
             item={item}
@@ -146,7 +146,7 @@ export function IconList({
           />
           {/* Drop indicator below */}
           {dragOverIndex === index && draggedIndex !== null && draggedIndex < index && (
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-10 h-1 bg-white rounded-full" />
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-10 h-1 bg-foreground rounded-full" />
           )}
         </div>
       ))}
@@ -158,7 +158,7 @@ export function IconList({
             onClick={onAddClick}
             className={cn(
               'flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-200',
-              'bg-gray-700 text-green-500 hover:bg-green-600 hover:text-white hover:rounded-xl'
+              'bg-background-surface text-success hover:bg-success hover:text-foreground hover:rounded-xl'
             )}
             aria-label={variant === 'servers' ? 'Add a Server' : 'Create DM'}
           >
@@ -199,7 +199,7 @@ function IconListItem({
         <div
           className={cn(
             'absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 transition-all duration-200',
-            'bg-white rounded-r-md',
+            'bg-foreground rounded-r-md',
             isActive ? 'h-10 w-1' : showNotificationDot ? 'h-2 w-1' : 'h-0 w-0'
           )}
         />
@@ -211,8 +211,8 @@ function IconListItem({
             'relative flex h-12 w-12 items-center justify-center transition-all duration-200',
             'rounded-2xl hover:rounded-xl overflow-hidden',
             isActive
-              ? 'rounded-xl bg-gray-600'
-              : 'bg-gray-700 hover:bg-gray-600',
+              ? 'rounded-xl bg-background-surface/80'
+              : 'bg-background-surface hover:bg-background-surface/80',
             isDragging && 'opacity-50 cursor-grabbing'
           )}
           style={item.color ? { backgroundColor: isActive ? item.color : undefined } : undefined}
@@ -229,7 +229,7 @@ function IconListItem({
             <span
               className={cn(
                 'text-sm font-semibold',
-                isActive || item.color ? 'text-white' : 'text-gray-300'
+                isActive || item.color ? 'text-foreground' : 'text-foreground'
               )}
             >
               {item.acronym || getAcronym(item.name)}
@@ -240,11 +240,11 @@ function IconListItem({
           {item.isOnline && (
             <div
               className={cn(
-                'absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-gray-900',
-                item.isOnline === 'online' && 'bg-green-500',
+                'absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background',
+                item.isOnline === 'online' && 'bg-success',
                 item.isOnline === 'idle' && 'bg-yellow-500',
-                item.isOnline === 'dnd' && 'bg-red-500',
-                (item.isOnline === 'offline' || item.isOnline === 'invisible') && 'bg-gray-500'
+                item.isOnline === 'dnd' && 'bg-error',
+                (item.isOnline === 'offline' || item.isOnline === 'invisible') && 'bg-foreground-subtle'
               )}
             />
           )}
@@ -255,7 +255,7 @@ function IconListItem({
           <div
             className={cn(
               'absolute -bottom-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center',
-              'rounded-full bg-red-500 px-1 text-xs font-bold text-white'
+              'rounded-full bg-error px-1 text-xs font-bold text-foreground'
             )}
           >
             {item.unread! > 99 ? '99+' : item.unread}

@@ -53,8 +53,8 @@ const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
       >
         <div
           className={cn(
-            'relative rounded-full overflow-hidden bg-gray-700',
-            isSpeaking && 'ring-2 ring-green-500 ring-offset-2 ring-offset-gray-900',
+            'relative rounded-full overflow-hidden bg-background-surface',
+            isSpeaking && 'ring-2 ring-success ring-offset-2 ring-offset-background',
             sizeClasses[size]
           )}
         >
@@ -67,7 +67,7 @@ const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
           ) : (
             <div
               className={cn(
-                'flex items-center justify-center bg-gray-600 text-white font-medium',
+                'flex items-center justify-center bg-background-elevated text-foreground font-medium',
                 sizeClasses[size],
                 size === 'xs' && 'text-[6px]',
                 size === 'sm' && 'text-[8px]',
@@ -84,7 +84,7 @@ const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
         {showStatus && status && (
           <div
             className={cn(
-              'absolute bottom-0 right-0 rounded-full border-2 border-gray-900',
+              'absolute bottom-0 right-0 rounded-full border-2 border-background',
               getStatusColor(status),
               statusSizes[size]
             )}
@@ -94,12 +94,12 @@ const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
         {(isMuted || isDeafened) && (
           <div
             className={cn(
-              'absolute bottom-0 right-0 rounded-full bg-gray-900 flex items-center justify-center',
+              'absolute bottom-0 right-0 rounded-full bg-background flex items-center justify-center',
               statusSizes[size]
             )}
           >
             {isDeafened ? (
-              <svg className="h-2 w-2 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="h-2 w-2 text-error" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
                   d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z"
@@ -107,7 +107,7 @@ const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
                 />
               </svg>
             ) : (
-              <svg className="h-2 w-2 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="h-2 w-2 text-error" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
                   d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z"

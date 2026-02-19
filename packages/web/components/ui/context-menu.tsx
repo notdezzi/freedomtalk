@@ -75,7 +75,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
       ref={menuRef}
       className={cn(
         'fixed z-50 min-w-[180px] py-2 rounded-lg',
-        'bg-gray-800 border border-gray-700 shadow-xl',
+        'bg-background-elevated border border-border shadow-xl',
         'animate-in fade-in-0 zoom-in-95 duration-100'
       )}
       style={{
@@ -86,7 +86,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
       {items.map((item, index) => {
         if (item.divider) {
           return (
-            <div key={index} className="my-1 border-t border-gray-700" />
+            <div key={index} className="my-1 border-t border-border" />
           );
         }
 
@@ -104,7 +104,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
               'w-full flex items-center gap-3 px-3 py-2 text-sm text-left',
               'transition-colors duration-100',
               item.disabled && 'opacity-50 cursor-not-allowed',
-              !item.disabled && !item.danger && 'text-gray-200 hover:bg-gray-700 hover:text-white',
+              !item.disabled && !item.danger && 'text-foreground hover:bg-background-surface hover:text-foreground',
               !item.disabled && item.danger && 'text-red-400 hover:bg-red-500/10 hover:text-red-300'
             )}
           >

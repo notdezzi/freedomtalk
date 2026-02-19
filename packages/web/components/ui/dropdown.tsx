@@ -86,8 +86,8 @@ export function Dropdown({ trigger, items, align = 'start', direction = 'down', 
             ref={dropdownRef}
             role="menu"
             className={cn(
-              'fixed z-50 min-w-[180px] rounded-md bg-gray-800 py-1 shadow-lg ring-1 ring-black/5',
-              'animate-in fade-in-0 zoom-in-95',
+              'fixed z-50 min-w-[180px] rounded-lg py-1 shadow-xl',
+              'bg-background-elevated border border-border',
               className
             )}
             style={{
@@ -105,9 +105,9 @@ export function Dropdown({ trigger, items, align = 'start', direction = 'down', 
                   setOpen(false);
                 }}
                 className={cn(
-                  'flex w-full items-center gap-2 px-3 py-2 text-sm text-left',
-                  'hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed',
-                  item.danger ? 'text-red-400 hover:text-red-300' : 'text-gray-200'
+                  'flex w-full items-center gap-2 px-3 py-2 text-sm text-left rounded-md mx-1',
+                  'hover:bg-background-surface disabled:opacity-50 disabled:cursor-not-allowed transition-colors',
+                  item.danger ? 'text-error hover:bg-error/10' : 'text-foreground'
                 )}
               >
                 {item.icon && <span className="h-4 w-4">{item.icon}</span>}

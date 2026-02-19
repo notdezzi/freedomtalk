@@ -47,7 +47,7 @@ export function ItemList<T extends { id: string; name?: string }>({
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         {items.length === 0 ? (
           emptyState || (
-            <div className="flex items-center justify-center py-8 text-gray-500">
+            <div className="flex items-center justify-center py-8 text-foreground-subtle">
               No items
             </div>
           )
@@ -87,9 +87,9 @@ function ItemListItem<T extends { id: string; name?: string }>({
   const getChannelIcon = (type?: ChannelType) => {
     switch (type) {
       case 'voice':
-        return <Volume2 className="h-4 w-4 text-gray-400" />;
+        return <Volume2 className="h-4 w-4 text-foreground-muted" />;
       default:
-        return <Hash className="h-4 w-4 text-gray-400" />;
+        return <Hash className="h-4 w-4 text-foreground-muted" />;
     }
   };
 
@@ -102,6 +102,9 @@ function ItemListItem<T extends { id: string; name?: string }>({
 
   // Check if unread
   const isUnread = 'unread' in item && Boolean(item.unread);
+
+  // Check if online (for DMs/members/friends)
+  const isOnline = 'isOnline' in item && Boolean(item.isOnline);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     if (onContextMenu) {
@@ -117,9 +120,9 @@ function ItemListItem<T extends { id: string; name?: string }>({
         'flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left',
         'transition-colors duration-100',
         isActive
-          ? 'bg-gray-600 text-white'
-          : 'text-gray-400 hover:bg-gray-700 hover:text-gray-200',
-        isUnread && 'text-white font-medium'
+          ? 'bg-background-surface/80 text-foreground'
+          : 'text-foreground-muted hover:bg-background-surface hover:text-foreground',
+        isUnread && 'text-foreground font-medium'
       )}
       aria-current={isActive ? 'page' : undefined}
     >
@@ -128,8 +131,14 @@ function ItemListItem<T extends { id: string; name?: string }>({
 
       {/* Avatar for DMs/members/friends */}
       {(variant === 'dms' || variant === 'members' || variant === 'friends') && (
-        <div className="h-6 w-6 rounded-full bg-gray-600 flex items-center justify-center text-xs">
-          {getName().charAt(0).toUpperCase()}
+        <div className="relative">
+          <div className="h-6 w-6 rounded-full bg-background-surface/80 flex items-center justify-center text-xs">
+            {getName().charAt(0).toUpperCase()}
+          </div>
+          {/* Online indicator */}
+          {isOnline && (
+            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-success border-2 border-background-surface" />
+          )}
         </div>
       )}
 
@@ -138,7 +147,7 @@ function ItemListItem<T extends { id: string; name?: string }>({
 
       {/* Unread indicator */}
       {isUnread && (
-        <div className="h-2 w-2 rounded-full bg-white" />
+        <div className="h-2 w-2 rounded-full bg-foreground" />
       )}
     </button>
   );
@@ -199,7 +208,7 @@ export function ChannelCategory({
         onClick={onToggleCollapse}
         className={cn(
           'flex w-full items-center gap-1 px-1 py-0.5 text-xs font-semibold uppercase tracking-wide',
-          'text-gray-500 hover:text-gray-300 transition-colors'
+          'text-foreground-subtle hover:text-foreground transition-colors'
         )}
       >
         <ChevronDown
@@ -211,7 +220,7 @@ export function ChannelCategory({
         <span className="flex-1 text-left">{name}</span>
         {onAddClick && (
           <Plus
-            className="h-3 w-3 opacity-0 group-hover:opacity-100 hover:text-white"
+            className="h-3 w-3 opacity-0 group-hover:opacity-100 hover:text-foreground"
             onClick={(e) => {
               e.stopPropagation();
               onAddClick();
@@ -235,8 +244,8 @@ export function ChannelCategory({
                 onDrop={(e) => onChannelDrop?.(e, channel.id, categoryId)}
                 className={cn(
                   'relative',
-                  dragOverChannelId === channel.id && dragOverPosition === 'before' && 'border-t-2 border-white',
-                  dragOverChannelId === channel.id && dragOverPosition === 'after' && 'border-b-2 border-white'
+                  dragOverChannelId === channel.id && dragOverPosition === 'before' && 'border-t-2 border-foreground',
+                  dragOverChannelId === channel.id && dragOverPosition === 'after' && 'border-b-2 border-foreground'
                 )}
               >
                 <ChannelItem
@@ -258,7 +267,7 @@ export function ChannelCategory({
               onDrop={(e) => onDropZoneDrop?.(e, categoryId || null)}
               className={cn(
                 'h-8 mx-1 rounded transition-colors mt-0.5',
-                dragOverCategoryId === (categoryId || null) && !dragOverChannelId && 'bg-gray-700/50 border-2 border-dashed border-gray-500'
+                dragOverCategoryId === (categoryId || null) && !dragOverChannelId && 'bg-background-surface/50 border-2 border-dashed border-foreground-subtle'
               )}
             />
           )}
@@ -305,12 +314,12 @@ function ChannelItem({
           'flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left',
           'transition-colors duration-100 group',
           isActive
-            ? 'bg-gray-600 text-white'
-            : 'text-gray-400 hover:bg-gray-700 hover:text-gray-200',
-          channel.hasNotification && 'text-white font-medium',
+            ? 'bg-background-surface/80 text-foreground'
+            : 'text-foreground-muted hover:bg-background-surface hover:text-foreground',
+          channel.hasNotification && 'text-foreground font-medium',
           isDragging && 'opacity-50',
           isDraggable && 'cursor-grab',
-          isActiveVoiceChannel && 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
+          isActiveVoiceChannel && 'bg-success/20 text-success hover:bg-success/30'
         )}
         aria-current={isActive ? 'page' : undefined}
       >
@@ -324,13 +333,13 @@ function ChannelItem({
             <div
               key={voiceUser.sessionId}
               className={cn(
-                "flex items-center gap-1.5 rounded px-2 py-0.5 text-xs text-gray-400 hover:text-gray-300",
-                voiceUser.isSpeaking && "text-green-400"
+                "flex items-center gap-1.5 rounded px-2 py-0.5 text-xs text-foreground-muted hover:text-foreground",
+                voiceUser.isSpeaking && "text-success"
               )}
             >
               <div className={cn(
                 "relative",
-                voiceUser.isSpeaking && "ring-2 ring-green-500 rounded-full"
+                voiceUser.isSpeaking && "ring-2 ring-success rounded-full"
               )}>
                 <Avatar
                   src={voiceUser.avatar}
@@ -340,8 +349,8 @@ function ChannelItem({
                 />
               </div>
               <span className="truncate">{voiceUser.username}</span>
-              {voiceUser.selfDeaf && <VolumeX className="h-3 w-3 text-red-400" />}
-              {!voiceUser.selfDeaf && voiceUser.selfMute && <MicOff className="h-3 w-3 text-red-400" />}
+              {voiceUser.selfDeaf && <VolumeX className="h-3 w-3 text-error" />}
+              {!voiceUser.selfDeaf && voiceUser.selfMute && <MicOff className="h-3 w-3 text-error" />}
             </div>
           ))}
         </div>

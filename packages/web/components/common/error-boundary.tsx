@@ -31,19 +31,19 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-4">
           <h1 className="text-2xl font-bold mb-4">Something went wrong</h1>
-          <p className="text-gray-400 mb-4">
+          <p className="text-foreground-muted mb-4">
             An unexpected error occurred. Please try refreshing the page.
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-accent rounded-lg hover:bg-accent-hover transition-colors text-background font-medium"
           >
             Refresh Page
           </button>
           {process.env.NODE_ENV === 'development' && this.state.error && (
-            <pre className="mt-4 p-4 bg-gray-800 rounded-md text-red-400 text-sm overflow-auto max-w-full">
+            <pre className="mt-4 p-4 bg-background-elevated rounded-lg text-error text-sm overflow-auto max-w-full border border-border">
               {this.state.error.message}
               {'\n'}
               {this.state.error.stack}

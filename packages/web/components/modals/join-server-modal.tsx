@@ -60,14 +60,14 @@ export function JoinServerModal({ onClose, initialCode = '' }: JoinServerModalPr
   return (
     <Modal open onClose={onClose} title="Join a Server" size="md">
       <div className="py-4">
-        <p className="text-gray-400 text-sm mb-4">
+        <p className="text-foreground-muted text-sm mb-4">
           Enter an invite below to join an existing server
         </p>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-300 uppercase mb-2">
-              Invite Link <span className="text-red-400">*</span>
+            <label className="block text-xs font-semibold text-foreground uppercase mb-2">
+              Invite Link <span className="text-error">*</span>
             </label>
             <Input
               value={code}
@@ -81,8 +81,8 @@ export function JoinServerModal({ onClose, initialCode = '' }: JoinServerModalPr
           </div>
 
           {inviteInfo ? (
-            <div className="flex items-center gap-3 rounded-lg bg-gray-700 p-3">
-              <div className="h-12 w-12 rounded-lg bg-gray-600 flex items-center justify-center text-2xl">
+            <div className="flex items-center gap-3 rounded-lg bg-background-surface p-3">
+              <div className="h-12 w-12 rounded-lg bg-background-surface/80 flex items-center justify-center text-2xl">
                 {inviteInfo.serverIcon ? (
                   <img src={inviteInfo.serverIcon} alt="" className="h-full w-full object-cover rounded-lg" />
                 ) : (
@@ -90,8 +90,8 @@ export function JoinServerModal({ onClose, initialCode = '' }: JoinServerModalPr
                 )}
               </div>
               <div className="flex-1">
-                <h3 className="font-medium text-white">{inviteInfo.serverName}</h3>
-                <p className="text-sm text-gray-400">{inviteInfo.memberCount} Members</p>
+                <h3 className="font-medium text-foreground">{inviteInfo.serverName}</h3>
+                <p className="text-sm text-foreground-muted">{inviteInfo.memberCount} Members</p>
               </div>
             </div>
           ) : (

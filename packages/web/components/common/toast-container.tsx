@@ -11,10 +11,10 @@ const icons = {
 };
 
 const colors = {
-  success: 'bg-green-600 border-green-500',
-  error: 'bg-red-600 border-red-500',
-  warning: 'bg-yellow-600 border-yellow-500',
-  info: 'bg-blue-600 border-blue-500',
+  success: 'bg-success border-success',
+  error: 'bg-error border-error',
+  warning: 'bg-warning border-warning',
+  info: 'bg-accent border-accent',
 };
 
 function ToastItem({ toast }: { toast: Toast }) {
@@ -40,14 +40,14 @@ function ToastItem({ toast }: { toast: Toast }) {
         colors[toast.type]
       )}
     >
-      <Icon className="h-5 w-5 shrink-0 text-white" />
-      <p className="flex-1 text-sm font-medium text-white">{toast.message}</p>
+      <Icon className="h-5 w-5 shrink-0 text-background" />
+      <p className="flex-1 text-sm font-medium text-background">{toast.message}</p>
       <button
         onClick={() => removeToast(toast.id)}
-        className="shrink-0 rounded-full p-1 hover:bg-white/20 transition-colors"
+        className="shrink-0 rounded-full p-1 hover:bg-background/20 transition-colors"
         aria-label="Dismiss"
       >
-        <X className="h-4 w-4 text-white" />
+        <X className="h-4 w-4 text-background" />
       </button>
     </div>
   );

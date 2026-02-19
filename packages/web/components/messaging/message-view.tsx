@@ -145,8 +145,8 @@ export function MessageView({
             Header: () =>
               isLoadingMore ? (
                 <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                  <span className="ml-2 text-sm text-gray-400">Loading older messages...</span>
+                  <Loader2 className="h-5 w-5 animate-spin text-foreground-muted" />
+                  <span className="ml-2 text-sm text-foreground-muted">Loading older messages...</span>
                 </div>
               ) : null,
           }}
@@ -175,7 +175,7 @@ export function MessageView({
             className={cn(
               'absolute bottom-4 left-1/2 -translate-x-1/2',
               'flex items-center gap-2 px-4 py-2',
-              'bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium',
+              'bg-background-surface hover:bg-background-elevated text-foreground text-sm font-medium',
               'rounded-full shadow-lg transition-all duration-200',
               'hover:scale-105'
             )}

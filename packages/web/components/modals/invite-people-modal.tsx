@@ -117,8 +117,8 @@ export function InvitePeopleModal({ serverId, onClose }: InvitePeopleModalProps)
     return (
       <Modal open onClose={onClose} className="max-w-md">
         <div className="p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Error</h2>
-          <p className="text-red-400 mb-4">Unable to manage invites: Server ID is missing.</p>
+          <h2 className="text-xl font-semibold text-foreground mb-4">Error</h2>
+          <p className="text-error mb-4">Unable to manage invites: Server ID is missing.</p>
           <div className="flex justify-end">
             <Button onClick={onClose} variant="secondary">Close</Button>
           </div>
@@ -133,7 +133,7 @@ export function InvitePeopleModal({ serverId, onClose }: InvitePeopleModalProps)
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <LinkIcon className="h-5 w-5 text-indigo-400" />
-            <h2 className="text-xl font-semibold text-white">Invite People</h2>
+            <h2 className="text-xl font-semibold text-foreground">Invite People</h2>
           </div>
           <Button
             onClick={handleCreateInvite}
@@ -151,23 +151,23 @@ export function InvitePeopleModal({ serverId, onClose }: InvitePeopleModalProps)
 
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
-            <span className="ml-2 text-gray-400">Loading invites...</span>
+            <RefreshCw className="h-6 w-6 animate-spin text-foreground-muted" />
+            <span className="ml-2 text-foreground-muted">Loading invites...</span>
           </div>
         ) : queryError ? (
           <div className="text-center py-8">
-            <p className="text-red-400">Failed to load invites</p>
+            <p className="text-error">Failed to load invites</p>
             <Button onClick={() => refetch()} variant="secondary" className="mt-2">
               Retry
             </Button>
           </div>
         ) : invites.length === 0 ? (
           <div className="text-center py-8">
-            <div className="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-              <LinkIcon className="h-8 w-8 text-gray-500" />
+            <div className="w-16 h-16 bg-background-surface rounded-full flex items-center justify-center mx-auto mb-4">
+              <LinkIcon className="h-8 w-8 text-foreground-subtle" />
             </div>
-            <p className="text-gray-400 mb-2">No invite links available</p>
-            <p className="text-gray-500 text-sm mb-4">Create an invite link to share with others</p>
+            <p className="text-foreground-muted mb-2">No invite links available</p>
+            <p className="text-foreground-subtle text-sm mb-4">Create an invite link to share with others</p>
             <Button onClick={handleCreateInvite} variant="primary" disabled={createInvite.isPending}>
               {createInvite.isPending ? 'Creating...' : 'Create Invite Link'}
             </Button>
@@ -177,21 +177,21 @@ export function InvitePeopleModal({ serverId, onClose }: InvitePeopleModalProps)
             {invites.map((invite) => (
               <div
                 key={invite.id}
-                className="bg-gray-700/50 rounded-lg p-3 hover:bg-gray-700 transition-colors"
+                className="bg-background-surface/50 rounded-lg p-3 hover:bg-background-surface transition-colors"
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <Hash className="h-4 w-4 text-gray-500" />
+                    <Hash className="h-4 w-4 text-foreground-subtle" />
                     <code className="text-indigo-400 font-mono text-sm">{invite.code}</code>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleCopy(invite.code)}
-                      className="p-1.5 rounded hover:bg-gray-600 text-gray-400 hover:text-white transition-colors"
+                      className="p-1.5 rounded hover:bg-background-surface/80 text-foreground-muted hover:text-foreground transition-colors"
                       title="Copy invite link"
                     >
                       {copiedCode === invite.code ? (
-                        <Check className="h-4 w-4 text-green-400" />
+                        <Check className="h-4 w-4 text-success" />
                       ) : (
                         <Copy className="h-4 w-4" />
                       )}
@@ -201,8 +201,8 @@ export function InvitePeopleModal({ serverId, onClose }: InvitePeopleModalProps)
                       className={cn(
                         "p-1.5 rounded transition-colors",
                         deleteConfirm === invite.id
-                          ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                          : "hover:bg-gray-600 text-gray-400 hover:text-red-400"
+                          ? "bg-error/20 text-error hover:bg-error/30"
+                          : "hover:bg-background-surface/80 text-foreground-muted hover:text-error"
                       )}
                       title={deleteConfirm === invite.id ? "Click again to confirm" : "Delete invite"}
                     >
@@ -210,7 +210,7 @@ export function InvitePeopleModal({ serverId, onClose }: InvitePeopleModalProps)
                     </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-gray-500">
+                <div className="flex items-center gap-4 text-xs text-foreground-subtle">
                   <div className="flex items-center gap-1">
                     <User className="h-3 w-3" />
                     <span>{invite.uses || 0}/{invite.max_uses === 0 || !invite.max_uses ? '∞' : invite.max_uses} uses</span>
@@ -221,7 +221,7 @@ export function InvitePeopleModal({ serverId, onClose }: InvitePeopleModalProps)
                   </div>
                 </div>
                 {invite.created_at && (
-                  <div className="text-xs text-gray-600 mt-1">
+                  <div className="text-xs text-foreground-subtle mt-1">
                     Created {formatDate(invite.created_at)}
                   </div>
                 )}

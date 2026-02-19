@@ -3,6 +3,8 @@
  */
 
 import { db } from '../../config/database';
+import { dmPermissionService } from './dm-permission.service';
+import { presenceManager } from '../websocket/presence.manager';
 
 /**
  * DM Channel type enum
@@ -30,6 +32,7 @@ export interface DMRecipientResponse {
   username: string;
   displayName: string | null;
   avatar: string | null;
+  isOnline?: boolean;
 }
 
 /**
@@ -50,10 +53,12 @@ export interface DMChannelResponse {
 
 /**
  * Convert DM channel to API response format with user profile data
+ * Includes online status with privacy controls
  */
 export async function toDMChannelResponse(
   dmChannel: any,
-  participants: any[]
+  participants: any[],
+  currentUserId?: string
 ): Promise<DMChannelResponse> {
   // Get user IDs from participants
   const userIds = participants
@@ -77,6 +82,32 @@ export async function toDMChannelResponse(
   // Create a map for quick lookup
   const profileMap = new Map(userProfiles.map((p) => [p.id, p]));
 
+  // Get online status for all participants (with privacy check)
+  let onlineStatusMap = new Map<string, boolean>();
+  if (currentUserId && userIds.length > 0) {
+    // Check which users the current user can see online status for
+    const visibilityChecks = await Promise.all(
+      userIds
+        .filter(id => id !== currentUserId)
+        .map(async (userId) => ({
+          userId,
+          canSee: await dmPermissionService.canSeeOnlineStatus(currentUserId, userId),
+        }))
+    );
+
+    // Only fetch presence for users we can see
+    const visibleUserIds = visibilityChecks
+      .filter(check => check.canSee)
+      .map(check => check.userId);
+
+    if (visibleUserIds.length > 0) {
+      const presenceMap = await presenceManager.getBulkPresence(visibleUserIds);
+      presenceMap.forEach((status, userId) => {
+        onlineStatusMap.set(userId, status === 'online');
+      });
+    }
+  }
+
   return {
     id: dmChannel.id,
     type: dmChannel.type,
@@ -90,6 +121,7 @@ export async function toDMChannelResponse(
         username: profile?.username || 'Unknown User',
         displayName: profile?.displayName || null,
         avatar: profile?.avatar || null,
+        isOnline: onlineStatusMap.get(userId) ?? false,
       };
     }),
     lastMessageId: dmChannel.last_message_id || null,

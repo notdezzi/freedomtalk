@@ -50,7 +50,7 @@ export function VoicePanel({ channel, className }: VoicePanelProps) {
   return (
     <div
       className={cn(
-        'flex flex-col border-t border-gray-700 bg-gray-850',
+        'flex flex-col border-t border-border bg-background-elevated',
         className
       )}
       style={{ backgroundColor: '#1e1f22' }}
@@ -58,8 +58,8 @@ export function VoicePanel({ channel, className }: VoicePanelProps) {
       {/* Channel info */}
       <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
-          <Volume2 className="h-4 w-4 text-green-500" />
-          <span className="text-sm font-medium text-white">
+          <Volume2 className="h-4 w-4 text-success" />
+          <span className="text-sm font-medium text-foreground">
             {channel?.name || 'Voice Channel'}
           </span>
         </div>
@@ -73,7 +73,7 @@ export function VoicePanel({ channel, className }: VoicePanelProps) {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-center gap-2 border-t border-gray-700 p-2">
+      <div className="flex items-center justify-center gap-2 border-t border-border p-2">
         <VoiceControlButton
           icon={selfMute ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
           active={selfMute}
@@ -119,7 +119,7 @@ function VoiceUserItem({ user }: { user: { userId: string; username: string; ava
     <div
       className={cn(
         'flex items-center gap-2 rounded px-2 py-1',
-        user.speaking && 'bg-green-500/10 border border-green-500/30'
+        user.speaking && 'bg-success/10 border border-success/30'
       )}
     >
       <Avatar
@@ -130,9 +130,9 @@ function VoiceUserItem({ user }: { user: { userId: string; username: string; ava
         isMuted={user.selfMute}
         isDeafened={user.selfDeaf}
       />
-      <span className="flex-1 truncate text-sm text-gray-300">{user.username}</span>
-      {user.selfMute && <MicOff className="h-3 w-3 text-gray-500" />}
-      {user.selfDeaf && <VolumeX className="h-3 w-3 text-gray-500" />}
+      <span className="flex-1 truncate text-sm text-foreground">{user.username}</span>
+      {user.selfMute && <MicOff className="h-3 w-3 text-foreground-subtle" />}
+      {user.selfDeaf && <VolumeX className="h-3 w-3 text-foreground-subtle" />}
     </div>
   );
 }
@@ -157,9 +157,9 @@ function VoiceControlButton({
         'rounded-full p-2 transition-colors',
         active
           ? activeColor === 'green'
-            ? 'bg-green-600 text-white hover:bg-green-700'
-            : 'bg-red-600 text-white hover:bg-red-700'
-          : 'bg-gray-600 text-gray-300 hover:bg-gray-500 hover:text-white'
+            ? 'bg-success text-foreground hover:bg-success/80'
+            : 'bg-error text-foreground hover:bg-error/80'
+          : 'bg-background-elevated text-foreground hover:bg-background-surface hover:text-foreground'
       )}
       title={title}
     >

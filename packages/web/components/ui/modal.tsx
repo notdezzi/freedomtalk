@@ -63,7 +63,7 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-black/70 transition-opacity"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
         onClick={closeOnOverlayClick ? onClose : undefined}
         aria-hidden="true"
       />
@@ -75,7 +75,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
         className={cn(
-          'relative z-50 w-full rounded-lg bg-gray-800 shadow-xl',
+          'relative z-50 w-full rounded-xl bg-background-elevated border border-border shadow-xl',
           'transform transition-all',
           sizeClasses[size],
           className
@@ -83,16 +83,16 @@ export function Modal({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between border-b border-gray-700 px-6 py-4">
+          <div className="flex items-center justify-between border-b border-border px-6 py-4">
             {title && (
-              <h2 id="modal-title" className="text-lg font-semibold text-white">
+              <h2 id="modal-title" className="text-lg font-semibold text-foreground">
                 {title}
               </h2>
             )}
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="ml-auto rounded-full p-1 text-gray-400 hover:bg-gray-700 hover:text-white transition-colors"
+                className="ml-auto rounded-lg p-1.5 text-foreground-muted hover:bg-background-surface hover:text-foreground transition-colors"
                 aria-label="Close modal"
               >
                 <X className="h-5 w-5" />
@@ -102,7 +102,7 @@ export function Modal({
         )}
 
         {/* Body */}
-        <div className="px-6 py-4">{children}</div>
+        <div className="px-0 py-0">{children}</div>
       </div>
     </div>,
     document.body

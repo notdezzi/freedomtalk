@@ -139,12 +139,12 @@ export function MessageInput({
           {attachments.map((file, index) => (
             <div
               key={index}
-              className="flex items-center gap-2 rounded bg-gray-700 px-2 py-1 text-sm"
+              className="flex items-center gap-2 rounded bg-background-surface px-2 py-1 text-sm"
             >
               <span className="truncate max-w-[150px]">{file.name}</span>
               <button
                 onClick={() => removeAttachment(index)}
-                className="text-gray-400 hover:text-white"
+                className="text-foreground-muted hover:text-foreground"
               >
                 ×
               </button>
@@ -154,12 +154,12 @@ export function MessageInput({
       )}
 
       {/* Input container */}
-      <div className="relative flex items-end gap-2 rounded-lg bg-gray-700 p-2">
+      <div className="relative flex items-end gap-2 rounded-lg bg-background-surface p-2">
         {/* Left buttons */}
         <div className="flex items-center gap-1">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="rounded p-1.5 text-gray-400 hover:bg-gray-600 hover:text-white"
+            className="rounded p-1.5 text-foreground-muted hover:bg-background-elevated hover:text-foreground"
             title="Attach file"
           >
             <Plus className="h-5 w-5" />
@@ -177,8 +177,8 @@ export function MessageInput({
             disabled={disabled}
             rows={1}
             className={cn(
-              'w-full resize-none bg-transparent text-white placeholder-gray-400',
-              'focus:outline-none',
+              'w-full resize-none bg-transparent text-foreground placeholder:text-foreground-muted',
+              'focus:outline-none focus:ring-0 focus:border-0 no-focus-ring',
               'max-h-48 min-h-[24px]'
             )}
             style={{
@@ -226,8 +226,8 @@ export function MessageInput({
             className={cn(
               'rounded p-1.5 transition-colors',
               content.trim() || attachments.length > 0
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-600 text-gray-400'
+                ? 'bg-accent text-foreground hover:bg-accent-hover'
+                : 'bg-background-elevated text-foreground-muted'
             )}
             title="Send message"
           >
@@ -261,7 +261,7 @@ function TooltipButton({
   return (
     <button
       onClick={onClick}
-      className="rounded p-1.5 text-gray-400 hover:bg-gray-600 hover:text-white"
+      className="rounded p-1.5 text-foreground-muted hover:bg-background-elevated hover:text-foreground"
       title={title}
     >
       {icon}

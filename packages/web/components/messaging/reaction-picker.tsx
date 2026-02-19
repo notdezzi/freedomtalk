@@ -68,31 +68,31 @@ export function ReactionPicker({ onSelect, onClose, position }: ReactionPickerPr
     <div
       ref={containerRef}
       className={cn(
-        'z-50 w-80 rounded-lg bg-gray-800 shadow-xl border border-gray-700',
+        'z-50 w-80 rounded-lg bg-background-elevated shadow-xl border border-border',
         'animate-in fade-in-0 zoom-in-95'
       )}
       style={position ? { position: 'fixed', left: position.x, top: position.y } : { position: 'relative' }}
     >
       {/* Search */}
-      <div className="p-2 border-b border-gray-700">
+      <div className="p-2 border-b border-border">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search emoji..."
-          className="w-full rounded bg-gray-700 px-2 py-1 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded bg-background-surface px-2 py-1 text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent"
           autoFocus
         />
       </div>
 
       {/* Quick reactions */}
       {!search && (
-        <div className="flex items-center justify-center gap-1 p-2 border-b border-gray-700">
+        <div className="flex items-center justify-center gap-1 p-2 border-b border-border">
           {quickReactions.map((emoji) => (
             <button
               key={emoji}
               onClick={() => onSelect(emoji)}
-              className="rounded p-1.5 text-xl hover:bg-gray-700"
+              className="rounded p-1.5 text-xl hover:bg-background-surface"
             >
               {emoji}
             </button>
@@ -102,7 +102,7 @@ export function ReactionPicker({ onSelect, onClose, position }: ReactionPickerPr
 
       {/* Category tabs */}
       {!search && (
-        <div className="flex border-b border-gray-700">
+        <div className="flex border-b border-border">
           {EMOJI_CATEGORIES.map((cat, index) => (
             <button
               key={cat.name}
@@ -110,8 +110,8 @@ export function ReactionPicker({ onSelect, onClose, position }: ReactionPickerPr
               className={cn(
                 'flex-1 px-2 py-1.5 text-xs font-medium transition-colors',
                 activeCategory === index
-                  ? 'text-white bg-gray-700'
-                  : 'text-gray-400 hover:text-white'
+                  ? 'text-foreground bg-background-surface'
+                  : 'text-foreground-muted hover:text-foreground'
               )}
             >
               {cat.name}
@@ -127,7 +127,7 @@ export function ReactionPicker({ onSelect, onClose, position }: ReactionPickerPr
             <button
               key={`${emoji}-${index}`}
               onClick={() => onSelect(emoji)}
-              className="rounded p-1 text-lg hover:bg-gray-700 transition-colors"
+              className="rounded p-1 text-lg hover:bg-background-surface transition-colors"
             >
               {emoji}
             </button>

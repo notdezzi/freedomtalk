@@ -66,7 +66,7 @@ export function ContextMenu({ open, x, y, items, onClose, className }: ContextMe
       ref={menuRef}
       role="menu"
       className={cn(
-        'fixed z-50 min-w-[180px] rounded-md bg-gray-800 py-1 shadow-lg ring-1 ring-black/5',
+        'fixed z-50 min-w-[180px] rounded-md bg-background-elevated py-1 shadow-lg ring-1 ring-black/5',
         'animate-in fade-in-0 zoom-in-95',
         className
       )}
@@ -74,7 +74,7 @@ export function ContextMenu({ open, x, y, items, onClose, className }: ContextMe
     >
       {items.map((item, index) => {
         if (item.separator) {
-          return <div key={`separator-${index}`} className="my-1 border-t border-gray-700" />;
+          return <div key={`separator-${index}`} className="my-1 border-t border-border" />;
         }
 
         return (
@@ -88,8 +88,8 @@ export function ContextMenu({ open, x, y, items, onClose, className }: ContextMe
             }}
             className={cn(
               'flex w-full items-center gap-2 px-3 py-2 text-sm text-left',
-              'hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed',
-              item.danger ? 'text-red-400 hover:text-red-300' : 'text-gray-200'
+              'hover:bg-background-surface disabled:opacity-50 disabled:cursor-not-allowed',
+              item.danger ? 'text-error hover:text-error' : 'text-foreground'
             )}
           >
             {item.icon && <span className="h-4 w-4">{item.icon}</span>}

@@ -8,7 +8,7 @@ import { VoicePanel } from '@/components/voice';
 import { useUIStore, useVoiceStore } from '@/stores';
 import { ContextMenu, useContextMenu, Dropdown } from '@/components/ui';
 import { Home, Plus, Users, Settings, UserPlus, LogOut, Trash2, Edit2, X, ChevronDown, FolderPlus, Hash, Volume2, VolumeX, GripVertical, MicOff } from 'lucide-react';
-import { useServers, useServerChannelsAndCategories, useLeaveServer, useUpdateServerPositions, useUpdateChannelPositions } from '@/features/servers';
+import { useServers, useServerChannelsAndCategories, useLeaveServer, useUpdateServerPositions, useUpdateChannelPositions, useUpdateCategoryPositions } from '@/features/servers';
 import { useDMChannels, useCloseDM } from '@/features/dms';
 import { useAuthStore } from '@/stores';
 import { useVoiceConnection, useServerVoiceStates } from '@/hooks';
@@ -49,6 +49,7 @@ export function NavigationColumn() {
   const closeDM = useCloseDM();
   const updateServerPositions = useUpdateServerPositions();
   const updateChannelPositions = useUpdateChannelPositions(serverId);
+  const updateCategoryPositions = useUpdateCategoryPositions(serverId);
 
   // Drag and drop state for channels
   const [draggedChannelId, setDraggedChannelId] = useState<string | null>(null);
@@ -59,6 +60,21 @@ export function NavigationColumn() {
   // Category drag and drop state
   const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
   const [dragOverCategoryIdForReorder, setDragOverCategoryIdForReorder] = useState<string | null>(null);
+
+  // Collapsed categories state
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+
+  const toggleCategoryCollapse = (categoryId: string) => {
+    setCollapsedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
+  };
 
   // Context menus
   const serverContextMenu = useContextMenu();
@@ -104,6 +120,7 @@ export function NavigationColumn() {
         type: 'dm' as const,
         avatar: recipient?.avatar,
         unread: false,
+        isOnline: (recipient as any)?.isOnline ?? false,
       };
     });
   }, [dmChannels, currentUserId]);
@@ -161,6 +178,7 @@ export function NavigationColumn() {
   // Channel drag and drop handlers
   const handleChannelDragStart = (e: React.DragEvent, channelId: string) => {
     e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation(); // Prevent category drag from also triggering
     setDraggedChannelId(channelId);
   };
 
@@ -176,6 +194,7 @@ export function NavigationColumn() {
   const handleChannelDragOver = (e: React.DragEvent, channelId: string, categoryId?: string) => {
     e.preventDefault();
     if (draggedChannelId && draggedChannelId !== channelId) {
+      e.stopPropagation(); // Only stop propagation when we're actually handling this
       setDragOverChannelId(channelId);
       setDragOverCategoryId(categoryId || null);
       // Determine if mouse is in top or bottom half of the element
@@ -209,31 +228,49 @@ export function NavigationColumn() {
     const isOwner = (serverData?.ownerId || (serverData as any)?.owner_id) === currentUserId;
     if (!isOwner) return;
 
-    // Get channels in this category, sorted by position
+    // Get the dragged channel
+    const draggedChannel = channels.find(c => c.id === draggedChannelId);
+
+    // Get channels in this category, sorted by position (excluding dragged channel if already here)
     const categoryChannels = channels
-      .filter(c => (c.categoryId || null) === categoryId)
+      .filter(c => ((c as any).category_id ?? null) === categoryId && c.id !== draggedChannelId)
       .sort((a, b) => (a.position || 0) - (b.position || 0));
 
-    // Add the dragged channel at the end
-    const positions = categoryChannels.map((c, i) => ({
-      id: c.id,
-      position: i,
-      categoryId: categoryId,
-    }));
+    // Add dragged channel at the end of this category
+    const newCategoryOrder = [...categoryChannels, draggedChannel!];
 
-    // Add dragged channel at the end
-    positions.push({
-      id: draggedChannelId,
-      position: categoryChannels.length,
-      categoryId: categoryId,
+    // Build positions for ALL channels in the server
+    const otherChannels = channels.filter(c => ((c as any).category_id ?? null) !== categoryId && c.id !== draggedChannelId);
+    otherChannels.sort((a, b) => (a.position || 0) - (b.position || 0));
+
+    const allPositions: { id: string; position: number; categoryId: string | null }[] = [];
+
+    // Add other channels first
+    otherChannels.forEach((c, i) => {
+      allPositions.push({
+        id: c.id,
+        position: i,
+        categoryId: (c as any).category_id || null,
+      });
     });
 
-    updateChannelPositions.mutate(positions);
+    // Add target category channels
+    const startPos = otherChannels.length;
+    newCategoryOrder.forEach((c, i) => {
+      allPositions.push({
+        id: c.id,
+        position: startPos + i,
+        categoryId: categoryId,
+      });
+    });
+
+    updateChannelPositions.mutate(allPositions);
     handleChannelDragEnd();
   };
 
   const handleChannelDrop = (e: React.DragEvent, targetChannelId: string, targetCategoryId?: string) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent category drop handler from interfering
     if (!draggedChannelId || draggedChannelId === targetChannelId) {
       handleChannelDragEnd();
       return;
@@ -244,13 +281,13 @@ export function NavigationColumn() {
     const isOwner = (serverData?.ownerId || (serverData as any)?.owner_id) === currentUserId;
     if (!isOwner) return;
 
-    // Get all channels in the same category as the target
+    // Get the target category
     const targetChannel = channels.find(c => c.id === targetChannelId);
-    const categoryId = targetChannel?.categoryId || targetCategoryId || null;
+    const targetCatId = (targetChannel as any)?.category_id || targetCategoryId || null;
 
-    // Get channels in the same category, sorted by position
+    // Get channels in the target category, sorted by current position
     const categoryChannels = channels
-      .filter(c => (c.categoryId || null) === categoryId)
+      .filter(c => ((c as any).category_id ?? null) === targetCatId)
       .sort((a, b) => (a.position || 0) - (b.position || 0));
 
     // Get target index based on drop position
@@ -259,45 +296,55 @@ export function NavigationColumn() {
 
     // Check if dragged channel is from same category
     const draggedChannel = channels.find(c => c.id === draggedChannelId);
-    const isFromSameCategory = (draggedChannel?.categoryId || null) === categoryId;
+    const isFromSameCategory = ((draggedChannel as any)?.category_id ?? null) === targetCatId;
 
-    let positions;
-
+    // Build the NEW order of channels in the target category
+    let newCategoryOrder;
     if (isFromSameCategory) {
       // Reorder within same category
       const draggedIndex = categoryChannels.findIndex(c => c.id === draggedChannelId);
-      const newOrder = [...categoryChannels];
-      const [draggedItem] = newOrder.splice(draggedIndex, 1);
+      newCategoryOrder = [...categoryChannels];
+      const [draggedItem] = newCategoryOrder.splice(draggedIndex, 1);
 
       // Adjust insert index if dragging from above
       const adjustedIndex = draggedIndex < insertIndex ? insertIndex - 1 : insertIndex;
-      newOrder.splice(adjustedIndex, 0, draggedItem);
-
-      positions = newOrder.map((c, i) => ({
-        id: c.id,
-        position: i,
-        categoryId: categoryId,
-      }));
+      newCategoryOrder.splice(adjustedIndex, 0, draggedItem);
     } else {
-      // Moving from different category
-      positions = categoryChannels.map((c, i) => ({
-        id: c.id,
-        position: i,
-        categoryId: categoryId,
-      }));
-
-      // Insert at the target position
-      positions.splice(insertIndex, 0, {
-        id: draggedChannelId,
-        position: insertIndex,
-        categoryId: categoryId,
-      });
-
-      // Re-index
-      positions = positions.map((p, i) => ({ ...p, position: i }));
+      // Moving from different category - insert into target category
+      newCategoryOrder = [...categoryChannels];
+      newCategoryOrder.splice(insertIndex, 0, draggedChannel!);
     }
 
-    updateChannelPositions.mutate(positions);
+    // Now build positions for ALL channels in the server
+    // Start with channels NOT in the target category (keep their existing positions)
+    const otherChannels = channels.filter(c => ((c as any).category_id ?? null) !== targetCatId && c.id !== draggedChannelId);
+
+    // Sort other channels by their current position
+    otherChannels.sort((a, b) => (a.position || 0) - (b.position || 0));
+
+    // Build final positions array: other channels first, then target category channels
+    const allPositions: { id: string; position: number; categoryId: string | null }[] = [];
+
+    // Add other channels with their existing category and sequential positions
+    otherChannels.forEach((c, i) => {
+      allPositions.push({
+        id: c.id,
+        position: i,
+        categoryId: (c as any).category_id || null,
+      });
+    });
+
+    // Add target category channels with positions continuing from where we left off
+    const startPos = otherChannels.length;
+    newCategoryOrder.forEach((c, i) => {
+      allPositions.push({
+        id: c.id,
+        position: startPos + i,
+        categoryId: targetCatId,
+      });
+    });
+
+    updateChannelPositions.mutate(allPositions);
     handleChannelDragEnd();
   };
 
@@ -309,8 +356,15 @@ export function NavigationColumn() {
   };
 
   const handleCategoryDragOver = (e: React.DragEvent, categoryId: string) => {
+    // Allow the event to propagate for channel drags
+    // Only handle category reordering when actually dragging a category
+    if (!draggedCategoryId) {
+      // For channel drags, we need to allow the default behavior to enable dropping
+      // The channel's own dragover handler will call preventDefault
+      return;
+    }
     e.preventDefault();
-    if (draggedCategoryId && draggedCategoryId !== categoryId) {
+    if (draggedCategoryId !== categoryId) {
       setDragOverCategoryIdForReorder(categoryId);
     }
   };
@@ -320,8 +374,10 @@ export function NavigationColumn() {
   };
 
   const handleCategoryDrop = (e: React.DragEvent, targetCategoryId: string) => {
+    // Only handle if we're dragging a category, not a channel
+    if (!draggedCategoryId) return;
     e.preventDefault();
-    if (!draggedCategoryId || draggedCategoryId === targetCategoryId) {
+    if (draggedCategoryId === targetCategoryId) {
       handleChannelDragEnd();
       return;
     }
@@ -340,11 +396,13 @@ export function NavigationColumn() {
     const [draggedItem] = newOrder.splice(draggedIndex, 1);
     newOrder.splice(targetIndex, 0, draggedItem);
 
-    // For now, we'll need to add a category positions update API
-    // For simplicity, let's just update via the channel positions API for now
-    // This is a placeholder - proper implementation would need a category positions endpoint
-    console.log('Category reorder not fully implemented yet');
+    // Create positions array for API
+    const positions = newOrder.map((c, i) => ({
+      id: c.id,
+      position: i,
+    }));
 
+    updateCategoryPositions.mutate(positions);
     handleChannelDragEnd();
   };
 
@@ -549,7 +607,7 @@ export function NavigationColumn() {
               className={cn(
                 'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left',
                 'transition-colors duration-100',
-                isHomePage ? 'bg-gray-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                isHomePage ? 'bg-background-surface/80 text-foreground' : 'text-foreground hover:bg-background-surface hover:text-foreground'
               )}
             >
               <Users className="h-4 w-4" />
@@ -559,11 +617,11 @@ export function NavigationColumn() {
 
           {/* DM list */}
           <div className="flex-1 overflow-y-auto scrollbar-hide">
-            <div className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-gray-400 uppercase">
+            <div className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-foreground-muted uppercase">
               <span>Direct Messages</span>
               <button
                 onClick={() => openModal('add-friend')}
-                className="rounded p-1 hover:bg-gray-700"
+                className="rounded p-1 hover:bg-background-surface"
                 aria-label="Add friend"
               >
                 <Plus className="h-4 w-4" />
@@ -596,12 +654,12 @@ export function NavigationColumn() {
           <Dropdown
             trigger={
               <button
-                className="flex items-center justify-between w-full px-3 py-3 border-b border-gray-700 hover:bg-gray-700/50 transition-colors"
+                className="flex items-center justify-between w-full px-3 py-3 border-b border-border hover:bg-background-surface/50 transition-colors"
               >
-                <span className="font-semibold text-white truncate">
+                <span className="font-semibold text-foreground truncate">
                   {currentServer?.name || 'Server'}
                 </span>
-                <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                <ChevronDown className="h-4 w-4 text-foreground-muted flex-shrink-0" />
               </button>
             }
             items={getServerDropdownItems()}
@@ -613,13 +671,13 @@ export function NavigationColumn() {
             {/* Uncategorised channels (no categoryId) */}
             {channelItems.filter(ch => {
               const channel = channels.find(c => c.id === ch.id);
-              return !channel?.categoryId;
+              return !(channel as any)?.category_id;
             }).length > 0 && (
               <div className="py-1">
                 {channelItems
                   .filter(ch => {
                     const channel = channels.find(c => c.id === ch.id);
-                    return !channel?.categoryId;
+                    return !(channel as any)?.category_id;
                   })
                   .sort((a, b) => {
                     const chA = channels.find(c => c.id === a.id);
@@ -652,11 +710,11 @@ export function NavigationColumn() {
                           'flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left',
                           'transition-colors duration-100',
                           item.id === activeChannelId
-                            ? 'bg-gray-600 text-white'
-                            : 'text-gray-400 hover:bg-gray-700 hover:text-gray-200',
+                            ? 'bg-background-surface/80 text-foreground'
+                            : 'text-foreground-muted hover:bg-background-surface hover:text-foreground',
                           draggedChannelId === item.id && 'opacity-50',
                           isOwner && 'cursor-grab',
-                          isActiveVoiceChannel && 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                          isActiveVoiceChannel && 'bg-success/20 text-success hover:bg-success/30'
                         )}
                       >
                         {item.type === 'voice' ? (
@@ -676,13 +734,13 @@ export function NavigationColumn() {
                             <div
                               key={voiceUser.sessionId}
                               className={cn(
-                                "flex items-center gap-1.5 rounded px-2 py-0.5 text-xs text-gray-400 hover:text-gray-300",
-                                voiceUser.isSpeaking && "text-green-400"
+                                "flex items-center gap-1.5 rounded px-2 py-0.5 text-xs text-foreground-muted hover:text-foreground",
+                                voiceUser.isSpeaking && "text-success"
                               )}
                             >
                               <div className={cn(
                                 "relative",
-                                voiceUser.isSpeaking && "ring-2 ring-green-500 rounded-full"
+                                voiceUser.isSpeaking && "ring-2 ring-success rounded-full"
                               )}>
                                 <Avatar
                                   src={voiceUser.avatar}
@@ -692,8 +750,8 @@ export function NavigationColumn() {
                                 />
                               </div>
                               <span className="truncate">{voiceUser.username}</span>
-                              {voiceUser.selfDeaf && <VolumeX className="h-3 w-3 text-red-400" />}
-                              {!voiceUser.selfDeaf && voiceUser.selfMute && <MicOff className="h-3 w-3 text-red-400" />}
+                              {voiceUser.selfDeaf && <VolumeX className="h-3 w-3 text-error" />}
+                              {!voiceUser.selfDeaf && voiceUser.selfMute && <MicOff className="h-3 w-3 text-error" />}
                             </div>
                           ))}
                         </div>
@@ -708,7 +766,7 @@ export function NavigationColumn() {
                     onDrop={(e) => handleCategoryDropZoneDrop(e, null)}
                     className={cn(
                       'h-8 mx-1 rounded transition-colors',
-                      dragOverCategoryId === null && !dragOverChannelId && 'bg-gray-700/50 border-2 border-dashed border-gray-500'
+                      dragOverCategoryId === null && !dragOverChannelId && 'bg-background-surface/50 border-2 border-dashed border-foreground-subtle'
                     )}
                   />
                 )}
@@ -721,7 +779,7 @@ export function NavigationColumn() {
               .map((category) => {
                 const categoryChannels = channelItems.filter(ch => {
                   const channel = channels.find(c => c.id === ch.id);
-                  return channel?.categoryId === category.id;
+                  return (channel as any)?.category_id === category.id;
                 });
 
                 // Sort channels by position
@@ -764,6 +822,8 @@ export function NavigationColumn() {
                       activeChannelId={activeChannelId}
                       onChannelClick={(channel) => handleChannelClick({ id: channel.id, type: channel.type as 'text' | 'voice' | undefined })}
                       onAddClick={() => openModal('create-channel', { serverId, categoryId: category.id })}
+                      isCollapsed={collapsedCategories.has(category.id)}
+                      onToggleCollapse={() => toggleCategoryCollapse(category.id)}
                       isDraggable={isOwner}
                       draggedChannelId={draggedChannelId}
                       dragOverChannelId={dragOverChannelId}
@@ -790,7 +850,7 @@ export function NavigationColumn() {
 
     // No server selected
     return (
-      <div className="flex flex-1 items-center justify-center text-gray-500 text-sm">
+      <div className="flex flex-1 items-center justify-center text-foreground-subtle text-sm">
         Select a server to view channels
       </div>
     );
@@ -800,21 +860,21 @@ export function NavigationColumn() {
     <nav
       className={cn(
         'flex w-[30%] min-w-[200px] max-w-[320px] flex-col',
-        'bg-gray-800 border-r border-gray-700'
+        'bg-background-elevated border-r border-border'
       )}
     >
       {/* Top section: Server list + Channel/DM list */}
       <div className="flex flex-1 overflow-hidden">
         {/* Server list - 1/4 width */}
-        <div className="flex w-[22%] min-w-[48px] flex-col items-center gap-2 overflow-y-auto bg-transparent py-2 scrollbar-hide border-r border-gray-700">
+        <div className="flex w-[22%] min-w-[48px] flex-col items-center gap-2 overflow-y-auto bg-transparent py-2 scrollbar-hide border-r border-border">
           {/* Home/DMs button */}
           <button
             onClick={handleHomeClick}
             className={cn(
               'flex h-12 w-12 aspect-square items-center justify-center rounded-2xl',
-              'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white',
+              'bg-background-surface text-foreground hover:bg-background-surface/80 hover:text-foreground',
               'transition-all duration-200 hover:rounded-xl',
-              (isHomePage || isDMView) && 'bg-gray-600 text-white rounded-xl'
+              (isHomePage || isDMView) && 'bg-background-surface/80 text-foreground rounded-xl'
             )}
             aria-label="Home"
           >
@@ -822,12 +882,12 @@ export function NavigationColumn() {
           </button>
 
           {/* Separator */}
-          <div className="h-8 w-8  bg-white border border-gray-700 rounded-full" />
+          <div className="h-0.5 w-8  bg-white border border-border rounded-full" />
 
           {/* Server list */}
           {serversLoading ? (
             <div className="flex items-center justify-center py-4">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
             </div>
           ) : (
             <IconList

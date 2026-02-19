@@ -52,9 +52,9 @@ export function MembersColumn({ serverId }: MembersColumnProps) {
       <button
         onClick={toggle}
         className={cn(
-          'w-12 bg-gray-800 border-l border-gray-700',
+          'w-12 bg-background-elevated border-l border-border',
           'flex flex-col items-center justify-start pt-4',
-          'text-gray-400 hover:text-white transition-colors'
+          'text-foreground-muted hover:text-foreground transition-colors'
         )}
         aria-label="Show members"
       >
@@ -71,15 +71,15 @@ export function MembersColumn({ serverId }: MembersColumnProps) {
       <aside
         className={cn(
           'flex w-[25%] min-w-[180px] max-w-[280px] flex-col',
-          'bg-gray-800 border-l border-gray-700'
+          'bg-background-elevated border-l border-border'
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-          <h2 className="text-sm font-semibold text-gray-300">Members</h2>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h2 className="text-sm font-semibold text-foreground">Members</h2>
           <button
             onClick={toggle}
-            className="rounded p-1 text-gray-400 hover:bg-gray-700 hover:text-white"
+            className="rounded p-1 text-foreground-muted hover:bg-background-surface hover:text-foreground"
             aria-label="Hide members"
           >
             <X className="h-4 w-4" />
@@ -89,14 +89,14 @@ export function MembersColumn({ serverId }: MembersColumnProps) {
         {/* Members list */}
         <div className="flex-1 overflow-y-auto p-2">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8 text-gray-500">
+            <div className="flex items-center justify-center py-8 text-foreground-subtle">
               Loading members...
             </div>
           ) : (
             <>
               {/* Online */}
               <div className="mb-4">
-                <h3 className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase">
+                <h3 className="px-2 py-1 text-xs font-semibold text-foreground-subtle uppercase">
                   Online — {onlineMembers.length}
                 </h3>
                 {onlineMembers.map((member) => (
@@ -113,7 +113,7 @@ export function MembersColumn({ serverId }: MembersColumnProps) {
               {/* Offline */}
               {offlineMembers.length > 0 && (
                 <div>
-                  <h3 className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase">
+                  <h3 className="px-2 py-1 text-xs font-semibold text-foreground-subtle uppercase">
                     Offline — {offlineMembers.length}
                   </h3>
                   {offlineMembers.map((member) => (
@@ -162,7 +162,7 @@ function MemberItem({
       onContextMenu={(e) => onContextMenu(e, member)}
       className={cn(
         'flex w-full items-center gap-2 rounded px-2 py-1.5',
-        'text-gray-400 hover:bg-gray-700 hover:text-gray-200',
+        'text-foreground-muted hover:bg-background-surface hover:text-foreground',
         !member.isOnline && 'opacity-50'
       )}
     >

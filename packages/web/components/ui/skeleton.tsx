@@ -16,7 +16,7 @@ export function Skeleton({
   return (
     <div
       className={cn(
-        'animate-pulse bg-gray-700',
+        'animate-pulse bg-background-surface',
         variant === 'text' && 'h-4 rounded',
         variant === 'circular' && 'rounded-full',
         variant === 'rectangular' && 'rounded-md',
