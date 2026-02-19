@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient, type PermissionBreakdownResponse, type ChannelOverwriteResponse } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-provider';
 
@@ -36,9 +36,6 @@ export function useChannelOverwrites(channelId: string | undefined) {
       if (!channelId) return [];
       const response = await apiClient.getChannelOverwrites(channelId);
       if (response.success && response.data) {
-        if ('overwrites' in response.data) {
-          return response.data.overwrites;
-        }
         if (Array.isArray(response.data)) {
           return response.data;
         }
@@ -46,5 +43,46 @@ export function useChannelOverwrites(channelId: string | undefined) {
       return [];
     },
     enabled: !!channelId,
+  });
+}
+
+// Set channel overwrite (create or update)
+export function useSetChannelOverwrite(channelId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      targetId: string;
+      allow?: bigint;
+      deny?: bigint;
+      type?: 'role' | 'member';
+    }) => {
+      if (!channelId) throw new Error('Channel ID is required');
+      const response = await apiClient.setChannelOverwrite(
+        channelId,
+        data.targetId,
+        { allow: data.allow, deny: data.deny, type: data.type }
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.permissions.overwrites(channelId || '') });
+    },
+  });
+}
+
+// Delete channel overwrite
+export function useDeleteChannelOverwrite(channelId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (targetId: string) => {
+      if (!channelId) throw new Error('Channel ID is required');
+      const response = await apiClient.deleteChannelOverwrite(channelId, targetId);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.permissions.overwrites(channelId || '') });
+    },
   });
 }

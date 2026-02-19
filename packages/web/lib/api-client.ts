@@ -686,6 +686,13 @@ class ApiClient {
     });
   }
 
+  async updateCategoryPositions(serverId: string, positions: { id: string; position: number }[]): Promise<ApiResponse<{ categories: CategoryResponse[] }>> {
+    return this.request<{ categories: CategoryResponse[] }>(`/api/v1/servers/${serverId}/categories/positions`, {
+      method: 'PATCH',
+      body: JSON.stringify({ positions }),
+    });
+  }
+
   // Message endpoints
   async getMessages(params: { channelId?: string; before?: string; after?: string; limit?: number }): Promise<ApiResponse<MessageResponse[] | { messages: MessageResponse[]; hasMore: boolean }>> {
     const searchParams = new URLSearchParams();
@@ -945,8 +952,34 @@ class ApiClient {
     return this.request<PermissionBreakdownResponse>(`/api/v1/channels/${channelId}/permissions/@me`);
   }
 
-  async getChannelOverwrites(channelId: string): Promise<ApiResponse<{ overwrites: ChannelOverwriteResponse[] }>> {
-    return this.request<{ overwrites: ChannelOverwriteResponse[] }>(`/api/v1/channels/${channelId}/overwrites`);
+  async getChannelOverwrites(channelId: string): Promise<ApiResponse<ChannelOverwriteResponse[]>> {
+    return this.request<ChannelOverwriteResponse[]>(`/api/v1/channels/${channelId}/permissions`);
+  }
+
+  async setChannelOverwrite(
+    channelId: string,
+    targetId: string,
+    data: {
+      allow?: bigint;
+      deny?: bigint;
+      type?: 'role' | 'member';
+    }
+  ): Promise<ApiResponse<ChannelOverwriteResponse>> {
+    const body: Record<string, string | undefined> = {};
+    if (data.allow !== undefined) body.allow = data.allow.toString();
+    if (data.deny !== undefined) body.deny = data.deny.toString();
+    if (data.type !== undefined) body.type = data.type;
+
+    return this.request<ChannelOverwriteResponse>(`/api/v1/channels/${channelId}/permissions/${targetId}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+  }
+
+  async deleteChannelOverwrite(channelId: string, targetId: string): Promise<ApiResponse<void>> {
+    return this.request<void>(`/api/v1/channels/${channelId}/permissions/${targetId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Privacy endpoints
