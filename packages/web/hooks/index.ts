@@ -5,3 +5,4 @@ export { useSocket } from './use-socket';
 export { useChannel } from './use-channel';
 export { useVoiceConnection } from './use-voice-connection';
 export { useServerVoiceStates } from './use-server-voice-states';
+export { useCan } from './use-can';
