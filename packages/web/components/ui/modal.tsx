@@ -14,7 +14,6 @@ export interface ModalProps {
   children: ReactNode;
   showCloseButton?: boolean;
   closeOnOverlayClick?: boolean;
-  noBorder?: boolean;
   className?: string;
 }
 
@@ -33,7 +32,6 @@ export function Modal({
   children,
   showCloseButton = true,
   closeOnOverlayClick = true,
-  noBorder = false,
   className,
 }: ModalProps) {
   const focusTrapRef = useFocusTrap<HTMLDivElement>(open);
@@ -77,8 +75,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
         className={cn(
-          'relative z-50 w-full rounded-xl bg-background-elevated shadow-xl',
-          !noBorder && 'border border-border',
+          'relative z-50 w-full rounded-xl bg-background-elevated border border-border shadow-xl',
           'transform transition-all',
           sizeClasses[size],
           className

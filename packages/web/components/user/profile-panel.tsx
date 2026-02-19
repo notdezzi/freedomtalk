@@ -31,92 +31,12 @@ export function ProfilePanel({
   onBlock,
   className,
 }: ProfilePanelProps) {
-  // Modal variant with horizontal layout - image on right, text on left
-  if (variant === 'modal') {
-    return (
-      <div className={cn('flex overflow-hidden', className)}>
-        {/* Left side - User info */}
-        <div className="flex-1 p-4">
-          {/* Name */}
-          <div>
-            <h2 className="text-xl font-bold text-white">
-              {user.displayName || user.username}
-            </h2>
-            {user.displayName && (
-              <p className="text-sm text-foreground-muted">{user.username}</p>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-wrap gap-2 mt-3">
-            {friendshipStatus === 'friends' && onMessage && (
-              <Button size="sm" onClick={onMessage}>
-                Message
-              </Button>
-            )}
-            {friendshipStatus === 'none' && onAddFriend && (
-              <Button size="sm" onClick={onAddFriend}>
-                Add Friend
-              </Button>
-            )}
-            {friendshipStatus === 'pending-sent' && (
-              <Button size="sm" variant="secondary" disabled>
-                Friend Request Sent
-              </Button>
-            )}
-            {friendshipStatus === 'friends' && onRemoveFriend && (
-              <Button size="sm" variant="ghost" onClick={onRemoveFriend}>
-                Remove Friend
-              </Button>
-            )}
-          </div>
-
-          {/* Bio */}
-          {user.bio && (
-            <div className="mt-4">
-              <h3 className="text-xs font-semibold uppercase text-foreground-muted mb-1">
-                About Me
-              </h3>
-              <p className="text-sm text-foreground whitespace-pre-wrap">
-                {user.bio}
-              </p>
-            </div>
-          )}
-
-          {/* Note */}
-          <div className="mt-4">
-            <h3 className="text-xs font-semibold uppercase text-foreground-muted mb-1">
-              Note
-            </h3>
-            <textarea
-              placeholder="Click to add a note"
-              className="w-full rounded bg-background-surface p-2 text-sm text-foreground placeholder:text-foreground-subtle resize-none focus:outline-none focus:ring-2 focus:ring-accent"
-              rows={2}
-            />
-          </div>
-        </div>
-
-        {/* Right side - Avatar */}
-        <div className="flex-shrink-0 p-4 flex items-start">
-          <Avatar
-            src={user.avatar}
-            alt={user.displayName || user.username}
-            size="xl"
-            status={user.status}
-            showStatus
-            className="border-4 border-background-elevated"
-          />
-        </div>
-      </div>
-    );
-  }
-
-  // Default vertical layout for sidebar and dm-profile
   return (
     <div
       className={cn(
         'flex flex-col overflow-hidden',
         variant === 'sidebar' && 'h-full bg-background-elevated',
+        variant === 'modal' && 'w-80 rounded-lg bg-background-elevated',
         variant === 'dm-profile' && 'h-full bg-background-elevated',
         className
       )}
