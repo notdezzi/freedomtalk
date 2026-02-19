@@ -3,6 +3,8 @@
  * Handles authentication tokens and error responses
  */
 
+import type { DmPrivacyLevel } from '@freedomtalk/shared';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export interface ApiResponse<T = unknown> {
@@ -168,6 +170,26 @@ export interface MessageResponse {
   reactions?: MessageReactionResponse[];
   embeds?: unknown[];
   attachments?: unknown[];
+}
+
+// Role response with three-state permissions
+export interface RoleResponse {
+  id: string;
+  name: string;
+  color: number;
+  position: number;
+  allowPermissions: string;  // BigInt as string for JSON
+  denyPermissions: string;   // BigInt as string for JSON
+  hoist: boolean;
+  mentionable: boolean;
+}
+
+// Permission breakdown response
+export interface PermissionBreakdownResponse {
+  [permission: string]: {
+    result: 'allow' | 'deny';
+    source: 'owner' | 'administrator' | `role:${string}` | 'overwrite' | 'default';
+  };
 }
 
 // Token storage helpers (client-side only)
@@ -824,27 +846,84 @@ class ApiClient {
   }
 
   // Role endpoints
-  async getRoles(serverId: string): Promise<ApiResponse<{ roles: { id: string; name: string; color: number; position: number; permissions: string; hoist: boolean; mentionable: boolean }[] }>> {
-    return this.request<{ roles: { id: string; name: string; color: number; position: number; permissions: string; hoist: boolean; mentionable: boolean }[] }>(`/api/v1/servers/${serverId}/roles`);
+  async getRoles(serverId: string): Promise<ApiResponse<{ roles: RoleResponse[] }>> {
+    return this.request<{ roles: RoleResponse[] }>(`/api/v1/servers/${serverId}/roles`);
   }
 
-  async createRole(serverId: string, data: { name: string; permissions?: string; color?: number; hoist?: boolean; mentionable?: boolean }): Promise<ApiResponse<unknown>> {
-    return this.request<unknown>(`/api/v1/servers/${serverId}/roles`, {
+  async createRole(serverId: string, data: {
+    name: string;
+    allowPermissions?: bigint;
+    denyPermissions?: bigint;
+    color?: number;
+    hoist?: boolean;
+    mentionable?: boolean;
+  }): Promise<ApiResponse<RoleResponse>> {
+    const body: Record<string, unknown> = { name: data.name };
+    if (data.allowPermissions !== undefined) body.allowPermissions = data.allowPermissions.toString();
+    if (data.denyPermissions !== undefined) body.denyPermissions = data.denyPermissions.toString();
+    if (data.color !== undefined) body.color = data.color;
+    if (data.hoist !== undefined) body.hoist = data.hoist;
+    if (data.mentionable !== undefined) body.mentionable = data.mentionable;
+
+    return this.request<RoleResponse>(`/api/v1/servers/${serverId}/roles`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(body),
     });
   }
 
-  async updateRole(serverId: string, roleId: string, data: { name?: string; permissions?: string; color?: number; hoist?: boolean; mentionable?: boolean }): Promise<ApiResponse<unknown>> {
-    return this.request<unknown>(`/api/v1/servers/${serverId}/roles/${roleId}`, {
+  async updateRole(serverId: string, roleId: string, data: {
+    name?: string;
+    allowPermissions?: bigint;
+    denyPermissions?: bigint;
+    color?: number;
+    hoist?: boolean;
+    mentionable?: boolean;
+  }): Promise<ApiResponse<RoleResponse>> {
+    const body: Record<string, unknown> = {};
+    if (data.name !== undefined) body.name = data.name;
+    if (data.allowPermissions !== undefined) body.allowPermissions = data.allowPermissions.toString();
+    if (data.denyPermissions !== undefined) body.denyPermissions = data.denyPermissions.toString();
+    if (data.color !== undefined) body.color = data.color;
+    if (data.hoist !== undefined) body.hoist = data.hoist;
+    if (data.mentionable !== undefined) body.mentionable = data.mentionable;
+
+    return this.request<RoleResponse>(`/api/v1/servers/${serverId}/roles/${roleId}`, {
       method: 'PATCH',
-      body: JSON.stringify(data),
+      body: JSON.stringify(body),
     });
   }
 
   async deleteRole(serverId: string, roleId: string): Promise<ApiResponse<void>> {
     return this.request<void>(`/api/v1/servers/${serverId}/roles/${roleId}`, {
       method: 'DELETE',
+    });
+  }
+
+  async updateRolePositions(serverId: string, positions: { id: string; position: number }[]): Promise<ApiResponse<{ roles: RoleResponse[] }>> {
+    return this.request<{ roles: RoleResponse[] }>(`/api/v1/servers/${serverId}/roles/positions`, {
+      method: 'PATCH',
+      body: JSON.stringify({ positions }),
+    });
+  }
+
+  // Permission endpoints
+  async getPermissionBreakdown(serverId: string): Promise<ApiResponse<PermissionBreakdownResponse>> {
+    return this.request<PermissionBreakdownResponse>(`/api/v1/servers/${serverId}/permissions/@me`);
+  }
+
+  async getChannelPermissionBreakdown(channelId: string): Promise<ApiResponse<PermissionBreakdownResponse>> {
+    return this.request<PermissionBreakdownResponse>(`/api/v1/channels/${channelId}/permissions/@me`);
+  }
+
+  // Privacy endpoints
+  async getPrivacy(): Promise<ApiResponse<{ dmPrivacyLevel: DmPrivacyLevel }>> {
+    return this.request<{ dmPrivacyLevel: DmPrivacyLevel }>('/api/v1/users/me/privacy');
+  }
+
+  async updatePrivacy(data: { dmPrivacyLevel: DmPrivacyLevel }): Promise<ApiResponse<{ dmPrivacyLevel: DmPrivacyLevel }>> {
+    return this.request<{ dmPrivacyLevel: DmPrivacyLevel }>('/api/v1/users/me/privacy', {
+      method: 'PATCH',
+      body: JSON.stringify({ dmPrivacyLevel: data.dmPrivacyLevel }),
     });
   }
 
