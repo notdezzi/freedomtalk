@@ -1,8 +1,9 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import { Modal } from '@/components/ui';
 import { ProfilePanel } from '@/components/user';
-import type { User } from '@/types';
+import { apiClient } from '@/lib/api-client';
 
 interface UserProfileModalProps {
   userId: string;
@@ -11,15 +12,34 @@ interface UserProfileModalProps {
 }
 
 export function UserProfileModal({ userId, serverId, onClose }: UserProfileModalProps) {
-  // TODO: Fetch user data from API
-  const user: User = {
-    id: userId,
-    username: 'Unknown User',
-    email: '',
-    displayName: 'Unknown User',
-    bio: 'This is a sample bio.',
-    status: 'online',
-  };
+  // Fetch user data from API
+  const { data: response, isLoading, error } = useQuery({
+    queryKey: ['users', userId],
+    queryFn: () => apiClient.getUser(userId),
+    enabled: !!userId,
+  });
+
+  const user = response?.data;
+
+  if (isLoading) {
+    return (
+      <Modal open onClose={onClose} size="lg" showCloseButton>
+        <div className="p-8 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </Modal>
+    );
+  }
+
+  if (error || !user) {
+    return (
+      <Modal open onClose={onClose} size="lg" showCloseButton>
+        <div className="p-8 text-center">
+          <p className="text-foreground-muted">User not found</p>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal open onClose={onClose} size="lg" showCloseButton>
@@ -27,7 +47,12 @@ export function UserProfileModal({ userId, serverId, onClose }: UserProfileModal
         <ProfilePanel
           variant="modal"
           user={{
-            ...user,
+            id: user.id,
+            username: user.username,
+            displayName: user.displayName || user.username,
+            bio: user.bio || undefined,
+            avatarUrl: user.avatarUrl || undefined,
+            bannerUrl: user.bannerUrl || undefined,
             roles: [],
             activities: [],
           }}

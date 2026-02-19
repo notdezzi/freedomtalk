@@ -184,6 +184,19 @@ export interface RoleResponse {
   mentionable: boolean;
 }
 
+// User profile response (public profile)
+export interface UserProfileResponse {
+  id: string;
+  username: string;
+  displayName: string;
+  bio: string | null;
+  pronouns: string | null;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
+  customStatus: string | null;
+  createdAt: string;
+}
+
 // Input type for creating a role
 export interface CreateRoleInput {
   name: string;
@@ -1049,8 +1062,8 @@ class ApiClient {
   }
 
   // User endpoints
-  async getUser(userId: string): Promise<ApiResponse<unknown>> {
-    return this.request<unknown>(`/api/v1/users/${userId}`);
+  async getUser(userId: string): Promise<ApiResponse<UserProfileResponse>> {
+    return this.request<UserProfileResponse>(`/api/v1/users/${userId}`);
   }
 
   async updateUserProfile(data: { displayName?: string; aboutMe?: string; avatar?: string; banner?: string }): Promise<ApiResponse<unknown>> {

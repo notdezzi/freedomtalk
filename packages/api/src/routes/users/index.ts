@@ -124,6 +124,60 @@ export default async function userRoutes(app: FastifyInstance) {
   );
 
   /**
+   * GET /api/v1/users/:userId
+   * Get a user's public profile by ID
+   */
+  app.get(
+    '/:userId',
+    {
+      schema: {
+        description: 'Get a user public profile by ID',
+        tags: ['Users'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['userId'],
+          properties: {
+            userId: { type: 'string', minLength: 15, maxLength: 25 },
+          },
+        },
+      },
+      config: {
+        rateLimit: {
+          max: 60,
+          timeWindow: '1 minute',
+        },
+      },
+      preHandler: requireAuth,
+    },
+    async (request: FastifyRequest<{ Params: { userId: string } }>, reply: FastifyReply) => {
+      const { userId } = request.params;
+
+      // Get user data (public info only)
+      const user = await db('users').where({ id: userId }).first();
+      if (!user) {
+        return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } });
+      }
+
+      // Get user profile
+      const profile = await db('user_profiles').where({ user_id: userId }).first();
+
+      // Return public profile (no email or sensitive data)
+      return reply.send(successResponse({
+        id: user.id,
+        username: user.username,
+        displayName: profile?.display_name || user.username,
+        bio: profile?.bio || null,
+        pronouns: profile?.pronouns || null,
+        avatarUrl: profile?.avatar_url || null,
+        bannerUrl: profile?.banner_url || null,
+        customStatus: profile?.custom_status || null,
+        createdAt: user.created_at,
+      }));
+    }
+  );
+
+  /**
    * PUT /api/v1/users/@me
    * Update current user's profile with transaction-based updates
    */
