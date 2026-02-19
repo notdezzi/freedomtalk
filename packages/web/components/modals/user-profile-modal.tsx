@@ -23,7 +23,7 @@ export function UserProfileModal({ userId, serverId, onClose }: UserProfileModal
 
   if (isLoading) {
     return (
-      <Modal open onClose={onClose} size="lg" showCloseButton>
+      <Modal open onClose={onClose} size="lg" showCloseButton noBorder>
         <div className="p-8 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
@@ -33,7 +33,7 @@ export function UserProfileModal({ userId, serverId, onClose }: UserProfileModal
 
   if (error || !user) {
     return (
-      <Modal open onClose={onClose} size="lg" showCloseButton>
+      <Modal open onClose={onClose} size="lg" showCloseButton noBorder>
         <div className="p-8 text-center">
           <p className="text-foreground-muted">User not found</p>
         </div>
@@ -42,27 +42,25 @@ export function UserProfileModal({ userId, serverId, onClose }: UserProfileModal
   }
 
   return (
-    <Modal open onClose={onClose} size="lg" showCloseButton>
-      <div className="p-0">
-        <ProfilePanel
-          variant="modal"
-          user={{
-            id: user.id,
-            username: user.username,
-            displayName: user.displayName || user.username,
-            bio: user.bio || undefined,
-            avatarUrl: user.avatarUrl || undefined,
-            bannerUrl: user.bannerUrl || undefined,
-            roles: [],
-            activities: [],
-          }}
-          friendshipStatus="none"
-          onMessage={() => {
-            onClose();
-          }}
-          onAddFriend={() => {}}
-        />
-      </div>
+    <Modal open onClose={onClose} size="lg" showCloseButton noBorder>
+      <ProfilePanel
+        variant="modal"
+        user={{
+          id: user.id,
+          username: user.username,
+          displayName: user.displayName || user.username,
+          bio: user.bio || undefined,
+          avatar: user.avatarUrl || undefined,
+          banner: user.bannerUrl || undefined,
+          roles: [],
+          activities: [],
+        }}
+        friendshipStatus="none"
+        onMessage={() => {
+          onClose();
+        }}
+        onAddFriend={() => {}}
+      />
     </Modal>
   );
 }
