@@ -184,6 +184,36 @@ export interface RoleResponse {
   mentionable: boolean;
 }
 
+// Input type for creating a role
+export interface CreateRoleInput {
+  name: string;
+  allowPermissions?: bigint;
+  denyPermissions?: bigint;
+  color?: number;
+  hoist?: boolean;
+  mentionable?: boolean;
+}
+
+// Input type for updating a role
+export interface UpdateRoleInput {
+  name?: string;
+  allowPermissions?: bigint;
+  denyPermissions?: bigint;
+  color?: number;
+  hoist?: boolean;
+  mentionable?: boolean;
+}
+
+// Channel permission overwrite response
+export interface ChannelOverwriteResponse {
+  id: string;
+  channelId: string;
+  targetId: string;
+  targetType: 'role' | 'member';
+  allowPermissions: string;  // BigInt as string for JSON
+  denyPermissions: string;   // BigInt as string for JSON
+}
+
 // Permission breakdown response
 export interface PermissionBreakdownResponse {
   [permission: string]: {
@@ -913,6 +943,10 @@ class ApiClient {
 
   async getChannelPermissionBreakdown(channelId: string): Promise<ApiResponse<PermissionBreakdownResponse>> {
     return this.request<PermissionBreakdownResponse>(`/api/v1/channels/${channelId}/permissions/@me`);
+  }
+
+  async getChannelOverwrites(channelId: string): Promise<ApiResponse<{ overwrites: ChannelOverwriteResponse[] }>> {
+    return this.request<{ overwrites: ChannelOverwriteResponse[] }>(`/api/v1/channels/${channelId}/overwrites`);
   }
 
   // Privacy endpoints

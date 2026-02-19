@@ -55,4 +55,13 @@ export const queryKeys = {
   users: {
     profile: (userId: string) => ['users', userId, 'profile'] as const,
   },
+  roles: {
+    all: ['roles'] as const,
+    list: (serverId: string) => ['servers', serverId, 'roles'] as const,
+  },
+  permissions: {
+    server: (serverId: string) => ['servers', serverId, 'permissions', '@me'] as const,
+    channel: (channelId: string) => ['channels', channelId, 'permissions', '@me'] as const,
+    overwrites: (channelId: string) => ['channels', channelId, 'overwrites'] as const,
+  },
 };
