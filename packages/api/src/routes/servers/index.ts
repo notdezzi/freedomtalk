@@ -1033,7 +1033,20 @@ export default async function serverRoutes(app: FastifyInstance) {
 
       const { roleService } = await import('../../services/server/role.service');
       const roles = await roleService.getServerRoles(serverId);
-      return reply.send(successResponse(roles));
+
+      // Transform snake_case to camelCase for frontend
+      const transformedRoles = roles.map(role => ({
+        id: role.id,
+        name: role.name,
+        color: role.color,
+        position: role.position,
+        allowPermissions: role.allow_permissions,
+        denyPermissions: role.deny_permissions,
+        hoist: role.hoist,
+        mentionable: role.mentionable,
+      }));
+
+      return reply.send(successResponse(transformedRoles));
     }
   );
 
@@ -1082,7 +1095,19 @@ export default async function serverRoutes(app: FastifyInstance) {
         return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Role not found in this server' } });
       }
 
-      return reply.send(successResponse(role));
+      // Transform to camelCase for frontend
+      const transformedRole = {
+        id: role.id,
+        name: role.name,
+        color: role.color,
+        position: role.position,
+        allowPermissions: role.allow_permissions,
+        denyPermissions: role.deny_permissions,
+        hoist: role.hoist,
+        mentionable: role.mentionable,
+      };
+
+      return reply.send(successResponse(transformedRole));
     }
   );
 
@@ -1147,7 +1172,19 @@ export default async function serverRoutes(app: FastifyInstance) {
         mentionable: body.mentionable,
       });
 
-      return reply.code(201).send(successResponse(role));
+      // Transform to camelCase for frontend
+      const transformedRole = {
+        id: role.id,
+        name: role.name,
+        color: role.color,
+        position: role.position,
+        allowPermissions: role.allow_permissions,
+        denyPermissions: role.deny_permissions,
+        hoist: role.hoist,
+        mentionable: role.mentionable,
+      };
+
+      return reply.code(201).send(successResponse(transformedRole));
     }
   );
 
@@ -1211,7 +1248,19 @@ export default async function serverRoutes(app: FastifyInstance) {
         mentionable: body.mentionable,
       });
 
-      return reply.send(successResponse(role));
+      // Transform to camelCase for frontend
+      const transformedRole = {
+        id: role.id,
+        name: role.name,
+        color: role.color,
+        position: role.position,
+        allowPermissions: role.allow_permissions,
+        denyPermissions: role.deny_permissions,
+        hoist: role.hoist,
+        mentionable: role.mentionable,
+      };
+
+      return reply.send(successResponse(transformedRole));
     }
   );
 
