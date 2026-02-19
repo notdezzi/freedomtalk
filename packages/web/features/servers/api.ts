@@ -2,6 +2,23 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-provider';
 
+// Ban response type
+export interface BanResponse {
+  id: string;
+  serverId: string;
+  userId: string;
+  reason: string | null;
+  bannedBy: string;
+  bannedByName: string | null;
+  bannedByAvatar: string | null;
+  bannedAt: string;
+  user?: {
+    id: string;
+    username: string;
+    avatar: string | null;
+  } | null;
+}
+
 // Get all servers for the current user
 export function useServers() {
   return useQuery({
@@ -251,6 +268,23 @@ export function useUpdateChannelPositions(serverId: string | undefined) {
   });
 }
 
+// Update category positions (for drag and drop)
+export function useUpdateCategoryPositions(serverId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (positions: { id: string; position: number }[]) => {
+      if (!serverId) throw new Error('Server ID is required');
+      const response = await apiClient.updateCategoryPositions(serverId, positions);
+      return response.data;
+    },
+    onSuccess: () => {
+      // Invalidate channels query to refetch with new positions (categories are included)
+      queryClient.invalidateQueries({ queryKey: queryKeys.servers.channels(serverId || '') });
+    },
+  });
+}
+
 // Kick a member from the server
 export function useKickMember(serverId: string | undefined) {
   const queryClient = useQueryClient();
@@ -279,6 +313,7 @@ export function useBanMember(serverId: string | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.servers.members(serverId || '') });
+      queryClient.invalidateQueries({ queryKey: queryKeys.bans.list(serverId || '') });
     },
   });
 }
@@ -294,8 +329,47 @@ export function useUnbanMember(serverId: string | undefined) {
       return response.data;
     },
     onSuccess: () => {
-      // Could also invalidate a bans query if we have one
+      queryClient.invalidateQueries({ queryKey: queryKeys.bans.list(serverId || '') });
     },
+  });
+}
+
+// Get all bans for a server
+export function useServerBans(serverId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.bans.list(serverId || ''),
+    queryFn: async (): Promise<BanResponse[]> => {
+      if (!serverId) return [];
+      const response = await apiClient.getBans(serverId);
+      if (response.success && response.data) {
+        // Handle both array and object responses
+        let bans: any[] = [];
+        if (Array.isArray(response.data)) {
+          bans = response.data;
+        } else if ('bans' in response.data && Array.isArray(response.data.bans)) {
+          bans = response.data.bans;
+        }
+
+        // Transform snake_case to camelCase for frontend
+        return bans.map((b: any) => ({
+          id: b.id,
+          serverId: b.server_id,
+          userId: b.user_id,
+          reason: b.reason,
+          bannedBy: b.banned_by,
+          bannedByName: b.banned_by_name || b.bannedBy?.username || null,
+          bannedByAvatar: b.banned_by_avatar || b.bannedBy?.avatar || null,
+          bannedAt: b.created_at || b.bannedAt || b.banned_at,
+          user: b.user ? {
+            id: b.user.id,
+            username: b.user.username,
+            avatar: b.user.avatar,
+          } : null,
+        }));
+      }
+      return [];
+    },
+    enabled: !!serverId,
   });
 }
 
@@ -332,6 +406,29 @@ export function useDeleteInvite(serverId: string | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.servers.invites(serverId || '') });
+    },
+  });
+}
+
+// Create an invite
+export function useCreateInvite(serverId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data?: {
+      channelId?: string;
+      maxUses?: number;
+      maxAge?: number;
+      temporary?: boolean;
+    }) => {
+      if (!serverId) throw new Error('Server ID is required');
+      const response = await apiClient.createInvite(serverId, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      if (serverId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.servers.invites(serverId) });
+      }
     },
   });
 }
