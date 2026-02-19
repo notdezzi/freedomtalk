@@ -45,10 +45,10 @@ export function UserProfileModal({ userId, serverId, onClose }: UserProfileModal
   return (
     <Modal open onClose={onClose} size="lg" showCloseButton noBorder noHeader>
       <div className="relative">
-        {/* Close button positioned absolutely */}
+        {/* Close button positioned absolutely - top right */}
         <button
           onClick={onClose}
-          className="absolute top-2 left-2 z-10 rounded-lg p-1.5 text-foreground-muted hover:bg-background-surface hover:text-foreground transition-colors"
+          className="absolute top-2 right-2 z-10 rounded-lg p-1.5 text-foreground-muted hover:bg-background-surface hover:text-foreground transition-colors"
           aria-label="Close modal"
         >
           <X className="h-4 w-4" />

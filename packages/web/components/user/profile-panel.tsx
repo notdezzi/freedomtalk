@@ -41,8 +41,11 @@ export function ProfilePanel({
         className
       )}
     >
-      {/* Banner */}
-      <div className="relative h-16 bg-background-surface">
+      {/* Banner - taller for modal to fit close button */}
+      <div className={cn(
+        "relative bg-background-surface",
+        variant === 'modal' ? "h-24" : "h-16"
+      )}>
         {user.banner && (
           <img
             src={user.banner}
@@ -65,15 +68,17 @@ export function ProfilePanel({
           showStatus
           className={cn(
             "border-4 border-background-elevated",
-            variant === 'modal' ? "-mt-10" : "-mt-10"
+            variant === 'modal' ? "-mt-14" : "-mt-10"
           )}
         />
       </div>
 
       {/* User info */}
       <div className="px-4 pb-4">
-        {/* Name */}
-        <div className="mt-2">
+        {/* Name - less margin for modal to move it up */}
+        <div className={cn(
+          variant === 'modal' ? "mt-0" : "mt-2"
+        )}>
           <h2 className="text-xl font-bold text-white">
             {user.displayName || user.username}
           </h2>
