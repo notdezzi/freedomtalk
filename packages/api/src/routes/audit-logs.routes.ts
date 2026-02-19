@@ -52,7 +52,7 @@ async function canViewAuditLogs(serverId: string, userId: string): Promise<boole
   // Check permissions from roles
   const permissions = await roleService.calculateMemberPermissions(serverId, userId);
   if (Permissions.has(permissions, PERMISSION_FLAGS.ADMINISTRATOR) ||
-      Permissions.has(permissions, PERMISSION_FLAGS.VIEW_AUDIT_LOG)) {
+      Permissions.has(permissions, PERMISSION_FLAGS.MANAGE_SERVER)) {
     return true;
   }
 

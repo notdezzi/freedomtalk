@@ -649,7 +649,7 @@ export default async function serverRoutes(app: FastifyInstance) {
       // Users can update their own nickname/avatar
       // Only moderators can update mute/deaf/timeout
       const isSelf = userId === currentUserId;
-      const hasModPerms = await checkServerPermission(serverId, currentUserId, PERMISSION_FLAGS.MODERATE_MEMBERS);
+      const hasModPerms = await checkServerPermission(serverId, currentUserId, PERMISSION_FLAGS.TIMEOUT_MEMBERS);
 
       if (!isSelf && !hasModPerms) {
         return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to update this member' } });
@@ -981,8 +981,8 @@ export default async function serverRoutes(app: FastifyInstance) {
       const userId = request.user!.id;
       const body = request.body;
 
-      // Check CREATE_INSTANT_INVITE permission
-      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.CREATE_INSTANT_INVITE);
+      // Check CREATE_INVITE permission
+      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.CREATE_INVITE);
       if (!hasPerms) {
         return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to create invites' } });
       }
@@ -1115,7 +1115,8 @@ export default async function serverRoutes(app: FastifyInstance) {
           required: ['name'],
           properties: {
             name: { type: 'string', minLength: VALIDATION.ROLE.MIN_NAME_LENGTH, maxLength: VALIDATION.ROLE.MAX_NAME_LENGTH },
-            permissions: { type: 'string' },
+            allowPermissions: { type: 'string' },
+            denyPermissions: { type: 'string' },
             color: { type: 'integer', minimum: 0, maximum: 16777215 },
             hoist: { type: 'boolean' },
             icon: { type: 'string' },
@@ -1132,7 +1133,8 @@ export default async function serverRoutes(app: FastifyInstance) {
       const userId = request.user!.id;
       const body = request.body as {
         name: string;
-        permissions?: string;
+        allowPermissions?: string;
+        denyPermissions?: string;
         color?: number;
         hoist?: boolean;
         icon?: string;
@@ -1149,7 +1151,8 @@ export default async function serverRoutes(app: FastifyInstance) {
       const role = await roleService.createRole({
         serverId,
         name: body.name,
-        permissions: body.permissions ? BigInt(body.permissions) : undefined,
+        allowPermissions: body.allowPermissions ? BigInt(body.allowPermissions) : undefined,
+        denyPermissions: body.denyPermissions ? BigInt(body.denyPermissions) : undefined,
         color: body.color,
         hoist: body.hoist,
         icon: body.icon,
@@ -1183,7 +1186,8 @@ export default async function serverRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             name: { type: 'string', minLength: VALIDATION.ROLE.MIN_NAME_LENGTH, maxLength: VALIDATION.ROLE.MAX_NAME_LENGTH },
-            permissions: { type: 'string' },
+            allowPermissions: { type: 'string' },
+            denyPermissions: { type: 'string' },
             color: { type: 'integer', minimum: 0, maximum: 16777215 },
             hoist: { type: 'boolean' },
             icon: { type: 'string', nullable: true },
@@ -1200,7 +1204,8 @@ export default async function serverRoutes(app: FastifyInstance) {
       const userId = request.user!.id;
       const body = request.body as {
         name?: string;
-        permissions?: string;
+        allowPermissions?: string;
+        denyPermissions?: string;
         color?: number;
         hoist?: boolean;
         icon?: string | null;
@@ -1216,7 +1221,8 @@ export default async function serverRoutes(app: FastifyInstance) {
       const { roleService } = await import('../../services/server/role.service');
       const role = await roleService.updateRole(roleId, {
         name: body.name,
-        permissions: body.permissions ? BigInt(body.permissions) : undefined,
+        allowPermissions: body.allowPermissions ? BigInt(body.allowPermissions) : undefined,
+        denyPermissions: body.denyPermissions ? BigInt(body.denyPermissions) : undefined,
         color: body.color,
         hoist: body.hoist,
         icon: body.icon,
