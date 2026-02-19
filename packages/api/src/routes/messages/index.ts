@@ -10,7 +10,8 @@ import { requireAuth } from '../../middleware/auth.middleware';
 import { successResponse } from '../../utils/errors';
 import { messageService } from '../../services/message/message.service';
 import { messageRouter } from '../../services/websocket/message.router';
-import { VALIDATION } from '@freedomtalk/shared';
+import { permissionService } from '../../services/permission';
+import { VALIDATION, PERMISSION_FLAGS } from '@freedomtalk/shared';
 
 /**
  * Message create with embeds schema
@@ -304,12 +305,13 @@ export default async function messageRoutes(app: FastifyInstance) {
   /**
    * DELETE /api/v1/messages/:id
    * Soft delete a message
+   * Users can delete their own messages; deleting others requires MANAGE_MESSAGES
    */
   app.delete(
     '/:id',
     {
       schema: {
-        description: 'Soft delete a message',
+        description: 'Soft delete a message. Users can delete their own messages; deleting others requires MANAGE_MESSAGES permission.',
         tags: ['Messages'],
         security: [{ bearerAuth: [] }],
         params: {
@@ -337,6 +339,32 @@ export default async function messageRoutes(app: FastifyInstance) {
       const { id } = request.params;
       const { hard } = request.query;
       const userId = request.user!.id;
+
+      // Get the message to check ownership
+      const message = await messageService.getMessage(id, true);
+
+      // Check if user is the message author
+      const isOwner = message.author_id === userId;
+
+      // If not the owner, check for MANAGE_MESSAGES permission
+      if (!isOwner && message.channel_id) {
+        // Get the channel to find the server_id
+        const { channelService } = await import('../../services/channel/channel.service');
+        const channel = await channelService.getChannel(message.channel_id);
+
+        if (channel && channel.server_id) {
+          const hasPerms = await permissionService.hasPermission(userId, channel.server_id, PERMISSION_FLAGS.MANAGE_MESSAGES);
+          if (!hasPerms) {
+            return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to delete this message' } });
+          }
+        } else {
+          // For DM channels, only the author can delete
+          return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You can only delete your own messages' } });
+        }
+      } else if (!isOwner && !message.channel_id) {
+        // DM message - only author can delete
+        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You can only delete your own messages' } });
+      }
 
       if (hard) {
         await messageService.hardDeleteMessage(id);

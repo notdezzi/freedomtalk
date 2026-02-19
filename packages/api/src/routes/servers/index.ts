@@ -715,9 +715,9 @@ export default async function serverRoutes(app: FastifyInstance) {
       onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_ROLES)],
       preHandler: validateBody(memberRolesSchema),
     },
-    async (request: FastifyRequest<{ Params: { serverId: string; userId: string }; Body: z.infer<typeof memberRolesSchema> }>, reply: FastifyReply) => {
-      const { serverId, userId } = request.params;
-      const { roleIds } = request.body;
+    async (request, reply) => {
+      const { serverId, userId } = request.params as { serverId: string; userId: string };
+      const { roleIds } = request.body as z.infer<typeof memberRolesSchema>;
 
       await serverMemberService.setRoles(serverId, userId, roleIds);
       return reply.code(204).send();
@@ -757,20 +757,15 @@ export default async function serverRoutes(app: FastifyInstance) {
           200: { type: 'object' },
         },
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.BAN_MEMBERS)],
     },
-    async (request: FastifyRequest<{ Params: { serverId: string }; Querystring: { limit?: number; offset?: number } }>, reply: FastifyReply) => {
-      const { serverId } = request.params;
-      const userId = request.user!.id;
-
-      // Check BAN_MEMBERS permission
-      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.BAN_MEMBERS);
-      if (!hasPerms) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to view bans' } });
-      }
+    async (request, reply) => {
+      const { serverId } = request.params as { serverId: string };
+      const query = request.query as { limit?: number; offset?: number };
 
       const result = await serverBanService.getBans(serverId, {
-        limit: request.query.limit,
-        offset: request.query.offset,
+        limit: query.limit,
+        offset: query.offset,
       });
 
       return reply.send(successResponse(result));
@@ -807,24 +802,20 @@ export default async function serverRoutes(app: FastifyInstance) {
           200: { type: 'object' },
         },
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.BAN_MEMBERS)],
       preHandler: validateBody(createBanSchema),
     },
-    async (request: FastifyRequest<{ Params: { serverId: string; userId: string }; Body: z.infer<typeof createBanSchema> }>, reply: FastifyReply) => {
-      const { serverId, userId: targetUserId } = request.params;
+    async (request, reply) => {
+      const { serverId, userId: targetUserId } = request.params as { serverId: string; userId: string };
+      const body = request.body as z.infer<typeof createBanSchema>;
       const currentUserId = request.user!.id;
-
-      // Check BAN_MEMBERS permission
-      const hasPerms = await checkServerPermission(serverId, currentUserId, PERMISSION_FLAGS.BAN_MEMBERS);
-      if (!hasPerms) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to ban members' } });
-      }
 
       const ban = await serverBanService.createBan({
         serverId,
         userId: targetUserId,
-        reason: request.body.reason,
+        reason: body.reason,
         bannedBy: currentUserId,
-        deleteMessageDays: request.body.deleteMessageDays,
+        deleteMessageDays: body.deleteMessageDays,
       });
 
       return reply.send(successResponse(ban));
@@ -854,16 +845,10 @@ export default async function serverRoutes(app: FastifyInstance) {
           204: { type: 'null' },
         },
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.BAN_MEMBERS)],
     },
-    async (request: FastifyRequest<{ Params: { serverId: string; userId: string } }>, reply: FastifyReply) => {
-      const { serverId, userId: targetUserId } = request.params;
-      const currentUserId = request.user!.id;
-
-      // Check BAN_MEMBERS permission
-      const hasPerms = await checkServerPermission(serverId, currentUserId, PERMISSION_FLAGS.BAN_MEMBERS);
-      if (!hasPerms) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to unban members' } });
-      }
+    async (request, reply) => {
+      const { serverId, userId: targetUserId } = request.params as { serverId: string; userId: string };
 
       await serverBanService.removeBan(serverId, targetUserId);
       return reply.code(204).send();
@@ -939,18 +924,13 @@ export default async function serverRoutes(app: FastifyInstance) {
         },
         // Remove response schema to avoid Fastify stripping properties
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.CREATE_INVITE)],
       preHandler: validateBody(createInviteSchema),
     },
-    async (request: FastifyRequest<{ Params: { serverId: string }; Body: z.infer<typeof createInviteSchema> }>, reply: FastifyReply) => {
-      const { serverId } = request.params;
+    async (request, reply) => {
+      const { serverId } = request.params as { serverId: string };
+      const body = request.body as z.infer<typeof createInviteSchema>;
       const userId = request.user!.id;
-      const body = request.body;
-
-      // Check CREATE_INVITE permission
-      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.CREATE_INVITE);
-      if (!hasPerms) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to create invites' } });
-      }
 
       // Get first text channel if no channelId provided
       let channelId = (request.body as any).channelId;
@@ -1141,10 +1121,10 @@ export default async function serverRoutes(app: FastifyInstance) {
           201: { type: 'object' },
         },
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_ROLES)],
     },
-    async (request: FastifyRequest<{ Params: { serverId: string }; Body: any }>, reply: FastifyReply) => {
-      const { serverId } = request.params;
-      const userId = request.user!.id;
+    async (request, reply) => {
+      const { serverId } = request.params as { serverId: string };
       const body = request.body as {
         name: string;
         allowPermissions?: string;
@@ -1154,12 +1134,6 @@ export default async function serverRoutes(app: FastifyInstance) {
         icon?: string;
         mentionable?: boolean;
       };
-
-      // Check MANAGE_ROLES permission
-      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.MANAGE_ROLES);
-      if (!hasPerms) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage roles' } });
-      }
 
       const { roleService } = await import('../../services/server/role.service');
       const role = await roleService.createRole({
@@ -1212,10 +1186,10 @@ export default async function serverRoutes(app: FastifyInstance) {
           200: { type: 'object' },
         },
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_ROLES)],
     },
-    async (request: FastifyRequest<{ Params: { serverId: string; roleId: string }; Body: any }>, reply: FastifyReply) => {
-      const { serverId, roleId } = request.params;
-      const userId = request.user!.id;
+    async (request, reply) => {
+      const { roleId } = request.params as { serverId: string; roleId: string };
       const body = request.body as {
         name?: string;
         allowPermissions?: string;
@@ -1225,12 +1199,6 @@ export default async function serverRoutes(app: FastifyInstance) {
         icon?: string | null;
         mentionable?: boolean;
       };
-
-      // Check MANAGE_ROLES permission
-      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.MANAGE_ROLES);
-      if (!hasPerms) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage roles' } });
-      }
 
       const { roleService } = await import('../../services/server/role.service');
       const role = await roleService.updateRole(roleId, {
@@ -1270,16 +1238,10 @@ export default async function serverRoutes(app: FastifyInstance) {
           204: { type: 'null' },
         },
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_ROLES)],
     },
-    async (request: FastifyRequest<{ Params: { serverId: string; roleId: string } }>, reply: FastifyReply) => {
-      const { serverId, roleId } = request.params;
-      const userId = request.user!.id;
-
-      // Check MANAGE_ROLES permission
-      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.MANAGE_ROLES);
-      if (!hasPerms) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage roles' } });
-      }
+    async (request, reply) => {
+      const { roleId } = request.params as { serverId: string; roleId: string };
 
       const { roleService } = await import('../../services/server/role.service');
       await roleService.deleteRole(roleId);
@@ -1326,18 +1288,12 @@ export default async function serverRoutes(app: FastifyInstance) {
           200: { type: 'object' },
         },
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_ROLES)],
       preHandler: validateBody(rolePositionsSchema),
     },
-    async (request: FastifyRequest<{ Params: { serverId: string }; Body: z.infer<typeof rolePositionsSchema> }>, reply: FastifyReply) => {
-      const { serverId } = request.params;
-      const userId = request.user!.id;
-      const { positions } = request.body;
-
-      // Check MANAGE_ROLES permission
-      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.MANAGE_ROLES);
-      if (!hasPerms) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage roles' } });
-      }
+    async (request, reply) => {
+      const { serverId } = request.params as { serverId: string };
+      const { positions } = request.body as z.infer<typeof rolePositionsSchema>;
 
       const { roleService } = await import('../../services/server/role.service');
       const roles = await roleService.updateRolePositions(serverId, positions);

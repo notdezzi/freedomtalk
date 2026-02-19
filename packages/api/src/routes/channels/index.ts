@@ -7,12 +7,13 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { requireAuth } from '../../middleware/auth.middleware';
 import { validateBody } from '../../middleware/validation.middleware';
+import { requireServerPermission } from '../../middleware/permission.middleware';
 import { successResponse } from '../../utils/errors';
 import { channelService } from '../../services/channel/channel.service';
 import { categoryService } from '../../services/channel/category.service';
 import { serverService } from '../../services/server/server.service';
-import { roleService } from '../../services/server/role.service';
-import { VALIDATION, PERMISSION_FLAGS, Permissions } from '@freedomtalk/shared';
+import { permissionService } from '../../services/permission';
+import { VALIDATION, PERMISSION_FLAGS } from '@freedomtalk/shared';
 
 // Validation schemas
 const createChannelSchema = z.object({
@@ -47,19 +48,6 @@ const channelPositionsSchema = z.object({
     categoryId: z.string().min(18).max(20).nullable().optional(),
   })),
 });
-
-// Permission check helper
-async function checkServerPermission(
-  serverId: string,
-  userId: string,
-  permission: bigint
-): Promise<boolean> {
-  const isOwner = await serverService.isOwner(serverId, userId);
-  if (isOwner) return true;
-
-  const permissions = await roleService.calculateMemberPermissions(serverId, userId);
-  return Permissions.has(permissions, permission);
-}
 
 export default async function channelRoutes(app: FastifyInstance) {
   // All routes require authentication
@@ -147,18 +135,12 @@ export default async function channelRoutes(app: FastifyInstance) {
           201: { type: 'object' },
         },
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_CHANNELS)],
       preHandler: validateBody(createChannelSchema),
     },
-    async (request: FastifyRequest<{ Params: { serverId: string }; Body: z.infer<typeof createChannelSchema> }>, reply: FastifyReply) => {
-      const { serverId } = request.params;
-      const userId = request.user!.id;
-      const body = request.body;
-
-      // Check MANAGE_CHANNELS permission
-      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.MANAGE_CHANNELS);
-      if (!hasPerms) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage channels' } });
-      }
+    async (request, reply) => {
+      const { serverId } = request.params as { serverId: string };
+      const body = request.body as z.infer<typeof createChannelSchema>;
 
       const channel = await channelService.createChannel({
         serverId,
@@ -201,30 +183,21 @@ export default async function channelRoutes(app: FastifyInstance) {
             rtcRegion: { type: 'string', maxLength: 20 },
           },
         },
-        response: {
-          200: { type: 'object' },
-        },
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_CHANNELS)],
     },
-    async (request: FastifyRequest<{ Params: { serverId: string; channelId: string }; Body: Partial<{
-      name: string;
-      topic: string;
-      position: number;
-      nsfw: boolean;
-      rateLimitPerUser: number;
-      bitrate: number;
-      userLimit: number;
-      rtcRegion: string;
-    }> }>, reply: FastifyReply) => {
-      const { serverId, channelId } = request.params;
-      const userId = request.user!.id;
-      const updates = request.body;
-
-      // Check MANAGE_CHANNELS permission
-      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.MANAGE_CHANNELS);
-      if (!hasPerms) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage channels' } });
-      }
+    async (request, reply) => {
+      const { serverId, channelId } = request.params as { serverId: string; channelId: string };
+      const updates = request.body as Partial<{
+        name: string;
+        topic: string;
+        position: number;
+        nsfw: boolean;
+        rateLimitPerUser: number;
+        bitrate: number;
+        userLimit: number;
+        rtcRegion: string;
+      }>;
 
       // Verify channel belongs to this server
       const channel = await channelService.getChannel(channelId);
@@ -257,20 +230,11 @@ export default async function channelRoutes(app: FastifyInstance) {
             channelId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
-        response: {
-          200: { type: 'object' },
-        },
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_CHANNELS)],
     },
-    async (request: FastifyRequest<{ Params: { serverId: string; channelId: string } }>, reply: FastifyReply) => {
-      const { serverId, channelId } = request.params;
-      const userId = request.user!.id;
-
-      // Check MANAGE_CHANNELS permission
-      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.MANAGE_CHANNELS);
-      if (!hasPerms) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage channels' } });
-      }
+    async (request, reply) => {
+      const { serverId, channelId } = request.params as { serverId: string; channelId: string };
 
       // Verify channel belongs to this server
       const channel = await channelService.getChannel(channelId);
@@ -322,18 +286,12 @@ export default async function channelRoutes(app: FastifyInstance) {
         },
         // Remove response schema to avoid Fastify stripping properties
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_CHANNELS)],
       preHandler: validateBody(channelPositionsSchema),
     },
-    async (request: FastifyRequest<{ Params: { serverId: string }; Body: z.infer<typeof channelPositionsSchema> }>, reply: FastifyReply) => {
-      const { serverId } = request.params;
-      const userId = request.user!.id;
-      const { positions } = request.body;
-
-      // Check MANAGE_CHANNELS permission
-      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.MANAGE_CHANNELS);
-      if (!hasPerms) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage channels' } });
-      }
+    async (request, reply) => {
+      const { serverId } = request.params as { serverId: string };
+      const { positions } = request.body as z.infer<typeof channelPositionsSchema>;
 
       const channels = await channelService.updateChannelPositions(serverId, positions);
       return reply.send(successResponse(channels));
@@ -413,21 +371,16 @@ export default async function channelRoutes(app: FastifyInstance) {
           201: { type: 'object' },
         },
       },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_CHANNELS)],
       preHandler: validateBody(createCategorySchema),
     },
-    async (request: FastifyRequest<{ Params: { serverId: string }; Body: z.infer<typeof createCategorySchema> }>, reply: FastifyReply) => {
-      const { serverId } = request.params;
-      const userId = request.user!.id;
-
-      // Check MANAGE_CHANNELS permission
-      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.MANAGE_CHANNELS);
-      if (!hasPerms) {
-        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage channels' } });
-      }
+    async (request, reply) => {
+      const { serverId } = request.params as { serverId: string };
+      const body = request.body as z.infer<typeof createCategorySchema>;
 
       const category = await categoryService.createCategory({
         serverId,
-        ...request.body,
+        ...body,
       });
 
       return reply.code(201).send(successResponse(category));
@@ -437,6 +390,7 @@ export default async function channelRoutes(app: FastifyInstance) {
   /**
    * PATCH /api/v1/categories/:categoryId
    * Update a category
+   * Note: Uses inline permission check because serverId is not in params
    */
   app.patch(
     '/categories/:categoryId',
@@ -475,8 +429,8 @@ export default async function channelRoutes(app: FastifyInstance) {
         return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Category not found' } });
       }
 
-      // Check MANAGE_CHANNELS permission
-      const hasPerms = await checkServerPermission(category.server_id, userId, PERMISSION_FLAGS.MANAGE_CHANNELS);
+      // Check MANAGE_CHANNELS permission using permissionService
+      const hasPerms = await permissionService.hasPermission(userId, category.server_id, PERMISSION_FLAGS.MANAGE_CHANNELS);
       if (!hasPerms) {
         return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage channels' } });
       }
@@ -489,6 +443,7 @@ export default async function channelRoutes(app: FastifyInstance) {
   /**
    * DELETE /api/v1/categories/:categoryId
    * Delete a category
+   * Note: Uses inline permission check because serverId is not in params
    */
   app.delete(
     '/categories/:categoryId',
@@ -518,8 +473,8 @@ export default async function channelRoutes(app: FastifyInstance) {
         return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Category not found' } });
       }
 
-      // Check MANAGE_CHANNELS permission
-      const hasPerms = await checkServerPermission(category.server_id, userId, PERMISSION_FLAGS.MANAGE_CHANNELS);
+      // Check MANAGE_CHANNELS permission using permissionService
+      const hasPerms = await permissionService.hasPermission(userId, category.server_id, PERMISSION_FLAGS.MANAGE_CHANNELS);
       if (!hasPerms) {
         return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage channels' } });
       }
