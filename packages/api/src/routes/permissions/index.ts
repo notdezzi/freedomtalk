@@ -286,9 +286,6 @@ export default async function permissionRoutes(app: FastifyInstance) {
             serverId: { type: 'string', minLength: 15, maxLength: 25 },
           },
         },
-        response: {
-          200: { type: 'object' },
-        },
       },
     },
     async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
@@ -306,6 +303,7 @@ export default async function permissionRoutes(app: FastifyInstance) {
         serverId
       );
 
+      console.log('Permission breakdown:', JSON.stringify(breakdown, null, 2));
       return reply.send(successResponse(breakdown));
     }
   );
