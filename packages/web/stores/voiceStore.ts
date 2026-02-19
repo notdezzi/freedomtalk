@@ -32,6 +32,10 @@ interface VoiceState {
   currentServerId: string | null;
   sessionId: string | null;
 
+  // Last text channel for redirect on disconnect
+  lastTextChannelId: string | null;
+  lastTextChannelServerId: string | null;
+
   // Self state
   selfMute: boolean;
   selfDeaf: boolean;
@@ -91,6 +95,9 @@ interface VoiceState {
   isUserInChannel: (channelId: string, userId: string) => boolean;
   getUserBySessionId: (sessionId: string) => VoiceUser | undefined;
 
+  // Last text channel tracking
+  setLastTextChannel: (channelId: string | null, serverId: string | null) => void;
+
   // Error handling
   setError: (error: string | null) => void;
   clearError: () => void;
@@ -101,6 +108,8 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   currentChannelId: null,
   currentServerId: null,
   sessionId: null,
+  lastTextChannelId: null,
+  lastTextChannelServerId: null,
   selfMute: false,
   selfDeaf: false,
   selfVideo: false,
@@ -305,6 +314,9 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   getUserBySessionId: (sessionId) => {
     return get().users.find((u) => u.sessionId === sessionId);
   },
+
+  setLastTextChannel: (channelId, serverId) =>
+    set({ lastTextChannelId: channelId, lastTextChannelServerId: serverId }),
 
   setError: (error) => set({ error, isConnecting: false }),
   clearError: () => set({ error: null }),

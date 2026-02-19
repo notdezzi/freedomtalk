@@ -1,0 +1,81 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e6] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e7]:
+      - img [ref=e8]
+    - generic [ref=e11]:
+      - button "Open issues overlay" [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: "0"
+          - generic [ref=e15]: "1"
+        - generic [ref=e16]: Issue
+      - button "Collapse issues badge" [ref=e17]:
+        - img [ref=e18]
+  - alert [ref=e20]: FreedomTalk - Modern Community Communication
+  - generic [ref=e21]:
+    - navigation "Servers" [ref=e22]:
+      - button "Home" [ref=e25]:
+        - img [ref=e26]
+      - button "Add a server" [ref=e30]:
+        - img [ref=e31]
+      - button "Explore servers" [ref=e32]:
+        - img [ref=e33]
+    - generic [ref=e36]:
+      - generic [ref=e37]:
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - img [ref=e40]
+            - generic [ref=e43]: Direct Messages
+          - button "Create DM" [ref=e44]:
+            - img [ref=e45]
+        - generic [ref=e48]:
+          - img [ref=e49]
+          - textbox "Search DMs..." [ref=e52]
+        - generic [ref=e53]:
+          - button "Friends" [ref=e54]:
+            - img [ref=e56]
+            - generic [ref=e61]: Friends
+          - generic [ref=e62]:
+            - generic [ref=e63]: Direct Messages
+            - generic [ref=e64]: No direct messages yet
+      - generic [ref=e66]:
+        - button "T" [ref=e68]:
+          - generic [ref=e69]: T
+        - generic [ref=e71]:
+          - paragraph [ref=e72]: testuser_51tvf6m6
+          - paragraph [ref=e73]: Online
+        - generic [ref=e74]:
+          - button "Mute" [ref=e75]:
+            - img [ref=e76]
+          - button "Deafen" [ref=e79]:
+            - img [ref=e80]
+          - button "User settings" [ref=e82]:
+            - img [ref=e83]
+    - main [ref=e86]:
+      - generic [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - img [ref=e90]
+            - generic [ref=e92]: Friends
+          - navigation [ref=e94]:
+            - button "Online" [ref=e95]
+            - button "All" [ref=e96]
+            - button "Pending" [ref=e97]
+            - button "Blocked" [ref=e98]
+            - button "Add Friend" [ref=e99]
+          - generic [ref=e100]:
+            - img [ref=e101]
+            - textbox "Search friends..." [ref=e104]
+        - generic [ref=e107]:
+          - img [ref=e109]
+          - heading "No friends yet" [level=3] [ref=e114]
+          - paragraph [ref=e115]: Add friends to start chatting with them
+          - button "Add Friend" [ref=e116] [cursor=pointer]:
+            - img [ref=e117]
+            - text: Add Friend
+    - generic [ref=e118]:
+      - img [ref=e119]
+      - generic [ref=e126]: Disconnected
+```

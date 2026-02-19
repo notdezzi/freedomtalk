@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MessageCircle, Users, Search, Plus, Clock, Ban, X, Check, Send, MoreHorizontal } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -33,14 +33,19 @@ function FriendsPageContent() {
   const [addError, setAddError] = useState<string | null>(null);
   const [addSuccess, setAddSuccess] = useState<string | null>(null);
 
-  // Initial data fetch
+  // Track if we've already fetched data to prevent duplicates
+  const hasFetchedRef = useRef(false);
+
+  // Initial data fetch - only once when authenticated
   useEffect(() => {
-    if (isAuthenticated && fetchFriends) {
+    if (isAuthenticated && !hasFetchedRef.current && fetchFriends) {
+      hasFetchedRef.current = true;
       fetchFriends();
       fetchPendingRequests();
       fetchBlockedUsers();
     }
-  }, [isAuthenticated, fetchFriends, fetchPendingRequests, fetchBlockedUsers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   // Handle add-friend query param
   useEffect(() => {

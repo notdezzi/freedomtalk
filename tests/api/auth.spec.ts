@@ -3,10 +3,44 @@
  * Direct HTTP tests for auth endpoints
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect, APIRequestContext } from '@playwright/test';
 import { createTestUser } from '../utils/test-data';
 
 const API_URL = process.env.API_BASE_URL || 'http://localhost:3001';
+
+/**
+ * Helper to register a user and return the access token
+ */
+async function registerAndGetToken(
+  request: APIRequestContext,
+  user: ReturnType<typeof createTestUser>
+): Promise<{ accessToken: string; refreshToken: string; user: any }> {
+  const response = await request.post(`${API_URL}/api/v1/auth/register`, {
+    data: {
+      email: user.email,
+      username: user.username,
+      password: user.password,
+    },
+  });
+
+  expect(response.status()).toBe(201);
+
+  // Login to get tokens
+  const loginResponse = await request.post(`${API_URL}/api/v1/auth/login`, {
+    data: {
+      email: user.email,
+      password: user.password,
+    },
+  });
+
+  expect(loginResponse.status()).toBe(200);
+  const body = await loginResponse.json();
+  return {
+    accessToken: body.data.accessToken,
+    refreshToken: body.data.refreshToken,
+    user: body.data.user,
+  };
+}
 
 test.describe('Auth API', () => {
   test.describe('POST /api/v1/auth/register', () => {
@@ -18,7 +52,6 @@ test.describe('Auth API', () => {
           email: user.email,
           username: user.username,
           password: user.password,
-          confirmPassword: user.password,
         },
       });
 
@@ -27,7 +60,7 @@ test.describe('Auth API', () => {
       const body = await response.json();
       expect(body.success).toBe(true);
       expect(body.data).toBeDefined();
-      expect(body.data.user.email).toBe(user.email);
+      expect(body.data.email).toBe(user.email);
     });
 
     test('should reject invalid email', async ({ request }) => {
@@ -35,8 +68,7 @@ test.describe('Auth API', () => {
         data: {
           email: 'invalid-email',
           username: 'testuser',
-          password: 'Password123!',
-          confirmPassword: 'Password123!',
+          password: 'TestPassword123!',
         },
       });
 
@@ -51,22 +83,6 @@ test.describe('Auth API', () => {
           email: user.email,
           username: user.username,
           password: 'weak',
-          confirmPassword: 'weak',
-        },
-      });
-
-      expect(response.status()).toBe(400);
-    });
-
-    test('should reject mismatched passwords', async ({ request }) => {
-      const user = createTestUser();
-
-      const response = await request.post(`${API_URL}/api/v1/auth/register`, {
-        data: {
-          email: user.email,
-          username: user.username,
-          password: 'Password123!',
-          confirmPassword: 'DifferentPassword123!',
         },
       });
 
@@ -77,22 +93,21 @@ test.describe('Auth API', () => {
       const user = createTestUser();
 
       // First registration
-      await request.post(`${API_URL}/api/v1/auth/register`, {
+      const firstResponse = await request.post(`${API_URL}/api/v1/auth/register`, {
         data: {
           email: user.email,
           username: user.username,
           password: user.password,
-          confirmPassword: user.password,
         },
       });
+      expect(firstResponse.status()).toBe(201);
 
-      // Second registration with same email
+      // Second registration with same email but different username
       const response = await request.post(`${API_URL}/api/v1/auth/register`, {
         data: {
           email: user.email,
-          username: `different-${user.username}`,
+          username: `diff_${user.username}`, // Use underscore instead of hyphen
           password: user.password,
-          confirmPassword: user.password,
         },
       });
 
@@ -109,14 +124,14 @@ test.describe('Auth API', () => {
       testUserEmail = user.email;
       testUserPassword = user.password;
 
-      await request.post(`${API_URL}/api/v1/auth/register`, {
+      const response = await request.post(`${API_URL}/api/v1/auth/register`, {
         data: {
           email: user.email,
           username: user.username,
           password: user.password,
-          confirmPassword: user.password,
         },
       });
+      expect(response.status()).toBe(201);
     });
 
     test('should login with valid credentials', async ({ request }) => {
@@ -132,13 +147,14 @@ test.describe('Auth API', () => {
       const body = await response.json();
       expect(body.success).toBe(true);
       expect(body.data.user).toBeDefined();
+      expect(body.data.accessToken).toBeDefined();
     });
 
     test('should reject invalid email', async ({ request }) => {
       const response = await request.post(`${API_URL}/api/v1/auth/login`, {
         data: {
           email: 'nonexistent@example.com',
-          password: 'Password123!',
+          password: 'TestPassword123!',
         },
       });
 
@@ -159,39 +175,90 @@ test.describe('Auth API', () => {
 
   test.describe('GET /api/v1/users/@me', () => {
     test('should return current user when authenticated', async ({ request }) => {
-      // First register
       const user = createTestUser();
-      await request.post(`${API_URL}/api/v1/auth/register`, {
-        data: {
-          email: user.email,
-          username: user.username,
-          password: user.password,
-          confirmPassword: user.password,
-        },
-      });
+      const { accessToken } = await registerAndGetToken(request, user);
 
-      // Login to get session
-      const loginResponse = await request.post(`${API_URL}/api/v1/auth/login`, {
-        data: {
-          email: user.email,
-          password: user.password,
-        },
-      });
-
-      // Get current user using cookies from login
+      // Get current user using Bearer token
       const meResponse = await request.get(`${API_URL}/api/v1/users/@me`, {
         headers: {
-          Cookie: loginResponse.headers()['set-cookie'] || '',
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
       expect(meResponse.status()).toBe(200);
+
+      const body = await meResponse.json();
+      expect(body.success).toBe(true);
+      expect(body.data.email).toBe(user.email);
     });
 
     test('should return 401 when not authenticated', async ({ request }) => {
       const response = await request.get(`${API_URL}/api/v1/users/@me`);
 
       expect(response.status()).toBe(401);
+    });
+
+    test('should return 401 with invalid token', async ({ request }) => {
+      const response = await request.get(`${API_URL}/api/v1/users/@me`, {
+        headers: {
+          Authorization: 'Bearer invalid-token',
+        },
+      });
+
+      expect(response.status()).toBe(401);
+    });
+  });
+
+  test.describe('POST /api/v1/auth/refresh', () => {
+    test('should refresh tokens with valid refresh token', async ({ request }) => {
+      const user = createTestUser();
+      const { refreshToken } = await registerAndGetToken(request, user);
+
+      const response = await request.post(`${API_URL}/api/v1/auth/refresh`, {
+        data: {
+          refresh_token: refreshToken,
+        },
+      });
+
+      expect(response.status()).toBe(200);
+
+      const body = await response.json();
+      expect(body.success).toBe(true);
+      expect(body.data.accessToken).toBeDefined();
+      expect(body.data.refreshToken).toBeDefined();
+      // New tokens should be different
+      expect(body.data.refreshToken).not.toBe(refreshToken);
+    });
+
+    test('should reject invalid refresh token', async ({ request }) => {
+      const response = await request.post(`${API_URL}/api/v1/auth/refresh`, {
+        data: {
+          refresh_token: 'invalid-token',
+        },
+      });
+
+      expect(response.status()).toBe(401);
+    });
+  });
+
+  test.describe('POST /api/v1/auth/logout', () => {
+    test('should logout successfully', async ({ request }) => {
+      const user = createTestUser();
+      const { accessToken, refreshToken } = await registerAndGetToken(request, user);
+
+      const response = await request.post(`${API_URL}/api/v1/auth/logout`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        data: {
+          refresh_token: refreshToken,
+        },
+      });
+
+      expect(response.status()).toBe(200);
+
+      const body = await response.json();
+      expect(body.success).toBe(true);
     });
   });
 });

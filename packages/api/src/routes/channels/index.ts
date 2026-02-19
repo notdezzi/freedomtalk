@@ -166,6 +166,121 @@ export default async function channelRoutes(app: FastifyInstance) {
   );
 
   /**
+   * PATCH /api/v1/servers/:serverId/channels/:channelId
+   * Update a channel
+   */
+  app.patch(
+    '/servers/:serverId/channels/:channelId',
+    {
+      schema: {
+        description: 'Update a channel',
+        tags: ['Channels'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['serverId', 'channelId'],
+          properties: {
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+            channelId: { type: 'string', minLength: 15, maxLength: 25 },
+          },
+        },
+        body: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', minLength: VALIDATION.CHANNEL_NAME.MIN_LENGTH, maxLength: VALIDATION.CHANNEL_NAME.MAX_LENGTH },
+            topic: { type: 'string', maxLength: VALIDATION.CHANNEL_TOPIC.MAX_LENGTH },
+            position: { type: 'integer', minimum: 0 },
+            nsfw: { type: 'boolean' },
+            rateLimitPerUser: { type: 'integer', minimum: 0, maximum: 21600 },
+            bitrate: { type: 'integer', minimum: VALIDATION.VOICE.MIN_BITRATE, maximum: VALIDATION.VOICE.MAX_BITRATE },
+            userLimit: { type: 'integer', minimum: 0, maximum: VALIDATION.VOICE.MAX_USER_LIMIT },
+            rtcRegion: { type: 'string', maxLength: 20 },
+          },
+        },
+        response: {
+          200: { type: 'object' },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { serverId: string; channelId: string }; Body: Partial<{
+      name: string;
+      topic: string;
+      position: number;
+      nsfw: boolean;
+      rateLimitPerUser: number;
+      bitrate: number;
+      userLimit: number;
+      rtcRegion: string;
+    }> }>, reply: FastifyReply) => {
+      const { serverId, channelId } = request.params;
+      const userId = request.user!.id;
+      const updates = request.body;
+
+      // Check MANAGE_CHANNELS permission
+      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.MANAGE_CHANNELS);
+      if (!hasPerms) {
+        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage channels' } });
+      }
+
+      // Verify channel belongs to this server
+      const channel = await channelService.getChannel(channelId);
+      if (!channel || channel.server_id !== serverId) {
+        return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Channel not found' } });
+      }
+
+      const updatedChannel = await channelService.updateChannel(channelId, updates);
+
+      return reply.send(successResponse(updatedChannel));
+    }
+  );
+
+  /**
+   * DELETE /api/v1/servers/:serverId/channels/:channelId
+   * Delete a channel
+   */
+  app.delete(
+    '/servers/:serverId/channels/:channelId',
+    {
+      schema: {
+        description: 'Delete a channel',
+        tags: ['Channels'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['serverId', 'channelId'],
+          properties: {
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+            channelId: { type: 'string', minLength: 15, maxLength: 25 },
+          },
+        },
+        response: {
+          200: { type: 'object' },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { serverId: string; channelId: string } }>, reply: FastifyReply) => {
+      const { serverId, channelId } = request.params;
+      const userId = request.user!.id;
+
+      // Check MANAGE_CHANNELS permission
+      const hasPerms = await checkServerPermission(serverId, userId, PERMISSION_FLAGS.MANAGE_CHANNELS);
+      if (!hasPerms) {
+        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to manage channels' } });
+      }
+
+      // Verify channel belongs to this server
+      const channel = await channelService.getChannel(channelId);
+      if (!channel || channel.server_id !== serverId) {
+        return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Channel not found' } });
+      }
+
+      await channelService.deleteChannel(channelId);
+
+      return reply.send(successResponse({ message: 'Channel deleted' }));
+    }
+  );
+
+  /**
    * PATCH /api/v1/servers/:serverId/channels/positions
    * Update channel positions
    */

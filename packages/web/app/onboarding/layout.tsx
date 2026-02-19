@@ -11,7 +11,7 @@ export default function OnboardingLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isOnboardingComplete } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -19,7 +19,14 @@ export default function OnboardingLayout({
     }
   }, [isAuthenticated, isLoading, router]);
 
-  if (isLoading) {
+  // Redirect to app if onboarding is already complete
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && isOnboardingComplete) {
+      router.push('/app');
+    }
+  }, [isAuthenticated, isLoading, isOnboardingComplete, router]);
+
+  if (isLoading || (!isLoading && isAuthenticated && isOnboardingComplete)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />

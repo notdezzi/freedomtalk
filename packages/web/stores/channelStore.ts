@@ -93,6 +93,9 @@ function mapCategoryResponse(response: CategoryResponse, channels: Channel[]): C
   };
 }
 
+// Track in-flight requests per server to prevent duplicates
+const channelFetchPromises: Map<string, Promise<void>> = new Map();
+
 export const useChannelStore = create<ChannelState>()(
   persist(
     (set, get) => ({
@@ -104,12 +107,25 @@ export const useChannelStore = create<ChannelState>()(
       error: null,
 
       fetchChannels: async (serverId: string) => {
+        // If already fetching this server, return existing promise
+        const existingPromise = channelFetchPromises.get(serverId);
+        if (existingPromise) {
+          return existingPromise;
+        }
+
+        // If we already have channels for this server, don't fetch again
+        if (get().serverChannels[serverId] && get().serverChannels[serverId].length > 0) {
+          return;
+        }
+
         set((state) => ({
           loading: { ...state.loading, [serverId]: true },
           error: null
         }));
 
-        const response = await apiClient.getChannels(serverId);
+        const fetchPromise = (async () => {
+          try {
+            const response = await apiClient.getChannels(serverId);
 
         if (response.success && response.data) {
           // Handle both array response and { channels: [], categories: [] } format
@@ -143,21 +159,28 @@ export const useChannelStore = create<ChannelState>()(
             categoryMap[cat.id] = cat;
           });
 
-          set({
-            channels: channelMap,
-            categories: categoryMap,
-            serverChannels: {
-              ...get().serverChannels,
-              [serverId]: channels.map((ch) => ch.id),
-            },
-            loading: { ...get().loading, [serverId]: false },
-          });
-        } else {
-          set({
-            error: response.error?.message || 'Failed to fetch channels',
-            loading: { ...get().loading, [serverId]: false },
-          });
+            set({
+              channels: channelMap,
+              categories: categoryMap,
+              serverChannels: {
+                ...get().serverChannels,
+                [serverId]: channels.map((ch) => ch.id),
+              },
+              loading: { ...get().loading, [serverId]: false },
+            });
+          } else {
+            set({
+              error: response.error?.message || 'Failed to fetch channels',
+              loading: { ...get().loading, [serverId]: false },
+            });
+          }
+        } finally {
+          channelFetchPromises.delete(serverId);
         }
+      })();
+
+        channelFetchPromises.set(serverId, fetchPromise);
+        return fetchPromise;
       },
 
       setChannels: (serverId, channels, categories) => {

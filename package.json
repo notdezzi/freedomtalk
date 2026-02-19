@@ -21,7 +21,11 @@
     "docker:logs": "docker-compose logs -f",
     "backup:db": "npm run backup:db --workspace=@freedomtalk/scripts",
     "restore:db": "npm run restore:db --workspace=@freedomtalk/scripts",
-    "backup:list": "npm run backup:list --workspace=@freedomtalk/scripts"
+    "backup:list": "npm run backup:list --workspace=@freedomtalk/scripts",
+    "test": "SKIP_RATE_LIMIT=true npx playwright test",
+    "test:api": "SKIP_RATE_LIMIT=true npx playwright test --project=api",
+    "test:e2e": "SKIP_RATE_LIMIT=true npx playwright test --project=e2e-chromium",
+    "test:ui": "SKIP_RATE_LIMIT=true npx playwright test --ui"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
@@ -34,6 +38,7 @@
     "eslint-plugin-prettier": "^5.2.1",
     "playwright": "^1.58.2",
     "prettier": "^3.4.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
   },
   "engines": {

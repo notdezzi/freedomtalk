@@ -19,6 +19,21 @@ import { db } from '../../config/database';
 import { logger } from '../../config/logger';
 import { snowflake } from '../../utils/snowflake';
 
+// Check if rate limiting should be skipped (test environment)
+const isTestEnv = process.env.NODE_ENV === 'test' || process.env.SKIP_RATE_LIMIT === 'true';
+
+// Helper to get rate limit config (returns undefined in test mode)
+function getRateLimitConfig(max: number, timeWindow: string): { config: { rateLimit: { max: number; timeWindow: string } } } | {} {
+  if (isTestEnv) {
+    return {};
+  }
+  return {
+    config: {
+      rateLimit: { max, timeWindow },
+    },
+  };
+}
+
 export default async function authRoutes(app: FastifyInstance) {
   /**
    * POST /api/v1/auth/register
@@ -72,12 +87,7 @@ export default async function authRoutes(app: FastifyInstance) {
           },
         },
       },
-      config: {
-        rateLimit: {
-          max: 5,
-          timeWindow: '15 minutes',
-        },
-      },
+      ...getRateLimitConfig(5, '15 minutes'),
       preHandler: validateBody(registerSchema),
     },
     async (request: FastifyRequest<{ Body: { username: string; email: string; password: string } }>, reply: FastifyReply) => {
@@ -198,12 +208,7 @@ export default async function authRoutes(app: FastifyInstance) {
           },
         },
       },
-      config: {
-        rateLimit: {
-          max: 5,
-          timeWindow: '15 minutes',
-        },
-      },
+      ...getRateLimitConfig(5, '15 minutes'),
       preHandler: validateBody(loginSchema),
     },
     async (request: FastifyRequest<{ Body: { email: string; password: string } }>, reply: FastifyReply) => {
@@ -281,12 +286,7 @@ export default async function authRoutes(app: FastifyInstance) {
   app.post(
     '/mfa/verify',
     {
-      config: {
-        rateLimit: {
-          max: 5,
-          timeWindow: '5 minutes',
-        },
-      },
+      ...getRateLimitConfig(5, '5 minutes'),
     },
     async (request: FastifyRequest<{ Body: { sessionId: string; code: string } }>, reply: FastifyReply) => {
       const { sessionId, code } = request.body;
@@ -401,12 +401,7 @@ export default async function authRoutes(app: FastifyInstance) {
   app.post(
     '/refresh',
     {
-      config: {
-        rateLimit: {
-          max: 10,
-          timeWindow: '1 minute',
-        },
-      },
+      ...getRateLimitConfig(10, '1 minute'),
       preHandler: validateBody(refreshTokenSchema),
     },
     async (request: FastifyRequest<{ Body: { refresh_token: string } }>, reply: FastifyReply) => {
@@ -468,12 +463,7 @@ export default async function authRoutes(app: FastifyInstance) {
   app.post(
     '/logout',
     {
-      config: {
-        rateLimit: {
-          max: 10,
-          timeWindow: '1 minute',
-        },
-      },
+      ...getRateLimitConfig(10, '1 minute'),
     },
     async (request: FastifyRequest<{ Body: { refresh_token?: string } }>, reply: FastifyReply) => {
       const { refresh_token } = request.body || {};
@@ -528,12 +518,7 @@ export default async function authRoutes(app: FastifyInstance) {
   app.post(
     '/forgot-password',
     {
-      config: {
-        rateLimit: {
-          max: 3,
-          timeWindow: '1 hour',
-        },
-      },
+      ...getRateLimitConfig(3, '1 hour'),
     },
     async (request: FastifyRequest<{ Body: { email: string } }>, reply: FastifyReply) => {
       const { email } = request.body;
@@ -585,12 +570,7 @@ export default async function authRoutes(app: FastifyInstance) {
   app.post(
     '/reset-password',
     {
-      config: {
-        rateLimit: {
-          max: 5,
-          timeWindow: '1 hour',
-        },
-      },
+      ...getRateLimitConfig(5, '1 hour'),
     },
     async (request: FastifyRequest<{ Body: { token: string; password: string } }>, reply: FastifyReply) => {
       const { token, password } = request.body;
@@ -643,12 +623,7 @@ export default async function authRoutes(app: FastifyInstance) {
   app.post(
     '/resend-verification',
     {
-      config: {
-        rateLimit: {
-          max: 3,
-          timeWindow: '1 hour',
-        },
-      },
+      ...getRateLimitConfig(3, '1 hour'),
     },
     async (request: FastifyRequest<{ Body: { email: string } }>, reply: FastifyReply) => {
       const { email } = request.body;

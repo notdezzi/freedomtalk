@@ -91,6 +91,9 @@ function mapMemberResponse(response: any): ServerMember {
   };
 }
 
+// Track in-flight requests per server to prevent duplicates
+const memberFetchPromises: Map<string, Promise<void>> = new Map();
+
 export const useMemberStore = create<MemberState>((set, get) => ({
   members: {},
   roles: {},
@@ -99,39 +102,59 @@ export const useMemberStore = create<MemberState>((set, get) => ({
   error: null,
 
   fetchMembers: async (serverId: string) => {
+    // If already fetching this server, return existing promise
+    const existingPromise = memberFetchPromises.get(serverId);
+    if (existingPromise) {
+      return existingPromise;
+    }
+
+    // If we already have members for this server, don't fetch again
+    if (get().members[serverId] && get().members[serverId].length > 0) {
+      return;
+    }
+
     set((state) => ({
       loading: { ...state.loading, [serverId]: true },
       error: null
     }));
 
-    const response = await apiClient.getServerMembers(serverId);
+    const fetchPromise = (async () => {
+      try {
+        const response = await apiClient.getServerMembers(serverId);
 
-    if (response.success && response.data) {
-      // Handle both array response and { members: [] } format
-      let membersArray: MemberResponse[];
-      if (Array.isArray(response.data)) {
-        membersArray = response.data as MemberResponse[];
-      } else if (response.data.members) {
-        membersArray = response.data.members as MemberResponse[];
-      } else {
-        membersArray = [];
+        if (response.success && response.data) {
+          // Handle both array response and { members: [] } format
+          let membersArray: MemberResponse[];
+          if (Array.isArray(response.data)) {
+            membersArray = response.data as MemberResponse[];
+          } else if (response.data.members) {
+            membersArray = response.data.members as MemberResponse[];
+          } else {
+            membersArray = [];
+          }
+
+          const members = membersArray.map(mapMemberResponse);
+          set({
+            members: { ...get().members, [serverId]: members },
+            onlineMembers: {
+              ...get().onlineMembers,
+              [serverId]: members.filter((m) => m.isOnline).map((m) => m.userId),
+            },
+            loading: { ...get().loading, [serverId]: false },
+          });
+        } else {
+          set({
+            error: response.error?.message || 'Failed to fetch members',
+            loading: { ...get().loading, [serverId]: false },
+          });
+        }
+      } finally {
+        memberFetchPromises.delete(serverId);
       }
+    })();
 
-      const members = membersArray.map(mapMemberResponse);
-      set({
-        members: { ...get().members, [serverId]: members },
-        onlineMembers: {
-          ...get().onlineMembers,
-          [serverId]: members.filter((m) => m.isOnline).map((m) => m.userId),
-        },
-        loading: { ...get().loading, [serverId]: false },
-      });
-    } else {
-      set({
-        error: response.error?.message || 'Failed to fetch members',
-        loading: { ...get().loading, [serverId]: false },
-      });
-    }
+    memberFetchPromises.set(serverId, fetchPromise);
+    return fetchPromise;
   },
 
   setMembers: (serverId, members) => set((state) => ({

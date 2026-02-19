@@ -192,6 +192,9 @@ function mapMessageResponse(response: Record<string, unknown>): Message {
   };
 }
 
+// Track in-flight requests per channel to prevent duplicates
+const messageFetchPromises: Map<string, Promise<void>> = new Map();
+
 export const useMessageStore = create<MessageState>()(
   persist(
     (set, get) => ({
@@ -210,58 +213,86 @@ export const useMessageStore = create<MessageState>()(
           return;
         }
 
+        // For initial load (no pagination), check for in-flight or existing data
+        if (!before) {
+          const existingPromise = messageFetchPromises.get(channelId);
+          if (existingPromise) {
+            return existingPromise;
+          }
+
+          // If we already have messages for this channel, don't fetch again
+          if (get().messages[channelId] && get().messages[channelId].length > 0) {
+            return;
+          }
+        }
+
         set((state) => ({
           loading: { ...state.loading, [channelId]: true },
           error: null
         }));
 
-        // Use appropriate API based on channel type
-        const response = isDM
-          ? await apiClient.getDMMessages(channelId, { before, limit: 50 })
-          : await apiClient.getMessages({
-              channelId,
-              before,
-              limit: 50,
-            });
+        const fetchPromise = (async () => {
+          try {
+            // Use appropriate API based on channel type
+            const response = isDM
+              ? await apiClient.getDMMessages(channelId, { before, limit: 50 })
+              : await apiClient.getMessages({
+                  channelId,
+                  before,
+                  limit: 50,
+                });
 
-        if (response.success && response.data) {
-          // Handle different response structures - cast through unknown for flexibility
-          const data = response.data as unknown;
-          const messagesArray = Array.isArray(data)
-            ? (data as Record<string, unknown>[])
-            : ((data as { messages?: Record<string, unknown>[] }).messages || []);
+            if (response.success && response.data) {
+              // Handle different response structures - cast through unknown for flexibility
+              const data = response.data as unknown;
+              const messagesArray = Array.isArray(data)
+                ? (data as Record<string, unknown>[])
+                : ((data as { messages?: Record<string, unknown>[] }).messages || []);
 
-          // Map and reverse messages (API returns newest first, we want oldest first for display)
-          const mappedMessages = messagesArray.map(mapMessageResponse).reverse();
-          const currentMessages = get().messages[channelId] || [];
+              // Map and reverse messages (API returns newest first, we want oldest first for display)
+              const mappedMessages = messagesArray.map(mapMessageResponse).reverse();
+              const currentMessages = get().messages[channelId] || [];
 
-          const hasMore = !Array.isArray(data) &&
-            (data as { messages?: unknown[]; hasMore?: boolean }).hasMore !== false;
+              const hasMore = !Array.isArray(data) &&
+                (data as { messages?: unknown[]; hasMore?: boolean }).hasMore !== false;
 
-          // For pagination, prepend older messages; for initial load, set directly
-          const messages = before ? [...mappedMessages, ...currentMessages] : mappedMessages;
+              // For pagination, prepend older messages; for initial load, set directly
+              const messages = before ? [...mappedMessages, ...currentMessages] : mappedMessages;
 
-          set({
-            messages: {
-              ...get().messages,
-              [channelId]: messages,
-            },
-            lastMessageId: {
-              ...get().lastMessageId,
-              [channelId]: messages[messages.length - 1]?.id || '',
-            },
-            hasMore: {
-              ...get().hasMore,
-              [channelId]: hasMore && mappedMessages.length >= 50,
-            },
-            loading: { ...get().loading, [channelId]: false },
-          });
-        } else {
-          set({
-            error: response.error?.message || 'Failed to fetch messages',
-            loading: { ...get().loading, [channelId]: false },
-          });
+              set({
+                messages: {
+                  ...get().messages,
+                  [channelId]: messages,
+                },
+                lastMessageId: {
+                  ...get().lastMessageId,
+                  [channelId]: messages[messages.length - 1]?.id || '',
+                },
+                hasMore: {
+                  ...get().hasMore,
+                  [channelId]: hasMore && mappedMessages.length >= 50,
+                },
+                loading: { ...get().loading, [channelId]: false },
+              });
+            } else {
+              set({
+                error: response.error?.message || 'Failed to fetch messages',
+                loading: { ...get().loading, [channelId]: false },
+              });
+            }
+          } finally {
+            // Only clear promise for initial loads
+            if (!before) {
+              messageFetchPromises.delete(channelId);
+            }
+          }
+        })();
+
+        // Only track promise for initial loads
+        if (!before) {
+          messageFetchPromises.set(channelId, fetchPromise);
         }
+        return fetchPromise;
       },
 
       setMessages: (channelId, messages) => {

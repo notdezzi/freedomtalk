@@ -71,14 +71,6 @@ jobs:
         run: npx playwright install --with-deps chromium firefox
         if: github.ref == 'refs/heads/main'
 
-      - name: Run API tests
-        run: npx playwright test --project=api
-        env:
-          CI: true
-          API_BASE_URL: http://localhost:3001
-          DATABASE_URL: postgresql://test:test@localhost:5432/freedomtalk_test
-          REDIS_URL: redis://localhost:6379
-
       - name: Start API server
         run: npm run start --workspace=@freedomtalk/api &
         env:
@@ -86,6 +78,10 @@ jobs:
           DATABASE_URL: postgresql://test:test@localhost:5432/freedomtalk_test
           REDIS_URL: redis://localhost:6379
           PORT: 3001
+          # High rate limit for tests
+          RATE_LIMIT_MAX: '10000'
+          # Skip route-level rate limits in tests
+          SKIP_RATE_LIMIT: 'true'
 
       - name: Start Web server
         run: npm run start --workspace=@freedomtalk/web &
@@ -98,6 +94,14 @@ jobs:
         run: |
           npx wait-on http://localhost:3001/health -t 60000
           npx wait-on http://localhost:3000 -t 60000
+
+      - name: Run API tests
+        run: npx playwright test --project=api
+        env:
+          CI: true
+          API_BASE_URL: http://localhost:3001
+          DATABASE_URL: postgresql://test:test@localhost:5432/freedomtalk_test
+          REDIS_URL: redis://localhost:6379
 
       - name: Run E2E tests (Chromium)
         run: npx playwright test --project=e2e-chromium

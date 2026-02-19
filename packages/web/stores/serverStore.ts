@@ -76,6 +76,9 @@ function mapServerResponse(response: unknown): Server {
   };
 }
 
+// Track in-flight requests to prevent duplicates
+let serversFetchPromise: Promise<void> | null = null;
+
 export const useServerStore = create<ServerState>()(
   persist(
     (set, get) => ({
@@ -86,9 +89,21 @@ export const useServerStore = create<ServerState>()(
       error: null,
 
       fetchServers: async () => {
+        // If already fetching, return existing promise
+        if (serversFetchPromise) {
+          return serversFetchPromise;
+        }
+
+        // If we already have servers, don't fetch again (unless explicitly refreshed)
+        if (get().servers.length > 0) {
+          return;
+        }
+
         set({ isLoading: true, error: null });
 
-        const response = await apiClient.getServers();
+        serversFetchPromise = (async () => {
+          try {
+            const response = await apiClient.getServers();
 
         if (response.success && response.data) {
           // Handle both array response and { servers: [] } format
@@ -96,15 +111,21 @@ export const useServerStore = create<ServerState>()(
             ? response.data
             : (response.data as { servers?: unknown[] }).servers || [];
 
-          const servers = serversArray.map(mapServerResponse);
+            const servers = serversArray.map(mapServerResponse);
 
-          set({ servers, isLoading: false });
-        } else {
-          set({
-            error: response.error?.message || 'Failed to fetch servers',
-            isLoading: false
-          });
+            set({ servers, isLoading: false });
+          } else {
+            set({
+              error: response.error?.message || 'Failed to fetch servers',
+              isLoading: false
+            });
+          }
+        } finally {
+          serversFetchPromise = null;
         }
+      })();
+
+        return serversFetchPromise;
       },
 
       setServers: (servers) => set({ servers }),

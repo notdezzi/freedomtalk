@@ -23,11 +23,16 @@ export default function DMChannelPage() {
 
   // Use ref to track fetched channels to prevent duplicate requests
   const fetchedMessagesRef = useRef<Set<string>>(new Set());
+  const hasLoadedChannelRef = useRef(false);
 
   const channel = getChannel(channelId);
 
   useEffect(() => {
+    // Only load channel once
+    if (hasLoadedChannelRef.current) return;
+
     const loadChannel = async () => {
+      hasLoadedChannelRef.current = true;
       if (channels.length === 0) {
         await fetchChannels();
       }
@@ -36,7 +41,8 @@ export default function DMChannelPage() {
     };
 
     loadChannel();
-  }, [channelId, channels.length, fetchChannels, setCurrentChannel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelId]);
 
   // Fetch notification settings
   useEffect(() => {
@@ -68,7 +74,8 @@ export default function DMChannelPage() {
       fetchedMessagesRef.current.add(channelId);
       fetchMessages(channelId, undefined, true); // isDM = true
     }
-  }, [channel, channelId, loading, messages, fetchMessages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel, channelId, loading, messages]);
 
   // Join/leave room for real-time updates
   useEffect(() => {
@@ -79,7 +86,8 @@ export default function DMChannelPage() {
         leaveChannel(channelId);
       };
     }
-  }, [isConnected, channelId, joinChannel, leaveChannel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, channelId]);
 
   const handleToggleMute = async () => {
     try {

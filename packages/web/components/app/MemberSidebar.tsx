@@ -140,7 +140,7 @@ export default function MemberSidebar() {
 
   return (
     <aside
-      className="w-60 bg-background-elevated flex flex-col overflow-hidden"
+      className="flex flex-col bg-background-elevated border-l border-border overflow-hidden"
       aria-label="Members"
     >
       <div className="flex-1 overflow-y-auto p-3">

@@ -21,6 +21,63 @@ type FreedomTalkFixtures = {
   authenticatedTrackedPage: Page;
 };
 
+/**
+ * Helper to fill the registration form with correct selectors
+ */
+async function fillRegistrationForm(page: Page, user: TestUser) {
+  // The form uses id attributes, not name attributes
+  // Order: username, email, password (no confirmPassword field)
+  await page.fill('#username', user.username);
+  await page.fill('#email', user.email);
+  await page.fill('#password', user.password);
+
+  // Check the terms checkbox
+  await page.check('#terms');
+
+  // Submit the form
+  await page.click('button[type="submit"]');
+}
+
+/**
+ * Helper to complete the full auth flow including onboarding
+ */
+async function completeAuthFlow(page: Page, user: TestUser) {
+  // Step 1: Register
+  await page.goto('/auth/register');
+  await page.waitForLoadState('domcontentloaded');
+  await fillRegistrationForm(page, user);
+
+  // Wait for redirect to login page
+  await page.waitForURL(/\/auth\/login/, { timeout: 15000 });
+
+  // Step 2: Login
+  await page.waitForLoadState('domcontentloaded');
+  await page.fill('#email', user.email);
+  await page.fill('#password', user.password);
+  await page.click('button[type="submit"]');
+
+  // Wait for redirect to onboarding or app
+  await page.waitForURL(/\/onboarding|\/app/, { timeout: 15000 });
+
+  // Step 3: Complete onboarding if present
+  const currentUrl = page.url();
+  if (currentUrl.includes('/onboarding')) {
+    // Click "Skip for now" to go to servers step
+    await page.click('button:has-text("Skip for now")').catch(() => {
+      // May already be on servers step
+    });
+
+    // Wait for navigation
+    await page.waitForURL(/\/onboarding\/servers/, { timeout: 10000 }).catch(() => {});
+
+    // Click "Finish Setup" to complete onboarding
+    await page.click('button:has-text("Finish Setup")').catch(() => {});
+
+    // Wait for redirect to app
+    await page.waitForURL(/\/app/, { timeout: 15000 });
+  }
+}
+
 export const test = base.extend<FreedomTalkFixtures>({
   // API Monitor
   monitor: async ({}, use) => {
@@ -50,19 +107,9 @@ export const test = base.extend<FreedomTalkFixtures>({
       }
     });
 
-    // Register the test user via API
+    // Complete the full auth flow
     const page = await context.newPage();
-    await page.goto('/register');
-    await page.fill('input[name="email"]', testUser.email);
-    await page.fill('input[name="username"]', testUser.username);
-    await page.fill('input[name="password"]', testUser.password);
-    await page.fill('input[name="confirmPassword"]', testUser.password);
-    await page.click('button[type="submit"]');
-
-    // Wait for successful registration/login
-    await page.waitForURL(/\/app|\/onboarding/, { timeout: 15000 }).catch(() => {
-      // May already be at app
-    });
+    await completeAuthFlow(page, testUser);
 
     await use(context);
     await context.close();
@@ -103,3 +150,4 @@ export const test = base.extend<FreedomTalkFixtures>({
 export { expect } from '@playwright/test';
 export { createTestUser, createTestServer, createTestChannel, createTestMessage } from '../utils/test-data';
 export { expectNoDuplicateCalls, expectMaxCallCount, getAnalysisReport } from './api-tracker.fixture';
+export { fillRegistrationForm, completeAuthFlow };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MessageSquarePlus, Users, AtSign, Search, X } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useDMStore } from '@/stores/dmStore';
@@ -19,14 +19,20 @@ export default function DMSidebar() {
   const [showCreateDM, setShowCreateDM] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Track if we've already fetched data to prevent duplicates
+  const hasFetchedRef = useRef(false);
+
   useEffect(() => {
-    if (user) {
+    // Only fetch once when user becomes available
+    if (user && !hasFetchedRef.current) {
+      hasFetchedRef.current = true;
       fetchChannels();
       if (fetchPendingRequests) {
         fetchPendingRequests();
       }
     }
-  }, [user, fetchChannels, fetchPendingRequests]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const handleChannelClick = (channelId: string) => {
     setCurrentChannel(channelId);
@@ -44,23 +50,13 @@ export default function DMSidebar() {
 
   return (
     <>
-      {/* Header */}
-      <div className="p-3 flex items-center justify-between border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <AtSign className="w-5 h-5 text-foreground-muted" />
-          <span className="font-semibold">Direct Messages</span>
-        </div>
-        <button
-          onClick={() => setShowCreateDM(true)}
-          className="p-1.5 rounded hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors"
-          title="Create DM"
-        >
-          <MessageSquarePlus className="w-5 h-5" />
-        </button>
-      </div>
+      {/* Server header - click to open settings */}
+      <div className="h-12 px-4 flex items-center justify-between border-b border-border flex-shrink-0">
 
+          <span className="font-semibold truncate">Server</span>
+      </div>
       {/* Search */}
-      <div className="p-2 flex-shrink-0">
+      <div className="p-2 flex-shrink-0 border-b border-border">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-muted" />
           <input
@@ -81,12 +77,23 @@ export default function DMSidebar() {
         </div>
       </div>
 
+      {/* Create DM button */}
+      <div className="px-2 py-1 flex-shrink-0">
+        <button
+          onClick={() => setShowCreateDM(true)}
+          className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-background-surface text-foreground-muted hover:text-foreground transition-colors text-sm"
+        >
+          <MessageSquarePlus className="w-4 h-4" />
+          <span>Create DM</span>
+        </button>
+      </div>
+
       {/* Channel List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto scrollbar-hide ">
         {/* Friends Button */}
         <button
           onClick={() => router.push('/app')}
-          className={`w-full flex items-center gap-3 px-3 py-2 mx-1 rounded hover:bg-background-surface transition-colors ${
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-background-surface transition-colors ${
             pathname === '/app' ? 'bg-background-surface' : ''
           }`}
         >
@@ -120,7 +127,7 @@ export default function DMSidebar() {
                 <button
                   key={channel.id}
                   onClick={() => handleChannelClick(channel.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 mx-1 rounded transition-colors ${
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded transition-colors ${
                     isActive
                       ? 'bg-background-surface'
                       : 'hover:bg-background-surface/50'

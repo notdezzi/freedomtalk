@@ -66,6 +66,9 @@ function mapDMChannelResponse(response: DMChannelResponse): DMChannel {
   };
 }
 
+// Track in-flight request to prevent duplicate DM channel fetches
+let dmChannelsFetchPromise: Promise<void> | null = null;
+
 export const useDMStore = create<DMState>()(
   persist(
     (set, get) => ({
@@ -75,26 +78,44 @@ export const useDMStore = create<DMState>()(
       error: null,
 
       fetchChannels: async () => {
+        // If already fetching, return existing promise
+        if (dmChannelsFetchPromise) {
+          return dmChannelsFetchPromise;
+        }
+
+        // If we already have channels, don't fetch again
+        if (get().channels.length > 0) {
+          return;
+        }
+
         set({ loading: true, error: null });
 
-        const response = await apiClient.getDMChannels();
+        dmChannelsFetchPromise = (async () => {
+          try {
+            const response = await apiClient.getDMChannels();
 
-        if (response.success && response.data) {
-          const channels = response.data.dmChannels.map(mapDMChannelResponse);
-          // Sort by last message time (most recent first)
-          channels.sort((a, b) => {
-            if (!a.lastMessageAt) return 1;
-            if (!b.lastMessageAt) return -1;
-            return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
-          });
+            if (response.success && response.data) {
+              const channels = response.data.dmChannels.map(mapDMChannelResponse);
+              // Sort by last message time (most recent first)
+              channels.sort((a, b) => {
+                if (!a.lastMessageAt) return 1;
+                if (!b.lastMessageAt) return -1;
+                return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
+              });
 
-          set({ channels, loading: false });
-        } else {
-          set({
-            error: response.error?.message || 'Failed to fetch DM channels',
-            loading: false,
-          });
-        }
+              set({ channels, loading: false });
+            } else {
+              set({
+                error: response.error?.message || 'Failed to fetch DM channels',
+                loading: false,
+              });
+            }
+          } finally {
+            dmChannelsFetchPromise = null;
+          }
+        })();
+
+        return dmChannelsFetchPromise;
       },
 
       addChannel: (channel) => set((state) => ({

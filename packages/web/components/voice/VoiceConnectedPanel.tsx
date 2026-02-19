@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Mic,
   MicOff,
@@ -32,6 +33,7 @@ interface DeviceOption {
 }
 
 export default function VoiceConnectedPanel() {
+  const router = useRouter();
   const {
     isConnected,
     currentChannelId,
@@ -41,6 +43,8 @@ export default function VoiceConnectedPanel() {
     selfVideo,
     selfStream,
     users,
+    lastTextChannelId,
+    lastTextChannelServerId,
     disconnectFromChannel,
     setSelfMute,
     setSelfDeaf,
@@ -252,6 +256,13 @@ export default function VoiceConnectedPanel() {
       useVoiceStore.getState().setLocalScreenStream(null);
       disconnectFromChannel();
       resetVoiceClient();
+
+      // Navigate to last text channel or /app if none
+      if (lastTextChannelId && lastTextChannelServerId) {
+        router.push(`/app/servers/${lastTextChannelServerId}/channels/${lastTextChannelId}`);
+      } else {
+        router.push('/app');
+      }
     }
   };
 

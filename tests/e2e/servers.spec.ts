@@ -13,14 +13,19 @@ test.describe('Server Management', () => {
       // Click create server button
       await authenticatedPage.click('[data-testid="create-server"], button:has-text("Create Server")').catch(() => {});
 
-      // Fill server creation form
-      await authenticatedPage.fill('input[name="serverName"]', server.name).catch(() => {});
-      await authenticatedPage.fill('input[name="serverName"], input[placeholder*="server"]', server.name).catch(() => {});
+      // The modal has a "choose template" step first, click "Create My Own" or select a template
+      await authenticatedPage.click('button:has-text("Create My Own"), button:has-text("Gaming"), button:has-text("Friends")').catch(() => {});
+
+      // Wait for the create step to appear
+      await authenticatedPage.waitForTimeout(500);
+
+      // Fill server creation form - use ID selector
+      await authenticatedPage.fill('#serverName', server.name).catch(() => {});
 
       // Submit
       await authenticatedPage.click('button:has-text("Create"), button[type="submit"]').catch(() => {});
 
-      // Should see the server in sidebar
+      // Should see the server in sidebar or be on server page
       await expect(authenticatedPage.locator(`text="${server.name}"`)).toBeVisible({ timeout: 10000 });
     });
 
@@ -29,7 +34,9 @@ test.describe('Server Management', () => {
 
       // Create server
       await authenticatedPage.click('[data-testid="create-server"], button:has-text("Create Server")').catch(() => {});
-      await authenticatedPage.fill('input[name="serverName"], input[placeholder*="server"]', server.name).catch(() => {});
+      await authenticatedPage.click('button:has-text("Create My Own"), button:has-text("Gaming")').catch(() => {});
+      await authenticatedPage.waitForTimeout(500);
+      await authenticatedPage.fill('#serverName', server.name).catch(() => {});
       await authenticatedPage.click('button:has-text("Create"), button[type="submit"]').catch(() => {});
 
       // Should be on server page

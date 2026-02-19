@@ -36,7 +36,7 @@ class VoiceHandler {
    * Register voice event handlers for a socket
    */
   registerHandlers(socket: Socket): void {
-    const userId = (socket as any).user?.userId;
+    const userId = socket.data.user?.id;
     if (!userId) return;
 
     // Join voice channel

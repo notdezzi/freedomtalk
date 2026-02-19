@@ -120,12 +120,10 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
     if (content.trim() && isConnected) {
       sendTyping(channelId);
 
-      // Clear existing timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
 
-      // Auto-stop typing after 3 seconds of no changes
       typingTimeoutRef.current = setTimeout(() => {
         stopTyping(channelId);
       }, 3000);
@@ -162,15 +160,11 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
     if (slowmodeRemaining > 0) return;
 
     setIsSubmitting(true);
-
-    // Stop typing indicator
     stopTyping(channelId);
 
     try {
       if (isEditing && editingMessage) {
-        // Edit existing message via socket
         editMessage(editingMessage.id, content.trim());
-        // Optimistically update the local store
         const { updateMessage } = useMessageStore.getState();
         updateMessage(channelId, editingMessage.id, {
           content: content.trim(),
@@ -179,11 +173,8 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
         });
         setEditingMessage(null);
       } else {
-        // Send message via socket - the server will broadcast it back
-        // Don't add optimistically to avoid duplicates
         sendMessage(channelId, content.trim(), replyingTo?.id, isDM);
 
-        // Set slowmode if channel has it
         if (channel?.rateLimitPerUser && channel.rateLimitPerUser > 0) {
           setSlowmodeRemaining(channel.rateLimitPerUser);
         }
@@ -193,14 +184,13 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
       setAttachments([]);
       setReplyingTo(null);
 
-      // Reset textarea height
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
       }
     } finally {
       setIsSubmitting(false);
     }
-  }, [content, attachments, user, slowmodeRemaining, isEditing, editingMessage, channelId, channel, setEditingMessage, setReplyingTo, replyingTo, sendMessage, editMessage, stopTyping]);
+  }, [content, attachments, user, slowmodeRemaining, isEditing, editingMessage, channelId, channel, setEditingMessage, setReplyingTo, replyingTo, sendMessage, editMessage, stopTyping, isDM]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -236,7 +226,6 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
   };
 
   const handleStickerSelect = (sticker: { id: string; name: string; url: string }) => {
-    // Send sticker as a special message format
     if (user) {
       sendMessage(channelId, `:sticker:${sticker.id}:${sticker.name}`, undefined, isDM);
     }
@@ -270,7 +259,6 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
     const newContent = content.substring(0, start) + prefix + textToInsert + suffix + content.substring(end);
     setContent(newContent);
 
-    // Set cursor position after the inserted text
     setTimeout(() => {
       const newCursorPos = start + prefix.length + textToInsert.length;
       textarea.setSelectionRange(
@@ -290,13 +278,11 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
     const selectedText = content.substring(start, end);
 
     if (selectedText) {
-      // Add prefix to each line of selection
       const lines = selectedText.split('\n');
       const formattedLines = lines.map(line => prefix + line);
       const newContent = content.substring(0, start) + formattedLines.join('\n') + content.substring(end);
       setContent(newContent);
     } else {
-      // Insert prefix at current line start
       const lineStart = content.lastIndexOf('\n', start - 1) + 1;
       const newContent = content.substring(0, lineStart) + prefix + content.substring(lineStart);
       setContent(newContent);
@@ -307,16 +293,12 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
     }
   }, [content]);
 
-  const toggleSpoiler = useCallback(() => {
-    insertFormatting('||', '||', 'spoiler');
-  }, [insertFormatting]);
-
+  const toggleSpoiler = useCallback(() => insertFormatting('||', '||', 'spoiler'), [insertFormatting]);
   const formatBold = useCallback(() => insertFormatting('**', '**', 'bold text'), [insertFormatting]);
   const formatItalic = useCallback(() => insertFormatting('*', '*', 'italic text'), [insertFormatting]);
   const formatUnderline = useCallback(() => insertFormatting('__', '__', 'underlined'), [insertFormatting]);
   const formatStrikethrough = useCallback(() => insertFormatting('~~', '~~', 'strikethrough'), [insertFormatting]);
   const formatCode = useCallback(() => insertFormatting('`', '`', 'code'), [insertFormatting]);
-  const formatCodeBlock = useCallback(() => insertFormatting('```\n', '\n```', 'code block'), [insertFormatting]);
   const formatLink = useCallback(() => insertFormatting('[', '](url)', 'link text'), [insertFormatting]);
   const formatQuote = useCallback(() => insertLinePrefix('> '), [insertLinePrefix]);
   const formatHeading = useCallback(() => insertLinePrefix('### '), [insertLinePrefix]);
@@ -325,10 +307,10 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
   const formatCheckbox = useCallback(() => insertLinePrefix('- [ ] '), [insertLinePrefix]);
 
   return (
-    <div className="px-4 pb-6">
+    <div className="px-4 pb-4">
       {/* Reply/Edit indicator */}
       {(replyingTo || isEditing) && (
-        <div className="flex items-center justify-between px-4 py-2 bg-background-surface rounded-t-lg border-b border-border">
+        <div className="flex items-center justify-between px-3 py-2 bg-background-surface rounded-t-lg border-b border-border mb-[-1px]">
           <div className="flex items-center gap-2 text-sm">
             {isEditing ? (
               <>
@@ -338,10 +320,7 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
             ) : replyingTo ? (
               <>
                 <span className="text-foreground-muted">Replying to</span>
-                <span
-                  className="font-medium"
-                  style={{ color: replyingTo.author.color }}
-                >
+                <span className="font-medium" style={{ color: replyingTo.author.color }}>
                   {replyingTo.author.username}
                 </span>
               </>
@@ -358,11 +337,11 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
 
       {/* Attachments preview */}
       {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-2 p-2 bg-background-surface rounded-t-lg border-b border-border">
+        <div className="flex flex-wrap gap-2 p-2 bg-background-surface rounded-t-lg border-b border-border mb-[-1px]">
           {attachments.map((file, index) => (
             <div
               key={index}
-              className="relative flex items-center gap-2 px-2 py-1 bg-background rounded border border-border"
+              className="flex items-center gap-2 px-2 py-1 bg-background rounded border border-border"
             >
               {file.type.startsWith('image/') ? (
                 <ImageIcon className="w-4 h-4 text-accent" />
@@ -381,16 +360,12 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
         </div>
       )}
 
-      {/* Input area */}
-      <div
-        className={`relative flex items-end gap-2 bg-background-surface rounded-lg border transition-colors ${
-          isEditing ? 'rounded-t-none' : ''
-        } ${isOverLimit ? 'border-error' : 'border-border focus-within:border-accent'}`}
-      >
+      {/* Main input container - NO BORDER */}
+      <div className="flex items-end gap-1 bg-background-surface rounded-lg p-1">
         {/* File upload button */}
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="p-3 text-foreground-muted hover:text-foreground transition-colors"
+          className="p-2 text-foreground-muted hover:text-foreground transition-colors rounded"
           title="Upload file"
         >
           <PlusCircle className="w-5 h-5" />
@@ -400,7 +375,7 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
         <button
           type="button"
           onClick={() => setShowFormatting(!showFormatting)}
-          className={`p-3 transition-colors ${showFormatting ? 'text-accent' : 'text-foreground-muted hover:text-foreground'}`}
+          className={`p-2 rounded transition-colors ${showFormatting ? 'text-accent bg-accent/10' : 'text-foreground-muted hover:text-foreground'}`}
           title="Formatting"
         >
           <Code className="w-5 h-5" />
@@ -417,110 +392,49 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
 
         {/* Formatting toolbar */}
         {showFormatting && (
-          <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border mb-1 flex-wrap">
-            <button
-              type="button"
-              onClick={formatBold}
-              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
-              title="Bold (Ctrl+B)"
-            >
+          <div className="flex items-center gap-0.5 px-2 py-1 border-r border-border mr-1">
+            <button type="button" onClick={formatBold} className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors" title="Bold">
               <Bold className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              onClick={formatItalic}
-              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
-              title="Italic (Ctrl+I)"
-            >
+            <button type="button" onClick={formatItalic} className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors" title="Italic">
               <Italic className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              onClick={formatUnderline}
-              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
-              title="Underline"
-            >
+            <button type="button" onClick={formatUnderline} className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors" title="Underline">
               <Underline className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              onClick={formatStrikethrough}
-              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
-              title="Strikethrough"
-            >
+            <button type="button" onClick={formatStrikethrough} className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors" title="Strikethrough">
               <Strikethrough className="w-4 h-4" />
             </button>
             <div className="w-px h-4 bg-border mx-1" />
-            <button
-              type="button"
-              onClick={formatCode}
-              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
-              title="Inline code"
-            >
+            <button type="button" onClick={formatCode} className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors" title="Code">
               <Code className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              onClick={formatLink}
-              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
-              title="Link"
-            >
+            <button type="button" onClick={formatLink} className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors" title="Link">
               <Link2 className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              onClick={toggleSpoiler}
-              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
-              title="Spoiler"
-            >
+            <button type="button" onClick={toggleSpoiler} className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors" title="Spoiler">
               <Eye className="w-4 h-4" />
             </button>
             <div className="w-px h-4 bg-border mx-1" />
-            <button
-              type="button"
-              onClick={formatHeading}
-              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
-              title="Heading"
-            >
+            <button type="button" onClick={formatHeading} className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors" title="Heading">
               <Heading1 className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              onClick={formatQuote}
-              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
-              title="Quote"
-            >
+            <button type="button" onClick={formatQuote} className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors" title="Quote">
               <Quote className="w-4 h-4" />
             </button>
-            <div className="w-px h-4 bg-border mx-1" />
-            <button
-              type="button"
-              onClick={formatBulletList}
-              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
-              title="Bullet list"
-            >
+            <button type="button" onClick={formatBulletList} className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors" title="Bullet list">
               <List className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              onClick={formatNumberedList}
-              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
-              title="Numbered list"
-            >
+            <button type="button" onClick={formatNumberedList} className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors" title="Numbered list">
               <ListOrdered className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              onClick={formatCheckbox}
-              className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors"
-              title="Checkbox"
-            >
+            <button type="button" onClick={formatCheckbox} className="p-1.5 rounded hover:bg-background text-foreground-muted hover:text-foreground transition-colors" title="Checkbox">
               <CheckSquare className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        {/* Textarea */}
+        {/* Textarea container */}
         <div className="flex-1 relative py-2">
           <textarea
             ref={textareaRef}
@@ -528,14 +442,15 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
             onChange={(e) => setContent(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={`Message #${channel?.name || 'channel'}`}
-            className="w-full bg-transparent resize-none outline-none text-sm placeholder:text-foreground-subtle min-h-[40px] max-h-[200px]"
+            className="w-full bg-transparent resize-none text-sm placeholder:text-foreground-subtle min-h-[24px] max-h-[200px] leading-6"
+            style={{ outline: 'none' }}
             rows={1}
             disabled={slowmodeRemaining > 0}
           />
 
           {/* Mention autocomplete */}
           {showMentions && (
-            <div className="absolute bottom-full left-0 mb-2 w-full max-w-xs bg-background-elevated rounded-lg border border-border shadow-xl overflow-hidden">
+            <div className="absolute bottom-full left-0 mb-2 w-full max-w-xs bg-background-elevated rounded-lg border border-border shadow-xl overflow-hidden z-10">
               <div className="p-2 text-xs text-foreground-muted border-b border-border">
                 Mention someone
               </div>
@@ -552,21 +467,14 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
                       }}
                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-background-surface transition-colors"
                     >
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-background"
-                        style={{ backgroundColor: '#00E5CC' }}
-                      >
+                      <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-sm font-bold text-background overflow-hidden">
                         {member.avatar ? (
-                          <img
-                            src={member.avatar}
-                            alt=""
-                            className="w-full h-full rounded-full object-cover"
-                          />
+                          <img src={member.avatar} alt="" className="w-full h-full object-cover" />
                         ) : (
                           member.username.charAt(0).toUpperCase()
                         )}
                       </div>
-                      <div className="flex flex-col">
+                      <div className="flex flex-col text-left">
                         <span className="font-medium">{member.displayName || member.username}</span>
                         {member.displayName && (
                           <span className="text-xs text-foreground-muted">{member.username}</span>
@@ -575,9 +483,7 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
                     </button>
                   ))
                 ) : (
-                  <div className="px-3 py-2 text-sm text-foreground-muted">
-                    No members found
-                  </div>
+                  <div className="px-3 py-2 text-sm text-foreground-muted">No members found</div>
                 )}
               </div>
             </div>
@@ -585,14 +491,7 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
 
           {/* Emoji picker */}
           {showEmojiPicker && (
-            <div className="absolute bottom-full right-0 mb-2 bg-background-elevated rounded-lg border border-border shadow-xl overflow-hidden">
-              <div className="p-2 border-b border-border">
-                <input
-                  type="text"
-                  placeholder="Search emoji..."
-                  className="w-full px-2 py-1 text-sm bg-background-surface rounded border border-border focus:border-accent focus:outline-none"
-                />
-              </div>
+            <div className="absolute bottom-full right-0 mb-2 bg-background-elevated rounded-lg border border-border shadow-xl overflow-hidden z-10">
               <div className="p-2 max-h-64 overflow-y-auto">
                 {EMOJI_CATEGORIES.map((category, i) => (
                   <div key={i} className="grid grid-cols-10 gap-1 mb-2">
@@ -613,7 +512,7 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
 
           {/* Sticker picker */}
           {showStickerPicker && (
-            <div className="absolute bottom-full right-0 mb-2">
+            <div className="absolute bottom-full right-0 mb-2 z-10">
               <StickerPicker
                 onStickerSelect={handleStickerSelect}
                 onClose={() => setShowStickerPicker(false)}
@@ -622,24 +521,24 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
           )}
         </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-1 pr-2 pb-2">
+        {/* Right action buttons */}
+        <div className="flex items-center gap-0.5 pr-1 pb-1">
           <button
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className="p-1.5 rounded text-foreground-muted hover:text-foreground transition-colors"
+            className={`p-2 rounded transition-colors ${showEmojiPicker ? 'text-accent bg-accent/10' : 'text-foreground-muted hover:text-foreground'}`}
             title="Emoji"
           >
             <Smile className="w-5 h-5" />
           </button>
           <button
             onClick={() => setShowStickerPicker(!showStickerPicker)}
-            className={`p-1.5 rounded transition-colors ${showStickerPicker ? 'text-accent' : 'text-foreground-muted hover:text-foreground'}`}
+            className={`p-2 rounded transition-colors ${showStickerPicker ? 'text-accent bg-accent/10' : 'text-foreground-muted hover:text-foreground'}`}
             title="Stickers"
           >
             <Sticker className="w-5 h-5" />
           </button>
           <button
-            className="p-1.5 rounded text-foreground-muted hover:text-foreground transition-colors"
+            className="p-2 rounded text-foreground-muted hover:text-foreground transition-colors"
             title="Gift"
           >
             <Gift className="w-5 h-5" />
@@ -651,8 +550,8 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
             disabled={!canSend}
             className={`p-2 rounded transition-colors ${
               canSend
-                ? 'bg-accent text-background hover:bg-accent-hover'
-                : 'bg-background-surface text-foreground-muted cursor-not-allowed'
+                ? 'bg-accent text-background hover:opacity-90'
+                : 'bg-background text-foreground-muted cursor-not-allowed'
             }`}
             title="Send message"
           >
@@ -666,7 +565,7 @@ export default function MessageInput({ channelId, serverId, isDM = false }: Mess
       </div>
 
       {/* Character count / Slowmode */}
-      <div className="flex justify-between items-center mt-1 px-2 text-xs">
+      <div className="flex justify-between items-center mt-1 px-1 text-xs h-4">
         {slowmodeRemaining > 0 ? (
           <span className="text-warning">Slowmode: {slowmodeRemaining}s</span>
         ) : (

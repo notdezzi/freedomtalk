@@ -25,16 +25,27 @@ let serverCounter = 0;
 let channelCounter = 0;
 
 /**
+ * Reset all counters (for use between test runs)
+ */
+export function resetTestDataCounters(): void {
+  userCounter = 0;
+  serverCounter = 0;
+  channelCounter = 0;
+}
+
+/**
  * Generate a unique test user
  */
 export function createTestUser(overrides: Partial<TestUser> = {}): TestUser {
   userCounter++;
+  // Use random string for better uniqueness
+  const randomPart = Math.random().toString(36).substring(2, 10);
   const timestamp = Date.now();
-  const uniqueId = `${timestamp}-${userCounter}`;
+  const uniqueId = `${timestamp}_${userCounter}_${randomPart}`;
 
   return {
-    email: `test-${uniqueId}@example.com`,
-    username: `testuser${uniqueId}`,
+    email: `test_${uniqueId}@example.com`,
+    username: `testuser_${randomPart}`, // Keep short and simple
     password: 'TestPassword123!',
     displayName: `Test User ${userCounter}`,
     ...overrides,
@@ -85,15 +96,6 @@ export function randomString(length: number = 8): string {
  */
 export function createTestMessage(): string {
   return `Test message ${randomString()} at ${new Date().toISOString()}`;
-}
-
-/**
- * Reset all counters (for use between test runs)
- */
-export function resetTestDataCounters(): void {
-  userCounter = 0;
-  serverCounter = 0;
-  channelCounter = 0;
 }
 
 /**

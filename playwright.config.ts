@@ -8,8 +8,8 @@ export default defineConfig({
   // Test directory
   testDir: './tests',
 
-  // Run tests in parallel
-  fullyParallel: true,
+  // Run tests in parallel (but not fullyParallel to avoid rate limiting issues)
+  fullyParallel: false,
 
   // Fail build on CI if you accidentally left test.only in source code
   forbidOnly: !!process.env.CI,
@@ -17,8 +17,8 @@ export default defineConfig({
   // Retry on CI only
   retries: process.env.CI ? 2 : 0,
 
-  // Parallel workers (limited on CI)
-  workers: process.env.CI ? 1 : undefined,
+  // Parallel workers (limited on CI and locally to avoid rate limiting)
+  workers: process.env.CI ? 1 : 2,
 
   // Reporter configuration
   reporter: [
@@ -46,6 +46,12 @@ export default defineConfig({
 
     // Navigation timeout
     navigationTimeout: 30000,
+
+    // Extra HTTP headers for all requests
+    extraHTTPHeaders: {
+      // Add a header to identify test requests (can be used to skip rate limiting)
+      'X-Test-Request': 'true',
+    },
   },
 
   // Configure projects for major browsers
@@ -91,10 +97,17 @@ export default defineConfig({
     ? undefined
     : [
         {
-          command: 'npm run dev --workspace=@freedomtalk/api',
+          command: 'SKIP_RATE_LIMIT=true npm run dev --workspace=@freedomtalk/api',
           port: 3001,
           timeout: 120000,
-          reuseExistingServer: !process.env.CI,
+          // Don't reuse existing server to ensure rate limiting is disabled
+          reuseExistingServer: false,
+          env: {
+            // High rate limit for tests
+            RATE_LIMIT_MAX: '10000',
+            // Skip route-level rate limits
+            SKIP_RATE_LIMIT: 'true',
+          },
         },
         {
           command: 'npm run dev --workspace=@freedomtalk/web',

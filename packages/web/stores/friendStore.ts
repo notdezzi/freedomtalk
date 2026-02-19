@@ -76,6 +76,11 @@ interface FriendState {
   clearError: () => void;
 }
 
+// Track in-flight requests to prevent duplicates
+let friendsFetchPromise: Promise<void> | null = null;
+let pendingRequestsFetchPromise: Promise<void> | null = null;
+let blockedUsersFetchPromise: Promise<void> | null = null;
+
 export const useFriendStore = create<FriendState>()(
   persist(
     (set, get) => ({
@@ -87,52 +92,107 @@ export const useFriendStore = create<FriendState>()(
       error: null,
 
       fetchFriends: async () => {
+        // If already fetching, return existing promise
+        if (friendsFetchPromise) {
+          return friendsFetchPromise;
+        }
+
+        // If we already have friends, don't fetch again
+        if (get().friends.length > 0) {
+          return;
+        }
+
         set({ loading: true, error: null });
 
-        const response = await apiClient.getFriends();
+        friendsFetchPromise = (async () => {
+          try {
+            const response = await apiClient.getFriends();
 
-        if (response.success && response.data) {
-          set({ friends: response.data.friends, loading: false });
-        } else {
-          set({
-            error: response.error?.message || 'Failed to fetch friends',
-            loading: false,
-          });
-        }
+            if (response.success && response.data) {
+              set({ friends: response.data.friends, loading: false });
+            } else {
+              set({
+                error: response.error?.message || 'Failed to fetch friends',
+                loading: false,
+              });
+            }
+          } finally {
+            friendsFetchPromise = null;
+          }
+        })();
+
+        return friendsFetchPromise;
       },
 
       fetchPendingRequests: async () => {
+        // If already fetching, return existing promise
+        if (pendingRequestsFetchPromise) {
+          return pendingRequestsFetchPromise;
+        }
+
+        // If we already have pending requests data, don't fetch again
+        const state = get();
+        if (state.incomingRequests.length > 0 || state.outgoingRequests.length > 0) {
+          return;
+        }
+
         set({ loading: true, error: null });
 
-        const response = await apiClient.getPendingFriendRequests();
+        pendingRequestsFetchPromise = (async () => {
+          try {
+            const response = await apiClient.getPendingFriendRequests();
 
-        if (response.success && response.data) {
-          set({
-            incomingRequests: response.data.incoming,
-            outgoingRequests: response.data.outgoing,
-            loading: false,
-          });
-        } else {
-          set({
-            error: response.error?.message || 'Failed to fetch pending requests',
-            loading: false,
-          });
-        }
+            if (response.success && response.data) {
+              set({
+                incomingRequests: response.data.incoming,
+                outgoingRequests: response.data.outgoing,
+                loading: false,
+              });
+            } else {
+              set({
+                error: response.error?.message || 'Failed to fetch pending requests',
+                loading: false,
+              });
+            }
+          } finally {
+            pendingRequestsFetchPromise = null;
+          }
+        })();
+
+        return pendingRequestsFetchPromise;
       },
 
       fetchBlockedUsers: async () => {
+        // If already fetching, return existing promise
+        if (blockedUsersFetchPromise) {
+          return blockedUsersFetchPromise;
+        }
+
+        // If we already have blocked users data, don't fetch again
+        if (get().blockedUsers.length > 0) {
+          return;
+        }
+
         set({ loading: true, error: null });
 
-        const response = await apiClient.getBlockedUsers();
+        blockedUsersFetchPromise = (async () => {
+          try {
+            const response = await apiClient.getBlockedUsers();
 
-        if (response.success && response.data) {
-          set({ blockedUsers: response.data.blocked, loading: false });
-        } else {
-          set({
-            error: response.error?.message || 'Failed to fetch blocked users',
-            loading: false,
-          });
-        }
+            if (response.success && response.data) {
+              set({ blockedUsers: response.data.blocked, loading: false });
+            } else {
+              set({
+                error: response.error?.message || 'Failed to fetch blocked users',
+                loading: false,
+              });
+            }
+          } finally {
+            blockedUsersFetchPromise = null;
+          }
+        })();
+
+        return blockedUsersFetchPromise;
       },
 
       sendFriendRequest: async (targetUserId: string) => {

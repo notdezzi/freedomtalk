@@ -255,7 +255,7 @@ class ServerService {
       .join('server_members', 'servers.id', 'server_members.server_id')
       .where('server_members.user_id', userId)
       .select('servers.*')
-      .orderBy('servers.created_at', 'desc');
+      .orderBy('servers.position', 'asc');
 
     return servers;
   }
@@ -333,6 +333,35 @@ class ServerService {
       .returning('*');
 
     return updated;
+  }
+
+  /**
+   * Update server positions for a user
+   */
+  async updateServerPositions(userId: string, positions: { id: string; position: number }[]): Promise<ServerWithMembers[]> {
+    // Verify user is a member of all servers being updated
+    const serverIds = positions.map(p => p.id);
+    const memberships = await db('server_members')
+      .where('user_id', userId)
+      .whereIn('server_id', serverIds)
+      .count('id as count')
+      .first();
+
+    if (!memberships || Number(memberships.count) !== serverIds.length) {
+      throw new AppError(400, 'INVALID_SERVERS', 'One or more servers are not accessible by the user');
+    }
+
+    // Update positions in a transaction
+    await db.transaction(async (trx) => {
+      for (const { id, position } of positions) {
+        await trx('servers')
+          .where('id', id)
+          .update({ position, updated_at: new Date() });
+      }
+    });
+
+    // Return updated servers
+    return this.getUserServers(userId);
   }
 }
 

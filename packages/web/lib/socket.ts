@@ -26,7 +26,7 @@ class SocketService {
     // Check if already connected or connecting
     if (this.socket) {
       if (this.socket.connected) {
-        console.log('[Socket] Already connected');
+        //console.log('[Socket] Already connected');
         return;
       }
       // Socket exists but not connected - disconnect old one first
@@ -598,19 +598,39 @@ class SocketService {
 
   /**
    * Add a reaction to a message
+   * @param channelId - Channel ID (for future use)
+   * @param messageId - Message ID (20-char snowflake)
+   * @param emoji - Either a unicode emoji character or a 20-char custom emoji ID
    */
   addReaction(channelId: string, messageId: string, emoji: string): void {
     if (this.socket?.connected) {
-      this.socket.emit(WS_EVENTS.REACTION_ADD, { channelId, messageId, emoji });
+      // Detect if emoji is unicode or custom (20-digit snowflake ID)
+      const isUnicode = !/^\d{20}$/.test(emoji);
+      this.socket.emit(WS_EVENTS.REACTION_ADD, {
+        messageId,
+        emojiType: isUnicode ? 'unicode' : 'custom',
+        emojiUnicode: isUnicode ? emoji : undefined,
+        emojiId: isUnicode ? undefined : emoji,
+      });
     }
   }
 
   /**
    * Remove a reaction from a message
+   * @param channelId - Channel ID (for future use)
+   * @param messageId - Message ID (20-char snowflake)
+   * @param emoji - Either a unicode emoji character or a 20-char custom emoji ID
    */
   removeReaction(channelId: string, messageId: string, emoji: string): void {
     if (this.socket?.connected) {
-      this.socket.emit(WS_EVENTS.REACTION_REMOVE, { channelId, messageId, emoji });
+      // Detect if emoji is unicode or custom (20-digit snowflake ID)
+      const isUnicode = !/^\d{20}$/.test(emoji);
+      this.socket.emit(WS_EVENTS.REACTION_REMOVE, {
+        messageId,
+        emojiType: isUnicode ? 'unicode' : 'custom',
+        emojiUnicode: isUnicode ? emoji : undefined,
+        emojiId: isUnicode ? undefined : emoji,
+      });
     }
   }
 

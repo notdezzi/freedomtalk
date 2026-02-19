@@ -50,6 +50,7 @@ export interface Server {
   memberCount: number;
   maxMembers: number;
   preferredLocale: string;
+  position: number;
   createdAt: Date;
   updatedAt: Date;
 }

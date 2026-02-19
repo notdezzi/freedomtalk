@@ -338,31 +338,21 @@ export default function ChannelSidebar() {
 
   if (!isChannelSidebarOpen) return null;
 
-  // No server selected - show DMs view
+  // No server selected - show DMs view placeholder
   if (!currentServerId) {
     return (
-      <>
-        {/* Header */}
-        <div className="h-12 px-4 flex items-center border-b border-border shadow-md flex-shrink-0">
-          <button className="flex items-center gap-2 w-full hover:text-accent transition-colors">
-            <span className="font-semibold">Direct Messages</span>
-          </button>
-        </div>
-
-        {/* DM content placeholder */}
-        <div className="flex-1 flex items-center justify-center p-4">
-          <p className="text-sm text-foreground-muted text-center">
-            Select a conversation or server to get started
-          </p>
-        </div>
-      </>
+      <div className="flex-1 flex items-center justify-center p-4">
+        <p className="text-sm text-foreground-muted text-center">
+          Select a conversation or server to get started
+        </p>
+      </div>
     );
   }
 
   return (
     <>
-      {/* Server header */}
-      <div className="h-12 px-4 flex items-center justify-between border-b border-border shadow-md flex-shrink-0">
+      {/* Server header - click to open settings */}
+      <div className="h-12 px-4 flex items-center justify-between border-b border-border flex-shrink-0">
         <button
           onClick={() => openModal('server-settings', { serverId: currentServerId })}
           className="flex items-center gap-2 w-full hover:text-accent transition-colors"
@@ -373,7 +363,7 @@ export default function ChannelSidebar() {
       </div>
 
       {/* Channels */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto scrollbar-hide p-2">
         {isLoading && channels.length === 0 ? (
           <div className="flex items-center justify-center py-8">
             <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />

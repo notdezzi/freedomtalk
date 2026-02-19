@@ -69,7 +69,7 @@ async function globalSetup() {
 
     if (!servicesRunning) {
       console.log('📦 Starting Docker services...');
-      await runCommand('docker', ['compose', 'up', '-d']);
+      await runCommand('docker-compose', ['up', '-d']);
     } else {
       console.log('✓ Docker services already running');
     }
