@@ -530,10 +530,10 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
       },
-      onRequest: [authenticate],
+      onRequest: [requireAuth],
     },
-    async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
-      const { serverId } = request.params;
+    async (request, reply) => {
+      const { serverId } = request.params as { serverId: string };
 
       const server = await serverService.getServer(serverId);
       if (!server) {
@@ -575,11 +575,11 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
       },
-      onRequest: [authenticate],
+      onRequest: [requireAuth],
     },
-    async (request: FastifyRequest<{ Params: { serverId: string }; Body: { code: string } }>, reply: FastifyReply) => {
-      const { serverId } = request.params;
-      const { code } = request.body;
+    async (request, reply) => {
+      const { serverId } = request.params as { serverId: string };
+      const { code } = request.body as { code: string };
 
       const isAvailable = await serverService.checkVanityUrlAvailability(serverId, code);
 
