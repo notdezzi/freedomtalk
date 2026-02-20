@@ -17,6 +17,7 @@ import { logger } from '../../config/logger';
 import { embedService, EmbedData } from '../embed/embed.service';
 import { linkPreviewService } from '../embed/link-preview.service';
 import { mentionService, ParsedMention, MentionType } from '../formatting/mention.service';
+import { GroupedReaction } from '../reaction/reaction.service';
 
 /**
  * Message interface matching database schema
@@ -96,6 +97,7 @@ export interface MessageAuthor {
   username: string;
   displayName?: string;
   avatar?: string;
+  color?: number;
 }
 
 /**
@@ -103,6 +105,7 @@ export interface MessageAuthor {
  */
 export interface MessageWithAuthor extends Message {
   author?: MessageAuthor;
+  reactions?: GroupedReaction[];
 }
 
 /**
@@ -139,6 +142,14 @@ class MessageService {
     dmChannelId?: string;
     serverId?: string;
     embeds?: EmbedData[];
+    attachments?: Array<{
+      id: string;
+      filename: string;
+      contentType: string;
+      size: number;
+      url: string;
+      description?: string;
+    }>;
   }): Promise<MessageWithEmbeds> {
     try {
       // Verify author exists
@@ -403,31 +414,96 @@ class MessageService {
         .orderBy('messages.created_at', 'desc')
         .limit(limit + 1);
 
+      // Get role colors for server messages
+      const serverChannelIds = messages
+        .filter(m => m.channel_id)
+        .map(m => m.channel_id);
+
+      const authorColors = new Map<string, number | null>();
+      const channelToServer = new Map<string, string>();
+
+      if (serverChannelIds.length > 0) {
+        // Get server IDs for channels
+        const channels = await db('channels')
+          .whereIn('id', serverChannelIds)
+          .select('id', 'server_id');
+
+        channels.forEach(c => channelToServer.set(c.id, c.server_id));
+
+        // Get all unique (server_id, user_id) pairs
+        const serverUserPairs: { serverId: string; userId: string }[] = [];
+        for (const msg of messages) {
+          if (msg.channel_id) {
+            const serverId = channelToServer.get(msg.channel_id);
+            if (serverId) {
+              serverUserPairs.push({ serverId, userId: msg.author_id });
+            }
+          }
+        }
+
+        // Get highest role color for each user in each server
+        for (const pair of serverUserPairs) {
+          const key = `${pair.serverId}:${pair.userId}`;
+          if (!authorColors.has(key)) {
+            // Get member's roles sorted by position
+            const roles = await db('member_roles as smr')
+              .join('roles as r', 'smr.role_id', 'r.id')
+              .where('smr.server_id', pair.serverId)
+              .where('smr.user_id', pair.userId)
+              .whereNotNull('r.color')
+              .where('r.color', '>', 0)
+              .orderBy('r.position', 'desc')
+              .select('r.color')
+              .first();
+
+            authorColors.set(key, roles?.color || null);
+          }
+        }
+      }
+
       // Determine if there are more messages
       const hasMore = messages.length > limit;
       const rawMessages = hasMore ? messages.slice(0, limit) : messages;
 
-      // Transform messages to include author data
-      const resultMessages: MessageWithAuthor[] = rawMessages.map((msg) => ({
-        id: msg.id,
-        content: msg.content,
-        author_id: msg.author_id,
-        channel_id: msg.channel_id,
-        dm_channel_id: msg.dm_channel_id,
-        is_edited: msg.is_edited,
-        edited_at: msg.edited_at,
-        is_deleted: msg.is_deleted,
-        deleted_at: msg.deleted_at,
-        is_pinned: msg.is_pinned,
-        created_at: msg.created_at,
-        updated_at: msg.updated_at,
-        author: msg.author_username ? {
-          id: msg.author_id,
-          username: msg.author_username,
-          displayName: msg.author_display_name || undefined,
-          avatar: msg.author_avatar || undefined,
-        } : undefined,
-      }));
+      // Fetch reactions for all messages
+      const messageIds = rawMessages.map((msg) => msg.id);
+      const reactionsMap = await this.getReactionsForMessages(messageIds);
+
+      // Transform messages to include author data and reactions
+      const resultMessages: MessageWithAuthor[] = rawMessages.map((msg) => {
+        // Get author color for server messages
+        let authorColor: number | undefined;
+        if (msg.channel_id) {
+          const serverId = channelToServer.get(msg.channel_id);
+          if (serverId) {
+            const color = authorColors.get(`${serverId}:${msg.author_id}`);
+            authorColor = color || undefined;
+          }
+        }
+
+        return {
+          id: msg.id,
+          content: msg.content,
+          author_id: msg.author_id,
+          channel_id: msg.channel_id,
+          dm_channel_id: msg.dm_channel_id,
+          is_edited: msg.is_edited,
+          edited_at: msg.edited_at,
+          is_deleted: msg.is_deleted,
+          deleted_at: msg.deleted_at,
+          is_pinned: msg.is_pinned,
+          created_at: msg.created_at,
+          updated_at: msg.updated_at,
+          author: msg.author_username ? {
+            id: msg.author_id,
+            username: msg.author_username,
+            displayName: msg.author_display_name || undefined,
+            avatar: msg.author_avatar || undefined,
+            color: authorColor,
+          } : undefined,
+          reactions: reactionsMap.get(msg.id) || [],
+        };
+      });
 
       // Generate cursors
       const nextCursor = hasMore && resultMessages.length > 0
@@ -450,6 +526,63 @@ class MessageService {
       }
       logger.error({ error }, 'Error fetching messages');
       throw new ApiError(ApiErrorCode.DATABASE_ERROR, 'Failed to fetch messages', 500);
+    }
+  }
+
+  /**
+   * Get reactions for multiple messages efficiently
+   *
+   * @param messageIds - Array of message IDs
+   * @returns Map of message ID to reactions array
+   */
+  private async getReactionsForMessages(messageIds: string[]): Promise<Map<string, GroupedReaction[]>> {
+    const reactionsMap = new Map<string, GroupedReaction[]>();
+
+    if (messageIds.length === 0) {
+      return reactionsMap;
+    }
+
+    try {
+      // Fetch all reactions for the given messages
+      const reactions = await db('reactions')
+        .whereIn('message_id', messageIds)
+        .orderBy('created_at', 'asc');
+
+      // Group reactions by message_id and then by emoji
+      for (const reaction of reactions) {
+        const messageId = reaction.message_id;
+
+        if (!reactionsMap.has(messageId)) {
+          reactionsMap.set(messageId, []);
+        }
+
+        const messageReactions = reactionsMap.get(messageId)!;
+        let groupedReaction = messageReactions.find(
+          (r) => (r.emoji_type === 'custom' && r.emoji_id === reaction.emoji_id) ||
+                 (r.emoji_type === 'unicode' && r.emoji_unicode === reaction.emoji_unicode)
+        );
+
+        if (!groupedReaction) {
+          groupedReaction = {
+            emoji_type: reaction.emoji_type,
+            emoji_id: reaction.emoji_id,
+            emoji_unicode: reaction.emoji_unicode,
+            count: 0,
+            users: [],
+            me: false,
+          };
+          messageReactions.push(groupedReaction);
+        }
+
+        groupedReaction.count++;
+        groupedReaction.users.push(reaction.user_id);
+      }
+
+      return reactionsMap;
+    } catch (error) {
+      logger.error({ error, messageIds }, 'Error fetching reactions for messages');
+      // Return empty map on error rather than throwing
+      return reactionsMap;
     }
   }
 

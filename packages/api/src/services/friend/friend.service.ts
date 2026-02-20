@@ -28,6 +28,7 @@ export interface FriendWithProfile {
   avatarUrl: string | null;
   customStatus: string | null;
   friendSince: Date;
+  isOnline: boolean;
 }
 
 export interface PendingRequest {
@@ -410,6 +411,10 @@ class FriendService {
 
     const connectionMap = new Map(connections.map(c => [c.connected_user_id, c.created_at]));
 
+    // Get online status for all friends
+    const { statusManager } = await import('../websocket/status.manager');
+    const statusMap = await statusManager.getBulkStatus(friendIds);
+
     return profiles.map(p => ({
       id: p.id,
       username: p.username,
@@ -417,6 +422,7 @@ class FriendService {
       avatarUrl: p.avatar_url,
       customStatus: p.custom_status,
       friendSince: connectionMap.get(p.id)!,
+      isOnline: statusMap.get(p.id) === 'online',
     }));
   }
 
@@ -566,6 +572,10 @@ class FriendService {
 
     const connectionMap = new Map(connections.map(c => [c.connected_user_id, c.created_at]));
 
+    // Get online status for found friends
+    const { statusManager } = await import('../websocket/status.manager');
+    const statusMap = await statusManager.getBulkStatus(profiles.map(p => p.id));
+
     return profiles.map(p => ({
       id: p.id,
       username: p.username,
@@ -573,6 +583,7 @@ class FriendService {
       avatarUrl: p.avatar_url,
       customStatus: p.custom_status,
       friendSince: connectionMap.get(p.id)!,
+      isOnline: statusMap.get(p.id) === 'online',
     }));
   }
 

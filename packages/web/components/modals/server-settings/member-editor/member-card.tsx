@@ -24,9 +24,12 @@ function colorToHex(color: number | undefined): string | null {
  * Get role color from member's highest role with a color
  */
 function getMemberColor(member: MemberResponse, roles: RoleResponse[]): string | null {
+  // Get role IDs from member (handles both string[] and object[] formats)
+  const memberRoleIds = member.roles.map(r => typeof r === 'string' ? r : r.id);
+
   // Get roles that the member has, sorted by position (highest first)
   const memberRoles = roles
-    .filter(role => member.roles.includes(role.id))
+    .filter(role => memberRoleIds.includes(role.id))
     .sort((a, b) => b.position - a.position);
 
   // Find first role with a color
@@ -42,8 +45,11 @@ function getMemberColor(member: MemberResponse, roles: RoleResponse[]): string |
  * Get top 3 roles for display
  */
 function getTopRoles(member: MemberResponse, roles: RoleResponse[]): RoleResponse[] {
+  // Get role IDs from member (handles both string[] and object[] formats)
+  const memberRoleIds = member.roles.map(r => typeof r === 'string' ? r : r.id);
+
   return roles
-    .filter(role => member.roles.includes(role.id))
+    .filter(role => memberRoleIds.includes(role.id))
     .sort((a, b) => b.position - a.position)
     .slice(0, 3);
 }

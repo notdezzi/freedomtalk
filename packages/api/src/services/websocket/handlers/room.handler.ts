@@ -1,9 +1,14 @@
 import { Socket } from 'socket.io';
 import { z } from 'zod';
 import { logger } from '../../../config/logger';
-import { WS_EVENTS } from '@freedomtalk/shared';
+import { WS_EVENTS, PERMISSION_FLAGS } from '@freedomtalk/shared';
 import { roomManager, RoomType } from '../room.manager';
 import { subscriptionManager } from '../subscription.manager';
+import { serverService } from '../../server/server.service';
+import { serverBanService } from '../../server/server-ban.service';
+import { channelService } from '../../channel/channel.service';
+import { permissionService } from '../../permission';
+import { dmChannelService } from '../../dm/dm-channel.service';
 
 /**
  * Room join data schema
@@ -51,8 +56,78 @@ export async function handleRoomJoin(socket: Socket, data: unknown): Promise<voi
 
     const { roomType, roomId } = validation.data;
 
-    // TODO: Add permission validation when server/channel tables are implemented
-    // For now, allow all joins
+    // Validate access based on room type
+    if (roomType === 'channel') {
+      // Get channel to find server
+      const channel = await channelService.getChannel(roomId);
+      if (!channel) {
+        socket.emit(WS_EVENTS.ERROR, {
+          code: 'NOT_FOUND',
+          message: 'Channel not found',
+        });
+        return;
+      }
+
+      // Check server membership
+      const isMember = await serverService.isMember(channel.server_id, user.id);
+      if (!isMember) {
+        socket.emit(WS_EVENTS.ERROR, {
+          code: 'FORBIDDEN',
+          message: 'You are not a member of this server',
+        });
+        return;
+      }
+
+      // Check if banned
+      const isBanned = await serverBanService.isBanned(channel.server_id, user.id);
+      if (isBanned) {
+        socket.emit(WS_EVENTS.ERROR, {
+          code: 'FORBIDDEN',
+          message: 'You are banned from this server',
+        });
+        return;
+      }
+
+      // Check VIEW_CHANNEL permission
+      const hasPermission = await permissionService.hasChannelPermission(user.id, roomId, PERMISSION_FLAGS.VIEW_CHANNEL);
+      if (!hasPermission) {
+        socket.emit(WS_EVENTS.ERROR, {
+          code: 'FORBIDDEN',
+          message: 'You do not have permission to view this channel',
+        });
+        return;
+      }
+    } else if (roomType === 'server') {
+      // Check server membership
+      const isMember = await serverService.isMember(roomId, user.id);
+      if (!isMember) {
+        socket.emit(WS_EVENTS.ERROR, {
+          code: 'FORBIDDEN',
+          message: 'You are not a member of this server',
+        });
+        return;
+      }
+
+      // Check if banned
+      const isBanned = await serverBanService.isBanned(roomId, user.id);
+      if (isBanned) {
+        socket.emit(WS_EVENTS.ERROR, {
+          code: 'FORBIDDEN',
+          message: 'You are banned from this server',
+        });
+        return;
+      }
+    } else if (roomType === 'dm') {
+      // Check if user is a participant of the DM channel
+      const isParticipant = await dmChannelService.isParticipant(roomId, user.id);
+      if (!isParticipant) {
+        socket.emit(WS_EVENTS.ERROR, {
+          code: 'FORBIDDEN',
+          message: 'You are not a participant of this DM channel',
+        });
+        return;
+      }
+    }
 
     // Join room
     await roomManager.joinRoom(socket, roomType as RoomType, roomId);

@@ -18,9 +18,9 @@ interface InvitePreview {
   server: {
     id: string;
     name: string;
-    icon_url: string | null;
-    member_count: number;
-    online_count?: number;
+    icon: string | null;
+    memberCount: number;
+    onlineCount?: number;
   } | null;
   channel: {
     id: string;
@@ -176,9 +176,9 @@ export default function InvitePage() {
             {/* Banner / Icon */}
             <div className="relative -m-6 mb-6 h-32 bg-gradient-to-br from-blue-600/30 to-purple-600/30 rounded-t-xl flex items-center justify-center">
               <div className="w-24 h-24 rounded-2xl bg-background-surface shadow-xl flex items-center justify-center overflow-hidden border-4 border-background">
-                {preview.server.icon_url ? (
+                {preview.server.icon ? (
                   <img
-                    src={preview.server.icon_url}
+                    src={preview.server.icon}
                     alt={preview.server.name}
                     className="w-full h-full object-cover"
                   />
@@ -196,11 +196,11 @@ export default function InvitePage() {
               <div className="flex items-center justify-center gap-4 text-sm text-foreground-muted">
                 <div className="flex items-center gap-1.5">
                   <Users className="w-4 h-4" />
-                  <span>{preview.server.member_count.toLocaleString()} Members</span>
+                  <span>{preview.server.memberCount.toLocaleString()} Members</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Wifi className="w-4 h-4 text-green-500" />
-                  <span>{(preview.server.online_count ?? 0).toLocaleString()} Online</span>
+                  <span>{(preview.server.onlineCount ?? 0).toLocaleString()} Online</span>
                 </div>
               </div>
             </div>

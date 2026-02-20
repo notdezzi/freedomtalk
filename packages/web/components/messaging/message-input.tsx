@@ -40,19 +40,35 @@ export function MessageInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Use ref to always get latest content value to avoid stale closures
+  const contentRef = useRef(content);
+  contentRef.current = content;
+  const attachmentsRef = useRef(attachments);
+  attachmentsRef.current = attachments;
+
   const handleSubmit = useCallback(
     (e?: FormEvent) => {
       e?.preventDefault();
 
-      if ((!content.trim() && attachments.length === 0) || disabled) return;
+      // Use ref values to avoid stale closure issues
+      const currentContent = contentRef.current;
+      const currentAttachments = attachmentsRef.current;
+      const trimmedContent = currentContent.trim();
 
-      onSend(content.trim(), attachments);
+      // Double-check: don't send empty messages without attachments
+      if ((!trimmedContent && currentAttachments.length === 0) || disabled) {
+        console.log('[MessageInput] Blocked empty message send');
+        return;
+      }
+
+      console.log('[MessageInput] Sending message:', { content: trimmedContent, attachments: currentAttachments.length });
+      onSend(trimmedContent, currentAttachments);
       setContent('');
       setAttachments([]);
       // Stop typing when sending
       onTypingStop?.();
     },
-    [content, attachments, disabled, onSend, onTypingStop]
+    [disabled, onSend, onTypingStop]
   );
 
   // Handle content changes and send typing indicator
@@ -196,7 +212,7 @@ export function MessageInput({
         {/* Right buttons */}
         <div className="flex items-center gap-1">
           {/* Formatting buttons */}
-          <div className="hidden sm:flex items-center gap-0.5 mr-1">
+          {/* <div className="hidden sm:flex items-center gap-0.5 mr-1">
             <TooltipButton
               icon={<Bold className="h-4 w-4" />}
               title="Bold"
@@ -213,12 +229,13 @@ export function MessageInput({
               onClick={() => insertFormatting('code')}
             />
           </div>
-
+*/}
           <TooltipButton
             icon={<Smile className="h-5 w-5" />}
             title="Emoji"
             onClick={() => {}}
-          />
+          /> 
+          
 
           <button
             onClick={() => handleSubmit()}

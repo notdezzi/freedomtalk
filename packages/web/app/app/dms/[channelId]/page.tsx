@@ -3,11 +3,12 @@
 import { AppShell } from '@/components/layout';
 import { MessageView } from '@/components/messaging';
 import { useParams } from 'next/navigation';
-import { useChannelMessages, useSendMessage } from '@/features/channels';
+import { useChannelMessages, useSendMessage, useEditMessage, useDeleteMessage, useAddReaction, useRemoveReaction, usePinMessage, useUnpinMessage } from '@/features/channels';
 import { useDMChannel } from '@/features/dms';
-import { useAuthStore } from '@/stores';
-import { useMemo } from 'react';
+import { useAuthStore, useUIStore } from '@/stores';
+import { useMemo, useCallback, useState } from 'react';
 import { Avatar } from '@/components/ui';
+import { toast } from '@/stores/toast-store';
 
 export default function DMPage() {
   const params = useParams();
@@ -15,6 +16,7 @@ export default function DMPage() {
 
   // Get current user ID
   const currentUserId = useAuthStore((s) => s.user?.id);
+  const openModal = useUIStore((s) => s.openModal);
 
   // Fetch DM channel info
   const { data: dmChannel, isLoading: channelLoading } = useDMChannel(channelId);
@@ -35,8 +37,17 @@ export default function DMPage() {
     isFetchingNextPage,
   } = useChannelMessages(channelId, 'dm');
 
-  // Send message mutation
+  // Message mutations
   const sendMessage = useSendMessage();
+  const editMessage = useEditMessage();
+  const deleteMessage = useDeleteMessage();
+  const addReaction = useAddReaction();
+  const removeReaction = useRemoveReaction();
+  const pinMessage = usePinMessage();
+  const unpinMessage = useUnpinMessage();
+
+  // Reply state
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
   // Flatten messages from infinite query
   const messages = useMemo(() => {
@@ -50,9 +61,91 @@ export default function DMPage() {
       channelId,
       content,
       attachments,
+      referencedMessageId: replyingTo || undefined,
       context: 'dm',
     });
+    setReplyingTo(null);
   };
+
+  // Handle editing a message
+  const handleEdit = useCallback((messageId: string, content: string) => {
+    editMessage.mutate({
+      messageId,
+      content,
+      channelId,
+      context: 'dm',
+    });
+  }, [editMessage, channelId]);
+
+  // Handle deleting a message
+  const handleDelete = useCallback((messageId: string) => {
+    deleteMessage.mutate({
+      messageId,
+      channelId,
+      context: 'dm',
+    });
+  }, [deleteMessage, channelId]);
+
+  // Handle toggling a reaction (add or remove)
+  const handleReaction = useCallback((messageId: string, emoji: string) => {
+    // Find the message and check if user has already reacted
+    const message = messages.find(m => m.id === messageId);
+    const existingReaction = message?.reactions?.find(
+      (r: any) => r.emoji?.name === emoji || r.emoji_unicode === emoji
+    );
+
+    if (existingReaction?.me) {
+      // User has already reacted, remove the reaction
+      removeReaction.mutate({
+        messageId,
+        emoji,
+        channelId,
+        context: 'dm',
+      });
+    } else {
+      // User hasn't reacted, add the reaction
+      addReaction.mutate({
+        messageId,
+        emoji,
+        channelId,
+        context: 'dm',
+      });
+    }
+  }, [addReaction, removeReaction, channelId, messages]);
+
+  // Handle replying to a message
+  const handleReply = useCallback((messageId: string) => {
+    setReplyingTo(messageId);
+  }, []);
+
+  // Handle pinning a message
+  const handlePin = useCallback((messageId: string) => {
+    const message = messages.find(m => m.id === messageId);
+    if (message?.pinned) {
+      unpinMessage.mutate({
+        messageId,
+        channelId,
+        context: 'dm',
+      }, {
+        onSuccess: () => toast.success('Message unpinned'),
+        onError: () => toast.error('Failed to unpin message'),
+      });
+    } else {
+      pinMessage.mutate({
+        messageId,
+        channelId,
+        context: 'dm',
+      }, {
+        onSuccess: () => toast.success('Message pinned'),
+        onError: () => toast.error('Failed to pin message'),
+      });
+    }
+  }, [pinMessage, unpinMessage, channelId, messages]);
+
+  // Handle clicking on a user to show profile
+  const handleUserClick = useCallback((userId: string) => {
+    openModal('user-profile', { userId });
+  }, [openModal]);
 
   // Loading state
   if (channelLoading) {
@@ -101,6 +194,12 @@ export default function DMPage() {
           channelId={channelId}
           messages={messages}
           onSend={handleSend}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onReaction={handleReaction}
+          onReply={handleReply}
+          onPin={handlePin}
+          onUserClick={handleUserClick}
           placeholder={`Message @${recipient?.username || 'user'}`}
           loading={messagesLoading}
           hasMore={hasNextPage}

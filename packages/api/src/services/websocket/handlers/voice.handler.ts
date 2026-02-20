@@ -10,6 +10,10 @@ import { logger } from '../../../config/logger';
 import { voiceStateService } from '../../voice/voice-state.service';
 import { mediasoupService } from '../../voice/mediasoup.service';
 import { channelService } from '../../channel/channel.service';
+import { serverService } from '../../server/server.service';
+import { serverBanService } from '../../server/server-ban.service';
+import { permissionService } from '../../permission';
+import { PERMISSION_FLAGS } from '@freedomtalk/shared';
 
 interface VoiceSession {
   sessionId: string;
@@ -49,6 +53,24 @@ class VoiceHandler {
         const channel = await channelService.getChannel(channelId);
         if (!channel || channel.type !== 'voice') {
           return callback?.({ success: false, error: 'Invalid voice channel' });
+        }
+
+        // Check if user is a member of the server
+        const isMember = await serverService.isMember(channel.server_id, userId);
+        if (!isMember) {
+          return callback?.({ success: false, error: 'You are not a member of this server' });
+        }
+
+        // Check if user is banned from the server
+        const isBanned = await serverBanService.isBanned(channel.server_id, userId);
+        if (isBanned) {
+          return callback?.({ success: false, error: 'You are banned from this server' });
+        }
+
+        // Check CONNECT permission
+        const hasConnectPermission = await permissionService.hasChannelPermission(userId, channelId, PERMISSION_FLAGS.CONNECT);
+        if (!hasConnectPermission) {
+          return callback?.({ success: false, error: 'You do not have permission to connect to this voice channel' });
         }
 
         // Create voice state

@@ -100,6 +100,15 @@ export function useSendMessage() {
       referencedMessageId?: string;
       context: 'server' | 'dm';
     }) => {
+      // TODO: Implement attachment upload flow
+      // 1. Upload attachments via POST /api/v1/attachments
+      // 2. Get attachment IDs from response
+      // 3. Include attachment IDs in message create request
+
+      if (attachments && attachments.length > 0) {
+        console.warn('Attachments are not yet implemented. Message will be sent without attachments.');
+      }
+
       const response = context === 'dm'
         ? await apiClient.createDMMessage(channelId, content)
         : await apiClient.createMessage({ channelId, content });
@@ -213,6 +222,58 @@ export function useRemoveReaction() {
       context: 'server' | 'dm';
     }) => {
       const response = await apiClient.removeReaction(messageId, emoji);
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      const queryKey = variables.context === 'dm'
+        ? queryKeys.dms.messages(variables.channelId)
+        : queryKeys.channels.messages(variables.channelId);
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+}
+
+// Pin a message
+export function usePinMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      messageId,
+      channelId,
+      context,
+    }: {
+      messageId: string;
+      channelId: string;
+      context: 'server' | 'dm';
+    }) => {
+      const response = await apiClient.pinMessage(messageId);
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      const queryKey = variables.context === 'dm'
+        ? queryKeys.dms.messages(variables.channelId)
+        : queryKeys.channels.messages(variables.channelId);
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+}
+
+// Unpin a message
+export function useUnpinMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      messageId,
+      channelId,
+      context,
+    }: {
+      messageId: string;
+      channelId: string;
+      context: 'server' | 'dm';
+    }) => {
+      const response = await apiClient.unpinMessage(messageId);
       return response.data;
     },
     onSuccess: (_, variables) => {

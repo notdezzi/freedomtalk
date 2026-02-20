@@ -147,7 +147,22 @@ export default async function serverRoutes(app: FastifyInstance) {
       const userId = request.user!.id;
 
       const servers = await serverService.getUserServers(userId);
-      return reply.send(successResponse(servers));
+
+      // Transform snake_case to camelCase for frontend
+      const transformedServers = servers.map((server: any) => ({
+        id: server.id,
+        name: server.name,
+        icon: server.icon_url,
+        banner: server.banner_url,
+        description: server.description,
+        ownerId: server.owner_id,
+        createdAt: server.created_at,
+        updatedAt: server.updated_at,
+        memberCount: server.member_count,
+        position: server.position,
+      }));
+
+      return reply.send(successResponse(transformedServers));
     }
   );
 
@@ -232,7 +247,20 @@ export default async function serverRoutes(app: FastifyInstance) {
         return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Server not found' } });
       }
 
-      return reply.send(successResponse(server));
+      // Transform snake_case to camelCase for frontend
+      const transformedServer = {
+        id: server.id,
+        name: server.name,
+        icon: server.icon_url,
+        banner: server.banner_url,
+        description: server.description,
+        ownerId: server.owner_id,
+        createdAt: server.created_at,
+        updatedAt: server.updated_at,
+        memberCount: server.member_count,
+      };
+
+      return reply.send(successResponse(transformedServer));
     }
   );
 
@@ -316,6 +344,124 @@ export default async function serverRoutes(app: FastifyInstance) {
 
       await serverService.deleteServer(serverId, userId);
       return reply.code(204).send();
+    }
+  );
+
+  /**
+   * POST /api/v1/servers/:serverId/icon
+   * Upload server icon
+   */
+  app.post<{ Params: { serverId: string } }>(
+    '/:serverId/icon',
+    {
+      schema: {
+        description: 'Upload server icon',
+        tags: ['Servers'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['serverId'],
+          properties: {
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+          },
+        },
+        response: {
+          200: { type: 'object' },
+        },
+      },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_SERVER)],
+    },
+    async (request, reply) => {
+      const { serverId } = request.params;
+      const userId = request.user!.id;
+      const data = await request.file();
+
+      if (!data) {
+        return reply.code(400).send({
+          success: false,
+          error: { code: 'NO_FILE', message: 'No file provided' },
+        });
+      }
+
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(data.mimetype || '')) {
+        return reply.code(400).send({
+          success: false,
+          error: { code: 'INVALID_FILE_TYPE', message: 'Invalid file type. Only images are allowed.' },
+        });
+      }
+
+      // Upload to storage and get URL
+      const { minioService } = await import('../../services/storage/minio.service');
+      const buffer = await data.toBuffer();
+      const objectPath = `server-icons/${serverId}/${Date.now()}-${data.filename}`;
+      await minioService.uploadFile('freedomtalk-servers', objectPath, buffer, buffer.length);
+
+      const iconUrl = await minioService.getFileUrl('freedomtalk-servers', objectPath);
+
+      // Update server with icon URL
+      const server = await serverService.updateServer(serverId, { iconUrl }, userId);
+      return reply.send(successResponse(server));
+    }
+  );
+
+  /**
+   * POST /api/v1/servers/:serverId/banner
+   * Upload server banner
+   */
+  app.post<{ Params: { serverId: string } }>(
+    '/:serverId/banner',
+    {
+      schema: {
+        description: 'Upload server banner',
+        tags: ['Servers'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['serverId'],
+          properties: {
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+          },
+        },
+        response: {
+          200: { type: 'object' },
+        },
+      },
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_SERVER)],
+    },
+    async (request, reply) => {
+      const { serverId } = request.params;
+      const userId = request.user!.id;
+      const data = await request.file();
+
+      if (!data) {
+        return reply.code(400).send({
+          success: false,
+          error: { code: 'NO_FILE', message: 'No file provided' },
+        });
+      }
+
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(data.mimetype || '')) {
+        return reply.code(400).send({
+          success: false,
+          error: { code: 'INVALID_FILE_TYPE', message: 'Invalid file type. Only images are allowed.' },
+        });
+      }
+
+      // Upload to storage and get URL
+      const { minioService } = await import('../../services/storage/minio.service');
+      const buffer = await data.toBuffer();
+      const objectPath = `server-banners/${serverId}/${Date.now()}-${data.filename}`;
+      await minioService.uploadFile('freedomtalk-servers', objectPath, buffer, buffer.length);
+
+      const bannerUrl = await minioService.getFileUrl('freedomtalk-servers', objectPath);
+
+      // Update server with banner URL
+      const server = await serverService.updateServer(serverId, { bannerUrl }, userId);
+      return reply.send(successResponse(server));
     }
   );
 
@@ -476,11 +622,22 @@ export default async function serverRoutes(app: FastifyInstance) {
           uses: invite.uses,
         },
         server: invite.server ? {
-          ...invite.server,
-          online_count: onlineCount,
+          id: invite.server.id,
+          name: invite.server.name,
+          icon: invite.server.icon_url,
+          memberCount: invite.server.member_count,
+          onlineCount,
         } : null,
-        channel: invite.channel,
-        inviter: invite.inviter,
+        channel: invite.channel ? {
+          id: invite.channel.id,
+          name: invite.channel.name,
+          type: invite.channel.type,
+        } : null,
+        inviter: invite.inviter ? {
+          id: invite.inviter.id,
+          username: invite.inviter.username,
+          avatar: invite.inviter.avatar,
+        } : null,
       }));
     }
   );
@@ -958,6 +1115,48 @@ export default async function serverRoutes(app: FastifyInstance) {
       });
 
       return reply.code(201).send(successResponse(invite));
+    }
+  );
+
+  /**
+   * PATCH /api/v1/servers/:serverId/invites/:code
+   * Update an invite's settings
+   */
+  app.patch(
+    '/:serverId/invites/:code',
+    {
+      schema: {
+        description: 'Update an invite\'s settings (max uses, expiry, temporary)',
+        tags: ['Servers'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['serverId', 'code'],
+          properties: {
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+            code: { type: 'string' },
+          },
+        },
+        body: {
+          type: 'object',
+          properties: {
+            maxUses: { type: 'integer', minimum: 0, maximum: VALIDATION.INVITE.MAX_USES, nullable: true },
+            maxAge: { type: 'integer', minimum: 0, maximum: VALIDATION.INVITE.MAX_AGE, nullable: true },
+            temporary: { type: 'boolean' },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest<{
+      Params: { serverId: string; code: string };
+      Body: { maxUses?: number | null; maxAge?: number | null; temporary?: boolean };
+    }>, reply: FastifyReply) => {
+      const { code } = request.params;
+      const userId = request.user!.id;
+      const body = request.body;
+
+      const invite = await inviteService.updateInvite(code, userId, body);
+      return reply.send(successResponse(invite));
     }
   );
 

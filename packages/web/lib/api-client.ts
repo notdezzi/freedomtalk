@@ -64,6 +64,7 @@ export interface ServerResponse {
   memberCount?: number;
   onlineCount?: number;
   isOwner?: boolean;
+  position?: number;
 }
 
 export interface MemberResponse {
@@ -75,7 +76,7 @@ export interface MemberResponse {
   avatar?: string;
   banner?: string;
   bio?: string;
-  roles: string[];
+  roles: Array<{ id: string; name: string; color: number | null; position: number }>;
   joinedAt: string;
   isOwner: boolean;
   isOnline?: boolean;
@@ -92,6 +93,7 @@ export interface InviteResponse {
   inviter_id?: string;
   maxUses: number;
   max_uses?: number;
+  max_age?: number | null;
   uses: number;
   expiresAt?: string;
   expires_at?: string;
@@ -293,11 +295,13 @@ class ApiClient {
     };
 
     // Only set Content-Type for requests with a body
+    // For FormData, let the browser set the Content-Type with proper boundaries
     // For POST/PUT/PATCH without body, send empty object to avoid "Body cannot be empty" error
     const methodHasBody = ['POST', 'PUT', 'PATCH'].includes((options.method || 'GET').toUpperCase());
-    if (options.body) {
+    const isFormData = options.body instanceof FormData;
+    if (options.body && !isFormData) {
       headers['Content-Type'] = 'application/json';
-    } else if (methodHasBody) {
+    } else if (methodHasBody && !options.body) {
       // Send empty object body for POST/PUT/PATCH without explicit body
       options.body = JSON.stringify({});
       headers['Content-Type'] = 'application/json';
@@ -562,6 +566,22 @@ class ApiClient {
     });
   }
 
+  async uploadServerIcon(serverId: string, formData: FormData): Promise<ApiResponse<ServerResponse>> {
+    return this.request<ServerResponse>(`/api/v1/servers/${serverId}/icon`, {
+      method: 'POST',
+      body: formData,
+      headers: {}, // Let browser set Content-Type for FormData
+    });
+  }
+
+  async uploadServerBanner(serverId: string, formData: FormData): Promise<ApiResponse<ServerResponse>> {
+    return this.request<ServerResponse>(`/api/v1/servers/${serverId}/banner`, {
+      method: 'POST',
+      body: formData,
+      headers: {}, // Let browser set Content-Type for FormData
+    });
+  }
+
   async joinServer(inviteCode: string): Promise<ApiResponse<{ server: ServerResponse; member: MemberResponse }>> {
     return this.request<{ server: ServerResponse; member: MemberResponse }>('/api/v1/servers/join', {
       method: 'POST',
@@ -571,7 +591,7 @@ class ApiClient {
 
   async previewInvite(code: string): Promise<ApiResponse<{
     invite: { code: string; expiresAt: string | null; maxUses: number | null; uses: number };
-    server: { id: string; name: string; icon_url: string | null; member_count: number } | null;
+    server: { id: string; name: string; icon: string | null; memberCount: number; onlineCount?: number } | null;
     channel: { id: string; name: string; type: string } | null;
     inviter: { id: string; username: string; avatar: string | null } | null;
   }>> {
@@ -616,6 +636,17 @@ class ApiClient {
     return this.request<InviteResponse>(`/api/v1/servers/${serverId}/invites`, {
       method: 'POST',
       body: JSON.stringify(data || {}),
+    });
+  }
+
+  async updateInvite(serverId: string, code: string, data: {
+    maxUses?: number | null;
+    maxAge?: number | null;
+    temporary?: boolean;
+  }): Promise<ApiResponse<InviteResponse>> {
+    return this.request<InviteResponse>(`/api/v1/servers/${serverId}/invites/${code}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     });
   }
 
@@ -1150,8 +1181,8 @@ class ApiClient {
     });
   }
 
-  async getFriends(): Promise<ApiResponse<{ friends: { id: string; username: string; displayName: string | null; avatarUrl: string | null; customStatus: string | null; friendSince: string }[] }>> {
-    return this.request<{ friends: { id: string; username: string; displayName: string | null; avatarUrl: string | null; customStatus: string | null; friendSince: string }[] }>('/api/v1/friends');
+  async getFriends(): Promise<ApiResponse<{ friends: { id: string; username: string; displayName: string | null; avatarUrl: string | null; customStatus: string | null; friendSince: string; isOnline: boolean }[] }>> {
+    return this.request<{ friends: { id: string; username: string; displayName: string | null; avatarUrl: string | null; customStatus: string | null; friendSince: string; isOnline: boolean }[] }>('/api/v1/friends');
   }
 
   async getPendingFriendRequests(): Promise<ApiResponse<{ incoming: { id: string; userId: string; username: string; displayName: string | null; avatarUrl: string | null; requestedAt: string }[]; outgoing: { id: string; userId: string; username: string; displayName: string | null; avatarUrl: string | null; requestedAt: string }[] }>> {

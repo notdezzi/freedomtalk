@@ -6,3 +6,4 @@ export { Tooltip, type TooltipProps } from './tooltip';
 export { Skeleton, SkeletonText, SkeletonAvatar, SkeletonMessage, type SkeletonProps } from './skeleton';
 export { Dropdown, type DropdownProps, type DropdownItem } from './dropdown';
 export { ContextMenu, useContextMenu, type ContextMenuItem, type ContextMenuProps } from './context-menu';
+export { ConfirmDialogProvider, useConfirmDialog, type ConfirmOptions, type ConfirmVariant } from './confirm-dialog';

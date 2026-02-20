@@ -15,12 +15,18 @@ import { VALIDATION, PERMISSION_FLAGS } from '@freedomtalk/shared';
 
 /**
  * Message create with embeds schema
+ * Content can be empty if attachments are present
  */
 const createMessageWithEmbedsSchema = z.object({
-  content: z.string().min(1).max(2000),
+  content: z.string().max(2000).default(''), // Allow empty string for attachment-only messages
   channelId: z.string().min(15).max(25).optional(),
+  dmChannelId: z.string().min(15).max(25).optional(),
   embeds: z.array(z.any()).max(VALIDATION.EMBED.MAX_PER_MESSAGE).optional(),
-});
+  attachments: z.array(z.any()).max(VALIDATION.ATTACHMENT.MAX_PER_MESSAGE).optional(),
+}).refine(
+  (data) => data.content.length > 0 || (data.attachments && data.attachments.length > 0),
+  { message: 'Message must have content or attachments' }
+);
 
 interface GetMessagesQuerystring {
   before?: string;
@@ -41,6 +47,7 @@ export default async function messageRoutes(app: FastifyInstance) {
   /**
    * POST /api/v1/messages
    * Create a new message
+   * Requires SEND_MESSAGES permission for channel messages
    */
   app.post(
     '/',
@@ -49,48 +56,7 @@ export default async function messageRoutes(app: FastifyInstance) {
         description: 'Create a new message with optional embeds',
         tags: ['Messages'],
         security: [{ bearerAuth: [] }],
-        body: {
-          type: 'object',
-          required: ['content'],
-          properties: {
-            content: { type: 'string', minLength: 1, maxLength: 2000 },
-            channelId: { type: 'string', minLength: 15, maxLength: 25 },
-            embeds: {
-              type: 'array',
-              maxItems: VALIDATION.EMBED.MAX_PER_MESSAGE,
-              items: {
-                type: 'object',
-                properties: {
-                  type: { type: 'string', enum: ['rich', 'image', 'video', 'link', 'article'] },
-                  title: { type: 'string', maxLength: VALIDATION.EMBED.MAX_TITLE_LENGTH },
-                  description: { type: 'string', maxLength: VALIDATION.EMBED.MAX_DESCRIPTION_LENGTH },
-                  url: { type: 'string', maxLength: 2048 },
-                  timestamp: { type: 'string', format: 'date-time' },
-                  color: { type: 'integer', minimum: 0, maximum: 16777215 },
-                  footer_text: { type: 'string', maxLength: VALIDATION.EMBED.MAX_FOOTER_LENGTH },
-                  footer_icon_url: { type: 'string', maxLength: 500 },
-                  image_url: { type: 'string', maxLength: 500 },
-                  thumbnail_url: { type: 'string', maxLength: 500 },
-                  author_name: { type: 'string', maxLength: VALIDATION.EMBED.MAX_AUTHOR_NAME_LENGTH },
-                  author_url: { type: 'string', maxLength: 500 },
-                  author_icon_url: { type: 'string', maxLength: 500 },
-                  fields: {
-                    type: 'array',
-                    maxItems: VALIDATION.EMBED.MAX_FIELDS,
-                    items: {
-                      type: 'object',
-                      properties: {
-                        name: { type: 'string', maxLength: VALIDATION.EMBED.MAX_FIELD_NAME_LENGTH },
-                        value: { type: 'string', maxLength: VALIDATION.EMBED.MAX_FIELD_VALUE_LENGTH },
-                        inline: { type: 'boolean' },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
+        // Body validation handled by Zod in preHandler
         response: {
           201: {
             description: 'Message created successfully',
@@ -121,18 +87,31 @@ export default async function messageRoutes(app: FastifyInstance) {
           },
         },
       },
-      preHandler: validateBody(createMessageWithEmbedsSchema),
+      preHandler: [validateBody(createMessageWithEmbedsSchema)],
     },
-    async (request: FastifyRequest<{ Body: { content: string; channelId?: string; embeds?: any[] } }>, reply: FastifyReply) => {
-      const { content, channelId, embeds } = request.body;
+    async (request: FastifyRequest<{ Body: { content: string; channelId?: string; dmChannelId?: string; embeds?: any[]; attachments?: any[] } }>, reply: FastifyReply) => {
+      const { content, channelId, dmChannelId, embeds, attachments } = request.body;
       const userId = request.user!.id;
       const username = request.user!.username;
+
+      // Check SEND_MESSAGES permission for channel messages
+      if (channelId) {
+        const hasPermission = await permissionService.hasChannelPermission(userId, channelId, PERMISSION_FLAGS.SEND_MESSAGES);
+        if (!hasPermission) {
+          return reply.code(403).send({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'You do not have permission to send messages in this channel' }
+          });
+        }
+      }
 
       const message = await messageService.createMessage({
         content,
         authorId: userId,
         channelId,
+        dmChannelId,
         embeds,
+        attachments,
       });
 
       // Broadcast message via WebSocket
@@ -210,6 +189,7 @@ export default async function messageRoutes(app: FastifyInstance) {
   /**
    * GET /api/v1/messages
    * Get messages with pagination and filtering
+   * Requires VIEW_CHANNEL and READ_MESSAGE_HISTORY permissions for channel messages
    */
   app.get(
     '/',
@@ -237,6 +217,25 @@ export default async function messageRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Querystring: GetMessagesQuerystring }>, reply: FastifyReply) => {
       const { before, after, limit, authorId, channelId, isPinned, search, startDate, endDate } = request.query;
+      const userId = request.user!.id;
+
+      // Check permissions for channel messages
+      if (channelId) {
+        const hasViewChannel = await permissionService.hasChannelPermission(userId, channelId, PERMISSION_FLAGS.VIEW_CHANNEL);
+        if (!hasViewChannel) {
+          return reply.code(403).send({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'You do not have permission to view this channel' }
+          });
+        }
+        const hasReadHistory = await permissionService.hasChannelPermission(userId, channelId, PERMISSION_FLAGS.READ_MESSAGE_HISTORY);
+        if (!hasReadHistory) {
+          return reply.code(403).send({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'You do not have permission to read message history in this channel' }
+          });
+        }
+      }
 
       const result = await messageService.getMessages(
         { before, after, limit: limit ? parseInt(limit, 10) : undefined },
@@ -250,7 +249,23 @@ export default async function messageRoutes(app: FastifyInstance) {
         }
       );
 
-      return reply.send(successResponse(result));
+      // Transform reactions to match frontend format and set 'me' flag
+      const messagesWithReactions = result.messages.map((msg) => ({
+        ...msg,
+        reactions: msg.reactions?.map((reaction) => ({
+          emoji: {
+            id: reaction.emoji_id || undefined,
+            name: reaction.emoji_unicode || reaction.emoji_id || '',
+          },
+          count: reaction.count,
+          me: reaction.users.includes(userId),
+        })),
+      }));
+
+      return reply.send(successResponse({
+        ...result,
+        messages: messagesWithReactions,
+      }));
     }
   );
 
@@ -418,6 +433,7 @@ export default async function messageRoutes(app: FastifyInstance) {
   /**
    * POST /api/v1/messages/:id/pin
    * Pin a message
+   * Requires PIN_MESSAGES permission for server channels
    */
   app.post(
     '/:id/pin',
@@ -447,16 +463,30 @@ export default async function messageRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
       const { id } = request.params;
+      const userId = request.user!.id;
 
-      const message = await messageService.pinMessage(id);
+      // Get message to check channel permission
+      const message = await messageService.getMessage(id, true);
+      if (message.channel_id) {
+        const hasPermission = await permissionService.hasChannelPermission(userId, message.channel_id, PERMISSION_FLAGS.PIN_MESSAGES);
+        if (!hasPermission) {
+          return reply.code(403).send({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'You do not have permission to pin messages in this channel' }
+          });
+        }
+      }
 
-      return reply.send(successResponse(message));
+      const pinnedMessage = await messageService.pinMessage(id);
+
+      return reply.send(successResponse(pinnedMessage));
     }
   );
 
   /**
    * DELETE /api/v1/messages/:id/pin
    * Unpin a message
+   * Requires PIN_MESSAGES permission for server channels
    */
   app.delete(
     '/:id/pin',
@@ -486,10 +516,23 @@ export default async function messageRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
       const { id } = request.params;
+      const userId = request.user!.id;
 
-      const message = await messageService.unpinMessage(id);
+      // Get message to check channel permission
+      const message = await messageService.getMessage(id, true);
+      if (message.channel_id) {
+        const hasPermission = await permissionService.hasChannelPermission(userId, message.channel_id, PERMISSION_FLAGS.PIN_MESSAGES);
+        if (!hasPermission) {
+          return reply.code(403).send({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'You do not have permission to unpin messages in this channel' }
+          });
+        }
+      }
 
-      return reply.send(successResponse(message));
+      const unpinnedMessage = await messageService.unpinMessage(id);
+
+      return reply.send(successResponse(unpinnedMessage));
     }
   );
 }

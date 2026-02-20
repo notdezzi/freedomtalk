@@ -3,6 +3,7 @@ import { logger } from '../../config/logger';
 import { WS_EVENTS } from '@freedomtalk/shared';
 import { wsServer } from './websocket.server';
 import { dmChannelService } from '../dm/dm-channel.service';
+import { db } from '../../config/database';
 
 // Track last presence broadcast time per user for throttling
 const presenceBroadcastCache = new Map<string, number>();
@@ -242,7 +243,7 @@ class PresenceManager {
   }
 
   /**
-   * Broadcast presence update to relevant users only (DM partners and server members)
+   * Broadcast presence update to relevant users only (friends, DM partners, and server members)
    * @param userId - User ID
    * @param presence - Presence status
    */
@@ -262,7 +263,7 @@ class PresenceManager {
       const io = wsServer.getIO();
       const timestamp = new Date().toISOString();
 
-      // Only broadcast to DM channels the user is in (their friends/DM partners)
+      // Broadcast to DM channels the user is in
       const result = await dmChannelService.getDMsByUser(userId, 100, 0);
       for (const dmChannel of result.dmChannels) {
         const roomName = `dm:${dmChannel.id}`;
@@ -274,11 +275,39 @@ class PresenceManager {
         });
       }
 
+      // Broadcast to friends using friend_presence:update event
+      const friends = await db('user_connections')
+        .where('user_id', userId)
+        .where('connection_type', 'friend')
+        .select('connected_user_id');
+
+      for (const friend of friends) {
+        io.to(`user:${friend.connected_user_id}`).emit(WS_EVENTS.FRIEND_PRESENCE_UPDATE, {
+          userId,
+          presence,
+          timestamp,
+        });
+      }
+
+      // Also broadcast to users who have this user as a friend
+      const inverseFriends = await db('user_connections')
+        .where('connected_user_id', userId)
+        .where('connection_type', 'friend')
+        .select('user_id');
+
+      for (const friend of inverseFriends) {
+        io.to(`user:${friend.user_id}`).emit(WS_EVENTS.FRIEND_PRESENCE_UPDATE, {
+          userId,
+          presence,
+          timestamp,
+        });
+      }
+
       // TODO: Also broadcast to server rooms where user is a member
       // This would require getting user's server memberships and broadcasting to each server room
       // For now, server presence is handled through separate subscription mechanism
 
-      logger.debug({ userId, presence, dmCount: result.dmChannels.length }, 'Presence update broadcast to relevant users');
+      logger.debug({ userId, presence, dmCount: result.dmChannels.length, friendCount: friends.length + inverseFriends.length }, 'Presence update broadcast to relevant users');
     } catch (error) {
       logger.error({ error, userId, presence }, 'Error broadcasting presence update');
     }

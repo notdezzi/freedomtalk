@@ -150,8 +150,8 @@ export default async function userRoutes(app: FastifyInstance) {
       },
       preHandler: requireAuth,
     },
-    async (request: FastifyRequest<{ Params: { userId: string } }>, reply: FastifyReply) => {
-      const { userId } = request.params;
+    async (request, reply) => {
+      const { userId } = request.params as { userId: string };
 
       // Get user data (public info only)
       const user = await db('users').where({ id: userId }).first();

@@ -6,7 +6,8 @@
 import { db } from '../../config/database';
 import { generateSnowflakeId } from '../../utils/snowflake';
 import { AppError } from '../../utils/errors';
-import { VALIDATION, DEFAULTS } from '@freedomtalk/shared';
+import { VALIDATION, DEFAULTS, WS_EVENTS } from '@freedomtalk/shared';
+import { wsServer } from '../websocket/websocket.server';
 
 export interface InviteWithDetails {
   id: string;
@@ -48,6 +49,21 @@ export interface CreateInviteInput {
 }
 
 class InviteService {
+  /**
+   * Emit event to a server room
+   */
+  private emitToServer(serverId: string, event: string, data: any): void {
+    try {
+      const io = wsServer.getIO();
+      if (io) {
+        io.to(`server:${serverId}`).emit(event, data);
+      }
+    } catch (error) {
+      // WebSocket server might not be initialized
+      console.error('Failed to emit to server room:', error);
+    }
+  }
+
   /**
    * Generate a random invite code
    */
@@ -129,7 +145,16 @@ class InviteService {
         expires_at: expiresAt,
       });
 
-    return this.getInviteByCode(code) as Promise<InviteWithDetails>;
+    const invite = await this.getInviteByCode(code) as Promise<InviteWithDetails>;
+
+    // Emit INVITE_CREATE event to server room
+    const inviteData = await invite;
+    this.emitToServer(input.serverId, WS_EVENTS.INVITE_CREATE, {
+      serverId: input.serverId,
+      invite: inviteData,
+    });
+
+    return invite;
   }
 
   /**
@@ -270,7 +295,17 @@ class InviteService {
       throw new AppError(403, 'FORBIDDEN', 'You do not have permission to delete this invite');
     }
 
+    const serverId = invite.server_id;
+    const inviteId = invite.id;
+
     await db('invites').where('code', code).delete();
+
+    // Emit INVITE_DELETE event to server room
+    this.emitToServer(serverId, WS_EVENTS.INVITE_DELETE, {
+      serverId,
+      inviteId,
+      code,
+    });
   }
 
   /**
@@ -310,6 +345,74 @@ class InviteService {
       .first();
 
     return !!invite;
+  }
+
+  /**
+   * Update an invite's settings
+   */
+  async updateInvite(
+    code: string,
+    userId: string,
+    input: {
+      maxUses?: number | null;
+      maxAge?: number | null;
+      temporary?: boolean;
+    }
+  ): Promise<InviteWithDetails> {
+    const invite = await db('invites').where('code', code).first();
+
+    if (!invite) {
+      throw new AppError(404, 'INVITE_NOT_FOUND', 'Invite not found');
+    }
+
+    // Only inviter or server manager can update
+    const server = await db('servers').where('id', invite.server_id).first();
+    if (invite.inviter_id !== userId && server?.owner_id !== userId) {
+      throw new AppError(403, 'FORBIDDEN', 'You do not have permission to update this invite');
+    }
+
+    // Validate max uses
+    if (input.maxUses !== undefined && input.maxUses !== null) {
+      if (input.maxUses < 0 || input.maxUses > VALIDATION.INVITE.MAX_USES) {
+        throw new AppError(400, 'INVALID_MAX_USES',
+          `Max uses must be between 0 and ${VALIDATION.INVITE.MAX_USES}`);
+      }
+    }
+
+    // Validate max age
+    if (input.maxAge !== undefined && input.maxAge !== null) {
+      if (input.maxAge < 0 || input.maxAge > VALIDATION.INVITE.MAX_AGE) {
+        throw new AppError(400, 'INVALID_MAX_AGE',
+          `Max age must be between 0 and ${VALIDATION.INVITE.MAX_AGE} seconds`);
+      }
+    }
+
+    // Calculate new expiry time
+    const maxAge = input.maxAge ?? invite.max_age;
+    const expiresAt = maxAge && maxAge > 0
+      ? new Date(Date.now() + maxAge * 1000)
+      : null;
+
+    const updateData: Record<string, any> = {
+      updated_at: new Date(),
+    };
+
+    if (input.maxUses !== undefined) {
+      updateData.max_uses = input.maxUses;
+    }
+    if (input.maxAge !== undefined) {
+      updateData.max_age = input.maxAge;
+      updateData.expires_at = expiresAt;
+    }
+    if (input.temporary !== undefined) {
+      updateData.temporary = input.temporary;
+    }
+
+    await db('invites')
+      .where('code', code)
+      .update(updateData);
+
+    return this.getInviteByCode(code) as Promise<InviteWithDetails>;
   }
 
   /**

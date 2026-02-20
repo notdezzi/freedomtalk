@@ -55,6 +55,8 @@ export function useSocket() {
       'channel:update',
       'channel:delete',
       'dm:create',
+      'invite:create',
+      'invite:delete',
       'friend_request:received',
       'friend_request:accepted',
       'friend_request:rejected',
@@ -249,6 +251,21 @@ export function useSocket() {
       socket.on('dm:create', (data: any) => {
         console.log('[Socket] DM created:', data);
         queryClient.invalidateQueries({ queryKey: queryKeys.dms.list() });
+      });
+
+      // Invite events
+      socket.on('invite:create', (data: any) => {
+        console.log('[Socket] Invite created:', data);
+        if (data.serverId) {
+          queryClient.invalidateQueries({ queryKey: queryKeys.servers.invites(data.serverId) });
+        }
+      });
+
+      socket.on('invite:delete', (data: any) => {
+        console.log('[Socket] Invite deleted:', data);
+        if (data.serverId) {
+          queryClient.invalidateQueries({ queryKey: queryKeys.servers.invites(data.serverId) });
+        }
       });
 
       // Friend events

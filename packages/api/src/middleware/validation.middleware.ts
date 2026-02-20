@@ -15,6 +15,8 @@ import { ValidationError } from '../types/api.types';
 export function validateBody<T>(schema: ZodSchema<T>) {
   return async (request: FastifyRequest, _reply: FastifyReply) => {
     try {
+      // Log the incoming body for debugging
+      console.log('[Validation] Body received:', JSON.stringify(request.body, null, 2));
       request.body = schema.parse(request.body);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -22,6 +24,9 @@ export function validateBody<T>(schema: ZodSchema<T>) {
           field: err.path.join('.'),
           message: err.message,
         }));
+        // Log the validation errors and the body that failed
+        console.log('[Validation] Errors:', JSON.stringify(formattedErrors, null, 2));
+        request.log.error({ errors: formattedErrors, body: request.body }, 'Validation failed');
         throw new ValidationError('Validation failed', formattedErrors);
       }
       throw error;

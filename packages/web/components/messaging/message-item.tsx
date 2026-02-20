@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { cn, formatRelativeTime, formatTime, formatDate } from '@/lib/utils';
 import { Avatar, Tooltip } from '@/components/ui';
 import { ReactionPicker } from './reaction-picker';
+import { MarkdownContent } from './markdown-content';
 import {
   MoreHorizontal,
   Reply,
@@ -80,9 +81,9 @@ export function MessageItem({
 
         {/* Content - same layout as non-grouped messages */}
         <div className="flex-1 min-w-0">
-          <p className="text-foreground text-sm break-words whitespace-pre-wrap pl-0">
-            {message.content}
-          </p>
+          <div className="text-foreground text-sm break-words pl-0">
+            <MarkdownContent content={message.content} />
+          </div>
 
           {/* Reactions */}
           {message.reactions && message.reactions.length > 0 && (
@@ -142,7 +143,8 @@ export function MessageItem({
           <div className="flex items-baseline gap-2">
             <button
               onClick={() => onUserClick?.(message.author.id)}
-              className="font-medium text-foreground hover:underline cursor-pointer"
+              className="font-medium hover:underline cursor-pointer"
+              style={{ color: message.author.color ? `#${message.author.color.toString(16).padStart(6, '0')}` : undefined }}
             >
               {message.author.displayName || message.author.username}
             </button>
@@ -186,21 +188,25 @@ export function MessageItem({
             </div>
           </div>
         ) : (
-          <p className="text-foreground text-sm break-words whitespace-pre-wrap">
-            {message.content}
-          </p>
+          <div className="text-foreground text-sm break-words">
+            <MarkdownContent content={message.content} />
+          </div>
         )}
 
         {/* Reactions */}
         {message.reactions && message.reactions.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
-            {message.reactions.map((reaction, index) => (
-              <ReactionBadge
-                key={index}
-                reaction={reaction}
-                onClick={() => onReaction(reaction.emoji.name)}
-              />
-            ))}
+            {message.reactions.map((reaction, index) => {
+              // Handle both old and new reaction formats
+              const emojiName = reaction.emoji?.name || (reaction as any).emoji_unicode || '?';
+              return (
+                <ReactionBadge
+                  key={index}
+                  reaction={reaction}
+                  onClick={() => onReaction(emojiName)}
+                />
+              );
+            })}
           </div>
         )}
 
@@ -293,6 +299,9 @@ function ReactionBadge({
   reaction: MessageReaction;
   onClick?: () => void;
 }) {
+  // Safety check for missing emoji data
+  const emojiName = reaction.emoji?.name || (reaction as any).emoji_unicode || '?';
+
   return (
     <button
       onClick={onClick}
@@ -302,7 +311,7 @@ function ReactionBadge({
         reaction.me ? 'bg-accent-muted border-accent' : 'bg-background-surface'
       )}
     >
-      <span>{reaction.emoji.name}</span>
+      <span>{emojiName}</span>
       <span className={cn('text-xs', reaction.me ? 'text-accent' : 'text-foreground-muted')}>
         {reaction.count}
       </span>

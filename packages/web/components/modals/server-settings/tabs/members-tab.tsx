@@ -29,8 +29,11 @@ function colorToHex(color: number | undefined): string | null {
  * Get role color from member's highest role with a color
  */
 function getMemberColor(member: MemberResponse, roles: { id: string; color: number; position: number }[]): string | null {
+  // Get role IDs from member (handles both string[] and object[] formats)
+  const memberRoleIds = member.roles.map(r => typeof r === 'string' ? r : r.id);
+
   const memberRoles = roles
-    .filter(role => member.roles.includes(role.id))
+    .filter(role => memberRoleIds.includes(role.id))
     .sort((a, b) => b.position - a.position);
 
   for (const role of memberRoles) {
@@ -194,7 +197,7 @@ export function MembersTab({ serverId }: MembersTabProps) {
                 <div className="mb-6">
                   <RoleAssignment
                     roles={roles}
-                    memberRoleIds={selectedMember.roles}
+                    memberRoleIds={selectedMember.roles.map(r => typeof r === 'string' ? r : r.id)}
                     onChange={handleRolesChange}
                     disabled={selectedMember.isOwner || setMemberRoles.isPending}
                   />

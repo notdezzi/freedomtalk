@@ -130,7 +130,12 @@ export function useServerMembers(serverId: string | undefined) {
           avatar: m.user?.avatar || m.avatar_url || m.avatar,
           banner: m.banner_url || m.banner,
           bio: m.bio,
-          roles: (m.roles || []).map((r: any) => r.id || r),
+          roles: (m.roles || []).map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            color: r.color,
+            position: r.position,
+          })),
           joinedAt: m.joined_at || m.joinedAt,
           isOwner: m.is_owner || m.isOwner || false,
           isOnline: m.isOnline ?? (m.status === 'online'),
@@ -424,6 +429,31 @@ export function useCreateInvite(serverId: string | undefined) {
     }) => {
       if (!serverId) throw new Error('Server ID is required');
       const response = await apiClient.createInvite(serverId, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      if (serverId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.servers.invites(serverId) });
+      }
+    },
+  });
+}
+
+// Update an invite
+export function useUpdateInvite(serverId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ code, data }: {
+      code: string;
+      data: {
+        maxUses?: number | null;
+        maxAge?: number | null;
+        temporary?: boolean;
+      };
+    }) => {
+      if (!serverId) throw new Error('Server ID is required');
+      const response = await apiClient.updateInvite(serverId, code, data);
       return response.data;
     },
     onSuccess: () => {

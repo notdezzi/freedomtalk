@@ -1,15 +1,29 @@
 'use client';
 
 import { AppShell } from '@/components/layout';
-import { useFriends, useFriendRequests, useSendFriendRequest, useAcceptFriendRequest, useRejectFriendRequest, useBlockedUsers } from '@/features/friends';
+import { useFriends, useFriendRequests, useSendFriendRequest, useAcceptFriendRequest, useRejectFriendRequest, useBlockedUsers, useRemoveFriend, useBlockUser } from '@/features/friends';
 import { useCreateDM } from '@/features/dms';
 import { useUIStore } from '@/stores';
 import { Avatar, Button, Input } from '@/components/ui';
-import { useState } from 'react';
-import { Clock, Check, X, Search, MessageCircle } from 'lucide-react';
+import { ContextMenu, type ContextMenuItem } from '@/components/common/context-menu';
+import { useState, useCallback } from 'react';
+import { Clock, Check, X, Search, MessageCircle, UserX, Ban, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { toast } from '@/stores/toast-store';
+import { useConfirmDialog } from '@/components/ui';
 
 type TabType = 'online' | 'all' | 'pending' | 'blocked' | 'add';
+
+interface Friend {
+  id: string;
+  userId: string;
+  username: string;
+  displayName?: string;
+  avatarUrl?: string;
+  isOnline: boolean;
+  customStatus?: string;
+  friendSince: string;
+}
 
 export default function AppPage() {
   const router = useRouter();
@@ -17,6 +31,15 @@ export default function AppPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [addFriendUsername, setAddFriendUsername] = useState('');
   const openModal = useUIStore((s) => s.openModal);
+  const { confirm } = useConfirmDialog();
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    open: boolean;
+    x: number;
+    y: number;
+    friend: Friend | null;
+  }>({ open: false, x: 0, y: 0, friend: null });
 
   // Fetch friends and requests
   const { data: friends = [], isLoading: friendsLoading } = useFriends();
@@ -27,14 +50,17 @@ export default function AppPage() {
   const sendFriendRequest = useSendFriendRequest();
   const acceptFriendRequest = useAcceptFriendRequest();
   const rejectFriendRequest = useRejectFriendRequest();
+  const removeFriend = useRemoveFriend();
+  const blockUser = useBlockUser();
   const createDM = useCreateDM();
 
-  // Filter friends based on search
+  // Filter friends based on search and online status
   const filteredFriends = friends.filter((friend) => {
     const matchesSearch = searchQuery === '' ||
       friend.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (friend.displayName?.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesSearch;
+    const matchesOnline = activeTab !== 'online' || friend.isOnline;
+    return matchesSearch && matchesOnline;
   });
 
   const pendingRequests = friendRequests?.incoming || [];
@@ -55,6 +81,100 @@ export default function AppPage() {
         }
       },
     });
+  };
+
+  const handleFriendContextMenu = useCallback((e: React.MouseEvent, friend: Friend) => {
+    e.preventDefault();
+    setContextMenu({ open: true, x: e.clientX, y: e.clientY, friend });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu((prev) => ({ ...prev, open: false }));
+  }, []);
+
+  const handleRemoveFriend = async (friend: Friend) => {
+    const confirmed = await confirm({
+      title: 'Remove Friend',
+      message: `Are you sure you want to remove ${friend.displayName || friend.username} from your friends list?`,
+      confirmLabel: 'Remove',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+
+    if (confirmed) {
+      removeFriend.mutate(friend.userId, {
+        onSuccess: () => {
+          toast.success(`${friend.displayName || friend.username} has been removed from your friends list`);
+          closeContextMenu();
+        },
+        onError: () => {
+          toast.error('Failed to remove friend');
+        },
+      });
+    }
+  };
+
+  const handleBlockFriend = async (friend: Friend) => {
+    const confirmed = await confirm({
+      title: 'Block User',
+      message: `Are you sure you want to block ${friend.displayName || friend.username}? You won't receive messages from them anymore.`,
+      confirmLabel: 'Block',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+
+    if (confirmed) {
+      blockUser.mutate(friend.userId, {
+        onSuccess: () => {
+          toast.success(`${friend.displayName || friend.username} has been blocked`);
+          closeContextMenu();
+        },
+        onError: () => {
+          toast.error('Failed to block user');
+        },
+      });
+    }
+  };
+
+  const getFriendContextMenuItems = (): ContextMenuItem[] => {
+    const friend = contextMenu.friend;
+    if (!friend) return [];
+
+    return [
+      {
+        id: 'message',
+        label: 'Message',
+        icon: <MessageCircle className="h-4 w-4" />,
+        onClick: () => {
+          handleStartDM(friend.id);
+          closeContextMenu();
+        },
+      },
+      {
+        id: 'profile',
+        label: 'View Profile',
+        icon: <User className="h-4 w-4" />,
+        onClick: () => {
+          openModal('user-profile', { userId: friend.userId });
+          closeContextMenu();
+        },
+      },
+      { id: 'separator-1', label: '', separator: true },
+      {
+        id: 'remove',
+        label: 'Remove Friend',
+        icon: <UserX className="h-4 w-4" />,
+        danger: true,
+        onClick: () => handleRemoveFriend(friend),
+      },
+      {
+        id: 'block',
+        label: 'Block',
+        icon: <Ban className="h-4 w-4" />,
+        danger: true,
+        onClick: () => handleBlockFriend(friend),
+      },
+    ];
   };
 
   const renderContent = () => {
@@ -248,22 +368,28 @@ export default function AppPage() {
                   <div
                     key={friend.id}
                     className="flex items-center justify-between p-2 rounded-lg hover:bg-background-surface"
+                    onContextMenu={(e) => handleFriendContextMenu(e, friend as Friend)}
                   >
                     <button
                       className="flex items-center gap-3 flex-1 text-left"
                       onClick={() => handleStartDM(friend.id)}
                     >
-                      <Avatar
-                        src={friend.avatarUrl ?? undefined}
-                        alt={friend.displayName || friend.username}
-                        size="md"
-                      />
+                      <div className="relative">
+                        <Avatar
+                          src={friend.avatarUrl ?? undefined}
+                          alt={friend.displayName || friend.username}
+                          size="md"
+                        />
+                        {friend.isOnline && (
+                          <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-success border-2 border-background-surface" />
+                        )}
+                      </div>
                       <div>
                         <p className="text-foreground font-medium">
                           {friend.displayName || friend.username}
                         </p>
                         <p className="text-foreground-muted text-sm">
-                          {friend.customStatus || `Friends since ${new Date(friend.friendSince).toLocaleDateString()}`}
+                          {friend.customStatus || (friend.isOnline ? 'Online' : `Friends since ${new Date(friend.friendSince).toLocaleDateString()}`)}
                         </p>
                       </div>
                     </button>
@@ -342,6 +468,15 @@ export default function AppPage() {
           {renderContent()}
         </div>
       </div>
+
+      {/* Friend Context Menu */}
+      <ContextMenu
+        open={contextMenu.open}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        items={getFriendContextMenuItems()}
+        onClose={closeContextMenu}
+      />
     </AppShell>
   );
 }

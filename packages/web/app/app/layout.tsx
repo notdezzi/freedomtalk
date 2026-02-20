@@ -3,6 +3,7 @@
 import { QueryProvider } from '@/lib/query-provider';
 import { ToastContainer } from '@/components/common';
 import { ModalRenderer } from '@/components/modals';
+import { ConfirmDialogProvider } from '@/components/ui';
 import { useAuth } from '@/hooks/use-auth';
 import { useSocket } from '@/hooks/use-socket';
 import { useRouter, usePathname } from 'next/navigation';
@@ -62,11 +63,13 @@ export default function AppLayout({
 
   return (
     <QueryProvider>
-      <SocketProvider>
-        {children}
-        <ToastContainer />
-        <ModalRenderer />
-      </SocketProvider>
+      <ConfirmDialogProvider>
+        <SocketProvider>
+          {children}
+          <ToastContainer />
+          <ModalRenderer />
+        </SocketProvider>
+      </ConfirmDialogProvider>
     </QueryProvider>
   );
 }

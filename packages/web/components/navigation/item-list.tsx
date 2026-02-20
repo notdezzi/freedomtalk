@@ -159,6 +159,7 @@ export function ChannelCategory({
   channels,
   activeChannelId,
   onChannelClick,
+  onChannelContextMenu,
   onAddClick,
   isCollapsed = false,
   onToggleCollapse,
@@ -182,6 +183,7 @@ export function ChannelCategory({
   channels: SimpleChannel[];
   activeChannelId?: string;
   onChannelClick: (channel: SimpleChannel) => void;
+  onChannelContextMenu?: (e: React.MouseEvent, channel: SimpleChannel) => void;
   onAddClick?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -254,6 +256,7 @@ export function ChannelCategory({
                   isDragging={draggedChannelId === channel.id}
                   isDraggable={isDraggable}
                   onClick={() => onChannelClick(channel)}
+                  onContextMenu={(e) => onChannelContextMenu?.(e, channel)}
                   voiceUsers={voiceUsersByChannel?.[channel.id]}
                   isActiveVoiceChannel={channel.id === activeVoiceChannelId}
                 />
@@ -283,6 +286,7 @@ function ChannelItem({
   isDragging,
   isDraggable,
   onClick,
+  onContextMenu,
   voiceUsers,
   isActiveVoiceChannel,
 }: {
@@ -291,6 +295,7 @@ function ChannelItem({
   isDragging?: boolean;
   isDraggable?: boolean;
   onClick: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
   voiceUsers?: VoiceUser[];
   isActiveVoiceChannel?: boolean;
 }) {
@@ -306,10 +311,16 @@ function ChannelItem({
   const isVoiceChannel = channel.type === 'voice';
   const hasVoiceUsers = voiceUsers && voiceUsers.length > 0;
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent parent context menu from firing
+    onContextMenu?.(e);
+  };
+
   return (
     <div>
       <button
         onClick={onClick}
+        onContextMenu={handleContextMenu}
         className={cn(
           'flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left',
           'transition-colors duration-100 group',

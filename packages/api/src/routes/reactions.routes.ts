@@ -18,11 +18,11 @@ import { logger } from '../config/logger';
 
 // Zod schemas for validation
 const messageIdParamSchema = z.object({
-  messageId: z.string().length(20, 'Invalid message ID'),
+  messageId: z.string().min(15).max(25, 'Invalid message ID'),
 });
 
 const emojiParamSchema = z.object({
-  messageId: z.string().length(20, 'Invalid message ID'),
+  messageId: z.string().min(15).max(25, 'Invalid message ID'),
   emoji: z.string().min(1).max(100, 'Invalid emoji'),
 });
 

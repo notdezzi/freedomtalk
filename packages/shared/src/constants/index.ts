@@ -90,6 +90,8 @@ export const WS_EVENTS = {
   SERVER_CREATE: 'server:create',
   SERVER_UPDATE: 'server:update',
   SERVER_DELETE: 'server:delete',
+  SERVER_ADD: 'server:add',        // Sent to user when they join a server
+  SERVER_REMOVE: 'server:remove',  // Sent to user when they leave/are kicked/banned
   SERVER_MEMBER_ADD: 'server_member:add',
   SERVER_MEMBER_UPDATE: 'server_member:update',
   SERVER_MEMBER_REMOVE: 'server_member:remove',
