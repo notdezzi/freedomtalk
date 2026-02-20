@@ -67,7 +67,7 @@ export function ProfilePanel({
           status={user.status}
           showStatus
           className={cn(
-            "border-4 border-background-elevated",
+            "border-4 border-background-elevated rounded-full",
             variant === 'modal' ? "-mt-14" : "-mt-10"
           )}
         />
