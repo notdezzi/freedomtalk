@@ -5,6 +5,7 @@
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import multipart from '@fastify/multipart';
 import { requireAuth } from '../../middleware/auth.middleware';
 import { validateBody } from '../../middleware/validation.middleware';
 import { requireServerPermission } from '../../middleware/permission.middleware';
@@ -87,6 +88,14 @@ async function checkServerPermission(
 }
 
 export default async function serverRoutes(app: FastifyInstance) {
+  // Register multipart plugin for file uploads (icon/banner)
+  await app.register(multipart, {
+    limits: {
+      fileSize: 8 * 1024 * 1024, // 8MB max file size
+      files: 1, // One file at a time
+    },
+  });
+
   // All routes require authentication
   app.addHook('onRequest', requireAuth);
 

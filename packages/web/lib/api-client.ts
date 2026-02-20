@@ -553,11 +553,29 @@ class ApiClient {
     });
   }
 
-  async updateServer(serverId: string, data: Partial<{ name: string; description: string; iconUrl: string | null; bannerUrl: string | null }>): Promise<ApiResponse<ServerResponse>> {
+  async updateServer(serverId: string, data: Partial<{ name: string; description: string | null; iconUrl: string | null; bannerUrl: string | null; vanityUrlCode: string | null }>): Promise<ApiResponse<ServerResponse>> {
     return this.request<ServerResponse>(`/api/v1/servers/${serverId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+  }
+
+  async checkVanityUrlAvailability(serverId: string, code: string): Promise<ApiResponse<{ available: boolean; code: string }>> {
+    return this.request<{ available: boolean; code: string }>(`/api/v1/servers/${serverId}/vanity/check`, {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  async getServerVanity(serverId: string): Promise<ApiResponse<{ vanityUrlCode: string | null }>> {
+    return this.request<{ vanityUrlCode: string | null }>(`/api/v1/servers/${serverId}/vanity`);
+  }
+
+  async getVanityPreview(code: string): Promise<ApiResponse<{
+    server: { id: string; name: string; icon: string | null; description?: string; memberCount: number };
+    vanityUrl: string;
+  }>> {
+    return this.request(`/api/v1/servers/vanity/${code}`);
   }
 
   async deleteServer(serverId: string): Promise<ApiResponse<{ message: string }>> {

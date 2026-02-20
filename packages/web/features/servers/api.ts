@@ -49,7 +49,21 @@ export function useServer(serverId: string | undefined) {
     queryFn: async () => {
       if (!serverId) return null;
       const response = await apiClient.getServer(serverId);
-      return response.success ? response.data || null : null;
+      if (!response.success || !response.data) return null;
+
+      // Transform snake_case to camelCase
+      const s = response.data as any;
+      return {
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        icon: s.icon_url || s.icon,
+        banner: s.banner_url || s.banner,
+        ownerId: s.owner_id || s.ownerId,
+        vanityUrlCode: s.vanity_url_code || s.vanityUrlCode,
+        memberCount: s.member_count || s.memberCount,
+        createdAt: s.created_at || s.createdAt,
+      };
     },
     enabled: !!serverId,
   });
@@ -172,7 +186,7 @@ export function useUpdateServer() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ serverId, data }: { serverId: string; data: { name?: string; description?: string; iconUrl?: string | null } }) => {
+    mutationFn: async ({ serverId, data }: { serverId: string; data: { name?: string; description?: string | null; iconUrl?: string | null; bannerUrl?: string | null; vanityUrlCode?: string | null } }) => {
       const response = await apiClient.updateServer(serverId, data);
       return response.data;
     },

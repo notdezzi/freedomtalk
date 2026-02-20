@@ -39,7 +39,7 @@ export default function VanityInvitePage() {
       setError(null);
 
       try {
-        const response = await apiClient.request(`/api/v1/servers/vanity/${code}`);
+        const response = await apiClient.getVanityPreview(code);
 
         if (response.success && response.data) {
           setPreview(response.data as VanityPreview);

@@ -61,10 +61,7 @@ export function OverviewTab({ serverId }: OverviewTabProps) {
 
     setIsCheckingVanity(true);
     try {
-      const response = await apiClient.request(`/api/v1/servers/${serverId}/vanity/check`, {
-        method: 'POST',
-        body: JSON.stringify({ code }),
-      });
+      const response = await apiClient.checkVanityUrlAvailability(serverId, code);
       if (response.success && response.data) {
         setVanityAvailable(response.data.available);
       } else {

@@ -6,7 +6,7 @@ import { ItemList, ChannelCategory } from '@/components/navigation/item-list';
 import { UserPanel } from './user-panel';
 import { VoicePanel } from '@/components/voice';
 import { useUIStore, useVoiceStore } from '@/stores';
-import { ContextMenu, useContextMenu, Dropdown } from '@/components/ui';
+import { ContextMenu, useContextMenu, Dropdown, type ContextMenuItem } from '@/components/ui';
 import { Home, Plus, Users, Settings, UserPlus, LogOut, Trash2, Edit2, X, ChevronDown, FolderPlus, Hash, Volume2, VolumeX, GripVertical, MicOff, Copy } from 'lucide-react';
 import { useServers, useServerChannelsAndCategories, useLeaveServer, useUpdateServerPositions, useUpdateChannelPositions, useUpdateCategoryPositions } from '@/features/servers';
 import { useDMChannels, useCloseDM } from '@/features/dms';
@@ -421,7 +421,7 @@ export function NavigationColumn() {
     const serverData = servers.find(s => s.id === targetServerId);
     const isOwner = (serverData?.ownerId || (serverData as any)?.owner_id) === currentUserId;
 
-    const baseItems = [
+    const baseItems: ContextMenuItem[] = [
       {
         label: 'Invite People',
         icon: <UserPlus className="h-4 w-4" />,
@@ -436,7 +436,7 @@ export function NavigationColumn() {
             },
           ]
         : []),
-      { label: 'divider', onClick: () => {}, divider: true },
+      { label: '', onClick: () => {}, divider: true },
       ...(isOwner
         ? [
             {
@@ -467,7 +467,7 @@ export function NavigationColumn() {
     // Add Copy ID if developer mode is enabled
     if (isDeveloperMode) {
       baseItems.push(
-        { label: 'divider', onClick: () => {}, divider: true },
+        { label: '', onClick: () => {}, divider: true },
         {
           label: 'Copy Server ID',
           icon: <Copy className="h-4 w-4" />,
@@ -491,7 +491,7 @@ export function NavigationColumn() {
     // Check if user can manage channels
     if (!canManageChannels) return [];
 
-    const baseItems = [
+    const baseItems: ContextMenuItem[] = [
       {
         label: 'Edit Channel',
         icon: <Edit2 className="h-4 w-4" />,
@@ -508,7 +508,7 @@ export function NavigationColumn() {
     // Add Copy ID if developer mode is enabled
     if (isDeveloperMode) {
       baseItems.push(
-        { label: 'divider', onClick: () => {}, divider: true },
+        { label: '', onClick: () => {}, divider: true },
         {
           label: 'Copy Channel ID',
           icon: <Copy className="h-4 w-4" />,
