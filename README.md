@@ -1,191 +1,241 @@
-# FreedomTalk
+<p align="center">
+  <h1 align="center">FreedomTalk</h1>
+  <p align="center"><strong>Own Your Conversations.</strong></p>
+  <p align="center">The open-source communication platform that gives you control.</p>
+</p>
 
-A modern, open-source Discord clone built with cutting-edge technologies.
+---
 
-## Overview
+## Why FreedomTalk?
 
-FreedomTalk is a real-time communication platform featuring text chat, voice calls, video calls, and server/channel organization. Built as a monorepo with multiple client applications (web, desktop, mobile) sharing a common backend API.
+Tired of proprietary platforms that monetize your conversations? **FreedomTalk** is your answer.
 
-## Technology Stack
+Built for communities that value **privacy, transparency, and control**, FreedomTalk delivers enterprise-grade real-time communication without the vendor lock-in.
+
+### What You Get
+
+| Feature | Description |
+|---------|-------------|
+| **Real-Time Messaging** | Instant text chat with Markdown support, reactions, and attachments |
+| **Voice & Video Calls** | Crystal-clear calls directly in your browser or desktop app |
+| **Server & Channel Organization** | Flexible structure for communities of any size |
+| **Self-Hosted** | Deploy on your infrastructure. Your data, your rules. |
+| **Modern Architecture** | Built on cutting-edge tech for reliability and scale |
+
+---
+
+## Tech Stack
 
 ### Backend
-- **Fastify 5.x** - High-performance web framework
-- **Socket.io 4.x** - Real-time WebSocket communication
-- **PostgreSQL 16+** - Primary database
-- **Redis 7+** - Caching and pub/sub
-- **RabbitMQ** - Message queue
-- **TypeScript** - Type-safe development
 
-### Frontend (Web)
-- **Next.js 16.x** - React framework with App Router
-- **React 19.x** - UI library
-- **Tailwind CSS 4.x** - Utility-first CSS
-- **Zustand** - State management
-- **Socket.io Client** - Real-time communication
+| Technology | Purpose |
+|------------|---------|
+| [Fastify 5.x](https://fastify.dev/) | High-performance web framework |
+| [Socket.io 4.x](https://socket.io/) | Real-time WebSocket communication |
+| [PostgreSQL 16+](https://www.postgresql.org/) | Reliable data persistence |
+| [Redis 7+](https://redis.io/) | Caching and pub/sub |
+| [RabbitMQ](https://rabbitmq.com/) | Message queue for scalability |
+| TypeScript | Type-safe development |
+
+### Frontend
+
+| Technology | Purpose |
+|------------|---------|
+| [Next.js 16.x](https://nextjs.org/) | React framework with App Router |
+| [React 19.x](https://react.dev/) | Modern UI development |
+| [Tailwind CSS 4.x](https://tailwindcss.com/) | Utility-first styling |
+| [Zustand](https://zustand-demo.pmnd.rs/) | Lightweight state management |
+| Socket.io Client | Real-time updates |
 
 ### Infrastructure
-- **Docker** - Containerization for local development
+
+- **Docker** - Containerized development environment
 - **npm Workspaces** - Monorepo management
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+Ensure you have the following installed:
+
+- **Node.js** 20.0.0+
+- **npm** 11.0.0+
+- **Docker** & **Docker Compose**
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd freedomtalk
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start infrastructure services**
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Configure environment variables**
+   ```bash
+   # API configuration
+   cp packages/api/.env.example packages/api/.env
+
+   # Web application configuration
+   cp packages/web/.env.example packages/web/.env.local
+   ```
+
+   > Update the `.env` files with your specific configuration before proceeding.
+
+5. **Launch development servers**
+   ```bash
+   npm run dev
+   ```
+
+Your FreedomTalk instance is now running.
+
+---
 
 ## Project Structure
 
 ```
 freedomtalk/
 ├── packages/
-│   ├── api/        # Backend API server (Fastify)
-│   ├── web/        # Web application (Next.js)
-│   ├── desktop/    # Desktop app (Electron) - Placeholder
-│   ├── mobile/     # Mobile app (React Native) - Placeholder
-│   ├── shared/     # Shared types, schemas, and utilities
-│   └── scripts/    # Development and deployment scripts
-├── docker-compose.yml  # Local development infrastructure
-├── package.json        # Root package configuration
-└── tsconfig.json       # Root TypeScript configuration
+│   ├── api/          # Backend API server (Fastify + Socket.io)
+│   ├── web/          # Web application (Next.js)
+│   ├── shared/       # Shared types, schemas, and utilities
+│   ├── desktop/      # Desktop app (Electron) — Coming Soon
+│   ├── mobile/       # Mobile app (React Native) — Coming Soon
+│   └── scripts/      # Development and deployment scripts
+├── docker-compose.yml
+├── package.json
+└── tsconfig.json
 ```
 
-## Getting Started
+---
 
-### Prerequisites
+## Available Commands
 
-- **Node.js** 20.0.0 or higher
-- **npm** 11.0.0 or higher
-- **Docker** and **Docker Compose** (for local infrastructure)
+### Root Level
 
-### Installation
-
-1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd freedomtalk
+npm run dev              # Start all packages in development mode
+npm run build            # Build all packages for production
+npm run start            # Start production servers
+npm run lint             # Run ESLint across all packages
+npm run lint:fix         # Auto-fix linting issues
+npm run format           # Format code with Prettier
+npm run type-check       # TypeScript type checking
+npm run clean            # Remove build artifacts
 ```
 
-2. Install dependencies:
+### Docker Infrastructure
+
 ```bash
-npm install
+npm run docker:up        # Start PostgreSQL, Redis, RabbitMQ
+npm run docker:down      # Stop all services
+npm run docker:logs      # View service logs
 ```
 
-3. Start infrastructure services:
+### API Package
+
 ```bash
-docker-compose up -d
+npm run dev --workspace=@freedomtalk/api           # Development server
+npm run migrate:latest --workspace=@freedomtalk/api # Run migrations
+npm run migrate:make --workspace=@freedomtalk/api   # Create migration
+npm run test --workspace=@freedomtalk/api           # Run tests
 ```
 
-4. Set up environment variables:
+### Web Package
+
 ```bash
-# API
-cp packages/api/.env.example packages/api/.env
-
-# Web
-cp packages/web/.env.example packages/web/.env.local
+npm run dev --workspace=@freedomtalk/web           # Development with Turbopack
+npm run build --workspace=@freedomtalk/web         # Production build
+npm run start --workspace=@freedomtalk/web         # Production server
 ```
 
-5. Update the `.env` files with your configuration
+---
 
-### Development
+## Roadmap
 
-Run all packages in development mode:
-```bash
-npm run dev
-```
+### Shipped
 
-Or run individual packages:
-```bash
-# API server
-npm run dev --workspace=@freedomtalk/api
+- [x] Monorepo architecture with npm workspaces
+- [x] Backend API with Fastify
+- [x] Frontend application with Next.js
+- [x] Shared package for types and utilities
+- [x] Docker development environment
+- [x] TypeScript configuration
+- [x] Code quality tooling (ESLint, Prettier)
 
-# Web application
-npm run dev --workspace=@freedomtalk/web
-```
+### In Progress
 
-### Building
+- [ ] Database schema and migrations
+- [ ] User authentication and authorization
+- [ ] Real-time messaging system
+- [ ] Voice and video calling
+- [ ] File sharing and attachments
 
-Build all packages:
-```bash
-npm run build
-```
+### Planned
 
-Build individual packages:
-```bash
-npm run build --workspace=@freedomtalk/api
-npm run build --workspace=@freedomtalk/web
-npm run build --workspace=@freedomtalk/shared
-```
+- [ ] Desktop application (Electron)
+- [ ] Mobile application (React Native)
+- [ ] Plugin/extension system
+- [ ] Self-hosting deployment guides
 
-## Available Scripts
+---
 
-- `npm run dev` - Start all packages in development mode
-- `npm run build` - Build all packages
-- `npm run lint` - Lint all packages
-- `npm run format` - Format code with Prettier
-- `npm run format:check` - Check code formatting
-- `npm run type-check` - Run TypeScript type checking
-- `npm run clean` - Clean all build artifacts
+## Infrastructure Services
 
-## Packages
+| Service | Port | Purpose |
+|---------|------|---------|
+| PostgreSQL | 5432 | Primary database |
+| Redis | 6379 | Caching and pub/sub |
+| RabbitMQ | 5672 | Message queue |
+| RabbitMQ Management | 15672 | Admin UI at `http://localhost:15672` |
 
-### [@freedomtalk/api](./packages/api)
-Backend API server built with Fastify. Handles authentication, real-time messaging, and data persistence.
+For detailed Docker configuration, see [DOCKER.md](./DOCKER.md).
 
-### [@freedomtalk/web](./packages/web)
-Web application built with Next.js. Provides the main user interface for FreedomTalk.
-
-### [@freedomtalk/shared](./packages/shared)
-Shared code (types, schemas, constants, utilities) used across all packages.
-
-### [@freedomtalk/desktop](./packages/desktop)
-Desktop application (Electron) - Placeholder for future development.
-
-### [@freedomtalk/mobile](./packages/mobile)
-Mobile application (React Native) - Placeholder for future development.
-
-### [@freedomtalk/scripts](./packages/scripts)
-Development and deployment scripts.
-
-## Infrastructure
-
-See [DOCKER.md](./DOCKER.md) for detailed Docker setup and usage instructions.
-
-### Services
-
-- **PostgreSQL** - Port 5432
-- **Redis** - Port 6379
-- **RabbitMQ** - Ports 5672 (AMQP), 15672 (Management UI)
+---
 
 ## Development Workflow
 
-1. Create a feature branch
-2. Make your changes
-3. Run linting and type checking: `npm run lint && npm run type-check`
-4. Build all packages: `npm run build`
-5. Test your changes
+1. Create a feature branch from `main`
+2. Implement your changes
+3. Run quality checks:
+   ```bash
+   npm run lint && npm run type-check
+   ```
+4. Build all packages:
+   ```bash
+   npm run build
+   ```
+5. Test your changes thoroughly
 6. Commit and push
-7. Create a pull request
+7. Open a pull request
 
-## Project Status
-
-🚧 **In Development** - This project is currently in the initial setup phase (Milestone 1.1).
-
-### Completed
-- ✅ Monorepo structure with npm workspaces
-- ✅ Backend API package with Fastify
-- ✅ Frontend web package with Next.js
-- ✅ Shared package for common code
-- ✅ Docker configuration for local development
-- ✅ TypeScript configuration across all packages
-- ✅ ESLint and Prettier setup
-
-### Upcoming
-- Database schema and migrations
-- User authentication and authorization
-- Real-time messaging
-- Voice and video calls
-- File sharing
-- And much more...
-
-## License
-
-[License information to be added]
+---
 
 ## Contributing
 
-[Contributing guidelines to be added]
+We welcome contributions from the community. Whether you're fixing bugs, adding features, or improving documentation — your help makes FreedomTalk better for everyone.
 
+Contributing guidelines will be added soon.
+
+---
+
+## License
+
+License information to be announced.
+
+---
+
+<p align="center">
+  <strong>FreedomTalk</strong> — Because your conversations deserve freedom.
+</p>
