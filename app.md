@@ -1,9 +1,7 @@
 # Remaining Tasks
 
 ## Voice/Video Calling
-- Friends (DMs) Calling System (same as server, just rolling voice call/channel ids)
-- Friends (DMs) Video Calling System
-- Friends (DMs) Call timer after call ends -> displayed in chat
+- Friends (DMs) Call timer after call ends -> displayed in chat (call duration shown in UI, needs message history)
 
 ## Code Quality & Testing
 - Analyze the entire codebase for code smells, bad patterns, improve the code quality, and add comments where needed.
