@@ -4,11 +4,12 @@ import { AppShell } from '@/components/layout';
 import { MessageView } from '@/components/messaging';
 import { VoiceGridView } from '@/components/voice';
 import { useParams, useRouter } from 'next/navigation';
-import { useChannelMessages, useSendMessage, useEditMessage, useDeleteMessage, useAddReaction } from '@/features/channels';
+import { useChannelMessages, useSendMessage, useEditMessage, useDeleteMessage, useAddReaction, useRemoveReaction, usePinMessage, useUnpinMessage } from '@/features/channels';
 import { useServers, useServerChannels } from '@/features/servers';
 import { useAuthStore, useUIStore, useVoiceStore } from '@/stores';
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import { toast } from '@/stores/toast-store';
+import { useSocket } from '@/hooks/use-socket';
 
 export default function ChannelPage() {
   const params = useParams();
@@ -20,8 +21,33 @@ export default function ChannelPage() {
   const currentUser = useAuthStore((s) => s.user);
   const openModal = useUIStore((s) => s.openModal);
 
+  // Socket for realtime updates
+  const { joinServerRoom, leaveServerRoom, joinRoom, leaveRoom } = useSocket();
+
   // Track if we're redirecting
   const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // Join server room for realtime member updates
+  useEffect(() => {
+    if (serverId && serverId !== 'first') {
+      joinServerRoom(serverId);
+    }
+    return () => {
+      // Don't leave on unmount - let the next page handle it
+    };
+  }, [serverId, joinServerRoom]);
+
+  // Join channel room for realtime message updates
+  useEffect(() => {
+    if (channelId && channelId !== 'first') {
+      joinRoom(channelId, 'channel');
+    }
+    return () => {
+      if (channelId && channelId !== 'first') {
+        leaveRoom(channelId, 'channel');
+      }
+    };
+  }, [channelId, joinRoom, leaveRoom]);
 
   // Fetch server and channel data
   const { data: servers = [] } = useServers();
@@ -62,6 +88,9 @@ export default function ChannelPage() {
   const editMessage = useEditMessage();
   const deleteMessage = useDeleteMessage();
   const addReaction = useAddReaction();
+  const removeReaction = useRemoveReaction();
+  const pinMessage = usePinMessage();
+  const unpinMessage = useUnpinMessage();
 
   // Reply state
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -103,15 +132,32 @@ export default function ChannelPage() {
     });
   }, [deleteMessage, channelId]);
 
-  // Handle adding a reaction
+  // Handle toggling a reaction (add or remove)
   const handleReaction = useCallback((messageId: string, emoji: string) => {
-    addReaction.mutate({
-      messageId,
-      emoji,
-      channelId,
-      context: 'server',
-    });
-  }, [addReaction, channelId]);
+    // Find the message and check if user has already reacted
+    const message = messages.find(m => m.id === messageId);
+    const existingReaction = message?.reactions?.find(
+      (r: any) => r.emoji?.name === emoji || r.emoji_unicode === emoji
+    );
+
+    if (existingReaction?.me) {
+      // User has already reacted, remove the reaction
+      removeReaction.mutate({
+        messageId,
+        emoji,
+        channelId,
+        context: 'server',
+      });
+    } else {
+      // User hasn't reacted, add the reaction
+      addReaction.mutate({
+        messageId,
+        emoji,
+        channelId,
+        context: 'server',
+      });
+    }
+  }, [addReaction, removeReaction, channelId, messages]);
 
   // Handle replying to a message
   const handleReply = useCallback((messageId: string) => {
@@ -120,8 +166,28 @@ export default function ChannelPage() {
 
   // Handle pinning a message
   const handlePin = useCallback((messageId: string) => {
-    toast.info('Pin functionality coming soon!');
-  }, []);
+    // Find the message to check if it's already pinned
+    const message = messages.find(m => m.id === messageId);
+    if (message?.pinned) {
+      unpinMessage.mutate({
+        messageId,
+        channelId,
+        context: 'server',
+      }, {
+        onSuccess: () => toast.success('Message unpinned'),
+        onError: () => toast.error('Failed to unpin message'),
+      });
+    } else {
+      pinMessage.mutate({
+        messageId,
+        channelId,
+        context: 'server',
+      }, {
+        onSuccess: () => toast.success('Message pinned'),
+        onError: () => toast.error('Failed to pin message'),
+      });
+    }
+  }, [pinMessage, unpinMessage, channelId, messages]);
 
   // Handle clicking on a user to show profile
   const handleUserClick = useCallback((userId: string) => {

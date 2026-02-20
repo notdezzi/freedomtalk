@@ -1,44 +1,33 @@
-Current issues:
-- Invites creation cant be changed ( how many uses, how long it lasts, etc. )
-- Channels inside of a category cannot be moved at all anymore and are stuck
-- Bans not working 500error
-- kicks not working 500error
-- Server Settings doesnt sync/show server name etc, image not changeable
-- message features like editing, deleting, pinning not working
-- reactions not working
-- file upload not working
-- file download not working
-- file delete not working
-- file preview not working
-- file attachment not working
-- file upload progress not showing
-- file upload cancel not working
+# Remaining Tasks
 
-- Friends Calling System
-- Friends Video Calling System
-- Friends Call timer after call ends -> displayed in chat
+## Text Styling
+- text styling doesnt work, bold, italic, underline, strikethrough, code, quote, blockquote, etc.
 
-UserProfileModal not sycing any proper information except username and avatar, not checking for friendship status, roles, userbanner etc
+## Voice/Video Calling
+- other users (when having the call id) can join the dms voicecall when using stuff like /sfu which shouldnt be possible either.
+- Friends (DMs) Calling System (same as server, just rolling voice call/channel ids)
+- Friends (DMs) Video Calling System
+- Friends (DMs) Call timer after call ends -> displayed in chat
 
+## User Settings
+- User Settings -> Voice & Video -> Video Preview doesnt show video, successfully accesses the camera tho
+- User Settings -> Advanced -> Developer options not implemented yet.
+  - When toggled it should add a Copy ID to all right click menus, like copy channel id, copy voicechannel id, copy serverid, copy userid, copy role id, etc.
 
-- Online status not working properly, all friends are shown as online, also not showing online status in UserProfileModal 
-- Changing the user PFP doesnt work [07:48:58 UTC] ERROR: Request error
-    requestId: "req-6t"
-    method: "PUT"
-    url: "/api/v1/users/@me"
-    ip: "127.0.0.1"
-    error: {
-      "name": "error",
-      "message": "update \"user_profiles\" set \"display_name\" = $1, \"avatar_url\" = $2, \"updated_at\" = $3 where \"user_id\" = $4 - value too long for type character varying(500)",
-      "stack":
-          error: update "user_profiles" set "display_name" = $1, "avatar_url" = $2, "updated_at" = $3 where "user_id" = $4 - value too long for type character varying(500)
-              at parseErrorMessage (/Users/Maximilian.Zenkel/Documents/privprojects/freedomtalk/node_modules/pg-protocol/src/parser.ts:394:9)
-              at Parser.handlePacket (/Users/Maximilian.Zenkel/Documents/privprojects/freedomtalk/node_modules/pg-protocol/src/parser.ts:212:19)
-              at Parser.parse (/Users/Maximilian.Zenkel/Documents/privprojects/freedomtalk/node_modules/pg-protocol/src/parser.ts:105:30)
-              at Socket.<anonymous> (/Users/Maximilian.Zenkel/Documents/privprojects/freedomtalk/node_modules/pg-protocol/src/index.ts:7:48)
-              at Socket.emit (node:events:508:20)
-              at addChunk (node:internal/streams/readable:564:12)
-              at readableAddChunkPushByteMode (node:internal/streams/readable:515:3)
-              at Readable.push (node:internal/streams/readable:395:5)
-              at TCP.onStreamRead (node:internal/stream_base_commons:189:23)
-    }
+## Friend List
+- friends menu should also hijack the right click menu, when right clicking a friend it should show the option to message the friend, remove friend, block friend, etc. (same menu as when clicking the 3 dots on the friend)
+
+## Server Settings
+- Server Settings -> Overview -> Change Icon does nothing, no popup, no change, no error.
+- Server Settings -> Overview -> Server Banner upload is not implemented
+- Server Settings -> Invites -> Server Invites are not in realtime, deleting does nothing etc.
+- Server Settings -> Bans -> Server Bans are not in displaying any bans even if someone got banned
+- Server Settings -> Overview -> Vanity URL -> Vanity URL is not implemented at all yet
+
+## Code Quality & Testing
+- Analyze the entire codebase for code smells, bad patterns, improve the code quality, and add comments where needed.
+- Also analyze the codebase for hard coded values that should be in the user settings/ server settings, and add them there.
+- Analyze the entire codebase for features and things implemented, and add them to the testing.md file to prepare for testing.
+- Full e2e Playwright testing setup
+    - Test EVERYTHING, all api calls, all pages, all features, all functions, all routes, etc.
+    - Current setup has old tests, replace all old tests with entirely new ones for all the features etc.

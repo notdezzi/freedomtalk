@@ -6,7 +6,8 @@
 import { db } from '../../config/database';
 import { generateSnowflakeId } from '../../utils/snowflake';
 import { AppError } from '../../utils/errors';
-import { VALIDATION } from '@freedomtalk/shared';
+import { VALIDATION, WS_EVENTS } from '@freedomtalk/shared';
+import { wsServer } from '../websocket/websocket.server';
 
 export interface ServerMemberWithUser {
   id: string;
@@ -51,6 +52,35 @@ export interface AddMemberInput {
 }
 
 class ServerMemberService {
+  /**
+   * Emit a WebSocket event to a server room
+   */
+  private emitToServer(serverId: string, event: string, data: any): void {
+    try {
+      if (wsServer.isInitialized()) {
+        const io = wsServer.getIO();
+        io.to(`server:${serverId}`).emit(event, data);
+      }
+    } catch (error) {
+      // Don't fail the operation if WebSocket emission fails
+      console.error('Failed to emit WebSocket event:', error);
+    }
+  }
+
+  /**
+   * Emit a WebSocket event to a specific user
+   */
+  private emitToUser(userId: string, event: string, data: any): void {
+    try {
+      if (wsServer.isInitialized()) {
+        const io = wsServer.getIO();
+        io.to(`user:${userId}`).emit(event, data);
+      }
+    } catch (error) {
+      console.error('Failed to emit WebSocket event to user:', error);
+    }
+  }
+
   /**
    * Add a member to a server
    */
@@ -108,6 +138,28 @@ class ServerMemberService {
       .where('id', input.serverId)
       .increment('member_count', 1);
 
+    // Get the full member info with user and roles
+    const fullMember = await this.getMember(input.serverId, input.userId);
+
+    // Emit SERVER_MEMBER_ADD event to server room
+    if (fullMember) {
+      this.emitToServer(input.serverId, WS_EVENTS.SERVER_MEMBER_ADD, {
+        serverId: input.serverId,
+        member: fullMember,
+      });
+    }
+
+    // Emit SERVER_ADD event to the user who joined
+    this.emitToUser(input.userId, WS_EVENTS.SERVER_ADD, {
+      server: {
+        id: server.id,
+        name: server.name,
+        icon_url: server.icon_url,
+        owner_id: server.owner_id,
+        member_count: server.member_count + 1,
+      },
+    });
+
     return member;
   }
 
@@ -120,10 +172,8 @@ class ServerMemberService {
       throw new AppError(404, 'SERVER_NOT_FOUND', 'Server not found');
     }
 
-    // Cannot kick the owner
-    if (server.owner_id === userId) {
-      throw new AppError(400, 'CANNOT_REMOVE_OWNER', 'Cannot remove the server owner');
-    }
+    // Note: Server owners CAN be moderated by other administrators
+    // This allows for owner role changes, kicks, and bans if needed
 
     // Check permissions if kicking someone else
     if (userId !== requesterId) {
@@ -140,10 +190,27 @@ class ServerMemberService {
       .delete();
 
     if (deleted) {
+      // Clean up member roles
+      await db('member_roles')
+        .where('server_id', serverId)
+        .where('user_id', userId)
+        .delete();
+
       // Update member count
       await db('servers')
         .where('id', serverId)
         .decrement('member_count', 1);
+
+      // Emit SERVER_MEMBER_REMOVE event to server room
+      this.emitToServer(serverId, WS_EVENTS.SERVER_MEMBER_REMOVE, {
+        serverId,
+        userId,
+      });
+
+      // Emit SERVER_REMOVE event to the user who left/was kicked
+      this.emitToUser(userId, WS_EVENTS.SERVER_REMOVE, {
+        serverId,
+      });
     }
   }
 
@@ -171,8 +238,8 @@ class ServerMemberService {
 
     // Get member roles
     const roles = await db('member_roles')
-      .where('server_id', serverId)
-      .where('user_id', userId)
+      .where('member_roles.server_id', serverId)
+      .where('member_roles.user_id', userId)
       .join('roles', 'member_roles.role_id', 'roles.id')
       .select('roles.id', 'roles.name', 'roles.color', 'roles.position')
       .orderBy('roles.position', 'desc');

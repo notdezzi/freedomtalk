@@ -8,6 +8,11 @@ import { generateSnowflakeId } from '../../utils/snowflake';
 import { AppError } from '../../utils/errors';
 import { VALIDATION, DEFAULTS, DEFAULT_PERMISSIONS } from '@freedomtalk/shared';
 
+// Helper to convert bigint to hex string for database storage
+function bigintToHex(value: bigint): string {
+  return '0x' + value.toString(16);
+}
+
 export interface CreateServerInput {
   name: string;
   description?: string;
@@ -92,7 +97,7 @@ class ServerService {
         preferred_locale: DEFAULTS.SERVER.PREFERRED_LOCALE,
       }).returning('*');
 
-      // Create @everyone role
+      // Create @everyone role with default permissions
       await trx('roles').insert({
         id: roleId,
         server_id: serverId,
@@ -101,7 +106,8 @@ class ServerService {
         hoist: false,
         icon: null,
         position: 0,
-        permissions: DEFAULT_PERMISSIONS.toString(),
+        allow_permissions: bigintToHex(DEFAULT_PERMISSIONS.allow),
+        deny_permissions: bigintToHex(DEFAULT_PERMISSIONS.deny),
         managed: false,
         mentionable: false,
       });

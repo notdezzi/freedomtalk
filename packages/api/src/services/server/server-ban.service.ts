@@ -6,6 +6,8 @@
 import { db } from '../../config/database';
 import { generateSnowflakeId } from '../../utils/snowflake';
 import { AppError } from '../../utils/errors';
+import { WS_EVENTS } from '@freedomtalk/shared';
+import { wsServer } from '../websocket/websocket.server';
 
 export interface ServerBanWithUser {
   id: string;
@@ -31,6 +33,34 @@ export interface CreateBanInput {
 
 class ServerBanService {
   /**
+   * Emit a WebSocket event to a server room
+   */
+  private emitToServer(serverId: string, event: string, data: any): void {
+    try {
+      if (wsServer.isInitialized()) {
+        const io = wsServer.getIO();
+        io.to(`server:${serverId}`).emit(event, data);
+      }
+    } catch (error) {
+      console.error('Failed to emit WebSocket event:', error);
+    }
+  }
+
+  /**
+   * Emit a WebSocket event to a specific user
+   */
+  private emitToUser(userId: string, event: string, data: any): void {
+    try {
+      if (wsServer.isInitialized()) {
+        const io = wsServer.getIO();
+        io.to(`user:${userId}`).emit(event, data);
+      }
+    } catch (error) {
+      console.error('Failed to emit WebSocket event to user:', error);
+    }
+  }
+
+  /**
    * Ban a user from a server
    */
   async createBan(input: CreateBanInput): Promise<ServerBanWithUser> {
@@ -40,10 +70,8 @@ class ServerBanService {
       throw new AppError(404, 'SERVER_NOT_FOUND', 'Server not found');
     }
 
-    // Cannot ban the server owner
-    if (server.owner_id === input.userId) {
-      throw new AppError(400, 'CANNOT_BAN_OWNER', 'Cannot ban the server owner');
-    }
+    // Note: Server owners CAN be banned by other administrators
+    // This allows for full moderation capabilities
 
     // Check if user exists
     const user = await db('users').where('id', input.userId).first();
@@ -81,6 +109,12 @@ class ServerBanService {
         .delete();
 
       if (deleted) {
+        // Clean up member roles
+        await trx('member_roles')
+          .where('server_id', input.serverId)
+          .where('user_id', input.userId)
+          .delete();
+
         // Update member count
         await trx('servers')
           .where('id', input.serverId)
@@ -91,7 +125,29 @@ class ServerBanService {
       // For now, we skip message deletion for performance
     });
 
-    return this.getBan(input.serverId, input.userId) as Promise<ServerBanWithUser>;
+    // Emit events after successful transaction
+    // Emit SERVER_MEMBER_REMOVE event to server room
+    this.emitToServer(input.serverId, WS_EVENTS.SERVER_MEMBER_REMOVE, {
+      serverId: input.serverId,
+      userId: input.userId,
+    });
+
+    // Emit SERVER_BAN_ADD event to server room
+    const ban = await this.getBan(input.serverId, input.userId);
+    if (ban) {
+      this.emitToServer(input.serverId, WS_EVENTS.SERVER_BAN_ADD, {
+        serverId: input.serverId,
+        userId: input.userId,
+        ban,
+      });
+    }
+
+    // Emit SERVER_REMOVE event to the banned user
+    this.emitToUser(input.userId, WS_EVENTS.SERVER_REMOVE, {
+      serverId: input.serverId,
+    });
+
+    return ban as ServerBanWithUser;
   }
 
   /**
@@ -111,6 +167,12 @@ class ServerBanService {
       .where('server_id', serverId)
       .where('user_id', userId)
       .delete();
+
+    // Emit SERVER_BAN_REMOVE event to server room
+    this.emitToServer(serverId, WS_EVENTS.SERVER_BAN_REMOVE, {
+      serverId,
+      userId,
+    });
   }
 
   /**
@@ -125,8 +187,9 @@ class ServerBanService {
     if (!ban) return null;
 
     const user = await db('users')
-      .where('id', userId)
-      .select('id', 'username', 'avatar')
+      .where('users.id', userId)
+      .leftJoin('user_profiles', 'users.id', 'user_profiles.user_id')
+      .select('users.id', 'users.username', 'user_profiles.avatar_url as avatar')
       .first();
 
     return {
@@ -162,8 +225,9 @@ class ServerBanService {
     // Get user info for each ban
     const userIds = bans.map(b => b.user_id);
     const users = await db('users')
-      .whereIn('id', userIds)
-      .select('id', 'username', 'avatar');
+      .whereIn('users.id', userIds)
+      .leftJoin('user_profiles', 'users.id', 'user_profiles.user_id')
+      .select('users.id', 'users.username', 'user_profiles.avatar_url as avatar');
 
     const userMap = new Map(users.map(u => [u.id, u]));
 

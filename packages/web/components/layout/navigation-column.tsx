@@ -11,7 +11,8 @@ import { Home, Plus, Users, Settings, UserPlus, LogOut, Trash2, Edit2, X, Chevro
 import { useServers, useServerChannelsAndCategories, useLeaveServer, useUpdateServerPositions, useUpdateChannelPositions, useUpdateCategoryPositions } from '@/features/servers';
 import { useDMChannels, useCloseDM } from '@/features/dms';
 import { useAuthStore } from '@/stores';
-import { useVoiceConnection, useServerVoiceStates } from '@/hooks';
+import { useVoiceConnection, useServerVoiceStates, useCan } from '@/hooks';
+import { PERMISSION_FLAGS } from '@freedomtalk/shared';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useMemo, useState, useRef } from 'react';
 import { Avatar } from '@/components/ui';
@@ -50,6 +51,9 @@ export function NavigationColumn() {
   const updateServerPositions = useUpdateServerPositions();
   const updateChannelPositions = useUpdateChannelPositions(serverId);
   const updateCategoryPositions = useUpdateCategoryPositions(serverId);
+
+  // Permission checks
+  const canManageChannels = useCan(serverId, PERMISSION_FLAGS.MANAGE_CHANNELS);
 
   // Drag and drop state for channels
   const [draggedChannelId, setDraggedChannelId] = useState<string | null>(null);
@@ -93,7 +97,7 @@ export function NavigationColumn() {
       id: server.id,
       name: server.name,
       acronym: server.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 3),
-      icon: server.iconUrl || (server as any).icon_url,
+      icon: server.icon,
       color: '#5865F2',
       hasNotification: false,
     }));
@@ -223,10 +227,8 @@ export function NavigationColumn() {
     e.preventDefault();
     if (!draggedChannelId) return;
 
-    // Check if user has permission (is owner)
-    const serverData = servers.find(s => s.id === serverId);
-    const isOwner = (serverData?.ownerId || (serverData as any)?.owner_id) === currentUserId;
-    if (!isOwner) return;
+    // Check if user has permission to manage channels
+    if (!canManageChannels) return;
 
     // Get the dragged channel
     const draggedChannel = channels.find(c => c.id === draggedChannelId);
@@ -276,10 +278,8 @@ export function NavigationColumn() {
       return;
     }
 
-    // Check if user has permission (is owner)
-    const serverData = servers.find(s => s.id === serverId);
-    const isOwner = (serverData?.ownerId || (serverData as any)?.owner_id) === currentUserId;
-    if (!isOwner) return;
+    // Check if user has permission to manage channels
+    if (!canManageChannels) return;
 
     // Get the target category
     const targetChannel = channels.find(c => c.id === targetChannelId);
@@ -382,10 +382,8 @@ export function NavigationColumn() {
       return;
     }
 
-    // Check if user has permission (is owner)
-    const serverData = servers.find(s => s.id === serverId);
-    const isOwner = (serverData?.ownerId || (serverData as any)?.owner_id) === currentUserId;
-    if (!isOwner) return;
+    // Check if user has permission to manage channels
+    if (!canManageChannels) return;
 
     // Reorder categories
     const sortedCategories = [...categories].sort((a, b) => (a.position || 0) - (b.position || 0));
@@ -472,11 +470,8 @@ export function NavigationColumn() {
     const channel = channelContextMenu.contextMenu?.data as { id: string; name?: string } | undefined;
     if (!channel || !serverId) return [];
 
-    // Check if user can manage channels (simplified - in real app, check permissions)
-    const serverData = servers.find(s => s.id === serverId);
-    const isOwner = (serverData?.ownerId || (serverData as any)?.owner_id) === currentUserId;
-
-    if (!isOwner) return [];
+    // Check if user can manage channels
+    if (!canManageChannels) return [];
 
     return [
       {
@@ -691,7 +686,7 @@ export function NavigationColumn() {
                     return (
                     <div
                       key={item.id}
-                      draggable={isOwner}
+                      draggable={canManageChannels}
                       onDragStart={(e) => handleChannelDragStart(e, item.id)}
                       onDragEnd={handleChannelDragEnd}
                       onDragOver={(e) => handleChannelDragOver(e, item.id, undefined)}
@@ -713,7 +708,7 @@ export function NavigationColumn() {
                             ? 'bg-background-surface/80 text-foreground'
                             : 'text-foreground-muted hover:bg-background-surface hover:text-foreground',
                           draggedChannelId === item.id && 'opacity-50',
-                          isOwner && 'cursor-grab',
+                          canManageChannels && 'cursor-grab',
                           isActiveVoiceChannel && 'bg-success/20 text-success hover:bg-success/30'
                         )}
                       >
@@ -723,7 +718,7 @@ export function NavigationColumn() {
                           <Hash className="h-4 w-4" />
                         )}
                         <span className="flex-1 truncate text-sm">{item.name}</span>
-                        {isOwner && (
+                        {canManageChannels && (
                           <GripVertical className="h-3 w-3 opacity-0 group-hover:opacity-50" />
                         )}
                       </button>
@@ -801,7 +796,7 @@ export function NavigationColumn() {
                 return (
                   <div
                     key={category.id}
-                    draggable={isOwner}
+                    draggable={canManageChannels}
                     onDragStart={(e) => handleCategoryDragStart(e, category.id)}
                     onDragEnd={handleChannelDragEnd}
                     onDragOver={(e) => handleCategoryDragOver(e, category.id)}
@@ -821,10 +816,11 @@ export function NavigationColumn() {
                       }))}
                       activeChannelId={activeChannelId}
                       onChannelClick={(channel) => handleChannelClick({ id: channel.id, type: channel.type as 'text' | 'voice' | undefined })}
+                      onChannelContextMenu={(e, channel) => handleChannelContextMenu(e, { id: channel.id, name: channel.name })}
                       onAddClick={() => openModal('create-channel', { serverId, categoryId: category.id })}
                       isCollapsed={collapsedCategories.has(category.id)}
                       onToggleCollapse={() => toggleCategoryCollapse(category.id)}
-                      isDraggable={isOwner}
+                      isDraggable={canManageChannels}
                       draggedChannelId={draggedChannelId}
                       dragOverChannelId={dragOverChannelId}
                       dragOverPosition={dragOverPosition}

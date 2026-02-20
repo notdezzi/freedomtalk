@@ -4,6 +4,9 @@ import { socketService } from '@/lib/socket';
 import { useSocketStore, useAuthStore, useTypingStore } from '@/stores';
 import { queryKeys } from '@/lib/query-provider';
 
+// Track current server room to avoid duplicate joins
+let currentServerRoom: string | null = null;
+
 export function useSocket() {
   const queryClient = useQueryClient();
   const setStatus = useSocketStore((s) => s.setStatus);
@@ -40,16 +43,24 @@ export function useSocket() {
       'typing:start',
       'typing:stop',
       'presence:update',
-      'server:member:join',
-      'server:member:leave',
+      'server:add',
+      'server:remove',
+      'server_member:add',
+      'server_member:update',
+      'server_member:remove',
+      'server_ban:add',
+      'server_ban:remove',
       'server:update',
       'channel:create',
       'channel:update',
       'channel:delete',
       'dm:create',
-      'friend:request',
-      'friend:accept',
-      'friend:remove',
+      'friend_request:received',
+      'friend_request:accepted',
+      'friend_request:rejected',
+      'friend_request:cancelled',
+      'friend:removed',
+      'friend_presence:update',
       'reaction:add',
       'reaction:remove',
     ] as const;
@@ -143,8 +154,24 @@ export function useSocket() {
         queryClient.invalidateQueries({ queryKey: queryKeys.friends.list() });
       });
 
-      // Server events
-      socket.on('server:member:join', (data: any) => {
+      // Server list events (for the current user)
+      socket.on('server:add', (data: any) => {
+        console.log('[Socket] Server added to user:', data);
+        queryClient.invalidateQueries({ queryKey: queryKeys.servers.list() });
+      });
+
+      socket.on('server:remove', (data: any) => {
+        console.log('[Socket] Server removed from user:', data);
+        queryClient.invalidateQueries({ queryKey: queryKeys.servers.list() });
+        if (data.serverId) {
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.servers.members(data.serverId)
+          });
+        }
+      });
+
+      // Server member events
+      socket.on('server_member:add', (data: any) => {
         console.log('[Socket] Member joined server:', data);
         if (data.serverId) {
           queryClient.invalidateQueries({
@@ -153,13 +180,36 @@ export function useSocket() {
         }
       });
 
-      socket.on('server:member:leave', (data: any) => {
+      socket.on('server_member:update', (data: any) => {
+        console.log('[Socket] Member updated in server:', data);
+        if (data.serverId) {
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.servers.members(data.serverId)
+          });
+        }
+      });
+
+      socket.on('server_member:remove', (data: any) => {
         console.log('[Socket] Member left server:', data);
         if (data.serverId) {
           queryClient.invalidateQueries({
             queryKey: queryKeys.servers.members(data.serverId)
           });
         }
+      });
+
+      // Server ban events
+      socket.on('server_ban:add', (data: any) => {
+        console.log('[Socket] User banned from server:', data);
+        if (data.serverId) {
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.servers.members(data.serverId)
+          });
+        }
+      });
+
+      socket.on('server_ban:remove', (data: any) => {
+        console.log('[Socket] User unbanned from server:', data);
       });
 
       socket.on('server:update', (data: any) => {
@@ -202,19 +252,34 @@ export function useSocket() {
       });
 
       // Friend events
-      socket.on('friend:request', (data: any) => {
-        console.log('[Socket] Friend request:', data);
+      socket.on('friend_request:received', (data: any) => {
+        console.log('[Socket] Friend request received:', data);
         queryClient.invalidateQueries({ queryKey: queryKeys.friends.requests() });
       });
 
-      socket.on('friend:accept', (data: any) => {
-        console.log('[Socket] Friend accepted:', data);
+      socket.on('friend_request:accepted', (data: any) => {
+        console.log('[Socket] Friend request accepted:', data);
         queryClient.invalidateQueries({ queryKey: queryKeys.friends.list() });
         queryClient.invalidateQueries({ queryKey: queryKeys.friends.requests() });
       });
 
-      socket.on('friend:remove', (data: any) => {
+      socket.on('friend_request:rejected', (data: any) => {
+        console.log('[Socket] Friend request rejected:', data);
+        queryClient.invalidateQueries({ queryKey: queryKeys.friends.requests() });
+      });
+
+      socket.on('friend_request:cancelled', (data: any) => {
+        console.log('[Socket] Friend request cancelled:', data);
+        queryClient.invalidateQueries({ queryKey: queryKeys.friends.requests() });
+      });
+
+      socket.on('friend:removed', (data: any) => {
         console.log('[Socket] Friend removed:', data);
+        queryClient.invalidateQueries({ queryKey: queryKeys.friends.list() });
+      });
+
+      socket.on('friend_presence:update', (data: any) => {
+        console.log('[Socket] Friend presence update:', data);
         queryClient.invalidateQueries({ queryKey: queryKeys.friends.list() });
       });
 
@@ -307,6 +372,30 @@ export function useSocket() {
     unsubscribe(roomId);
   }, [unsubscribe]);
 
+  // Join server room (leaves previous server room first)
+  const joinServerRoom = useCallback((serverId: string) => {
+    // Leave previous server room if different
+    if (currentServerRoom && currentServerRoom !== serverId) {
+      socketService.leaveRoom(currentServerRoom, 'server');
+      unsubscribe(currentServerRoom);
+    }
+    // Join new server room if not already joined
+    if (currentServerRoom !== serverId) {
+      socketService.joinRoom(serverId, 'server');
+      subscribe(serverId);
+      currentServerRoom = serverId;
+    }
+  }, [subscribe, unsubscribe]);
+
+  // Leave server room
+  const leaveServerRoom = useCallback(() => {
+    if (currentServerRoom) {
+      socketService.leaveRoom(currentServerRoom, 'server');
+      unsubscribe(currentServerRoom);
+      currentServerRoom = null;
+    }
+  }, [unsubscribe]);
+
   // Send typing indicator
   const sendTyping = useCallback((channelId: string) => {
     socketService.sendTyping(channelId);
@@ -321,6 +410,8 @@ export function useSocket() {
     isConnected: socketService.isConnected(),
     joinRoom,
     leaveRoom,
+    joinServerRoom,
+    leaveServerRoom,
     sendTyping,
     stopTyping,
   };

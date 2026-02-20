@@ -13,6 +13,8 @@ class SocketService {
   private socket: Socket | null = null;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private listenersSetup: boolean = false;
+  private presenceInterval: NodeJS.Timeout | null = null;
+  private readonly PRESENCE_INTERVAL_MS = 20000; // Send ping every 20 seconds (before 30s TTL expires)
 
   /**
    * Initialize and connect to WebSocket server
@@ -53,6 +55,8 @@ class SocketService {
    * Disconnect from WebSocket server
    */
   disconnect(): void {
+    this.stopPresenceRefresh();
+
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
@@ -68,6 +72,29 @@ class SocketService {
   }
 
   /**
+   * Start periodic presence refresh
+   */
+  private startPresenceRefresh(): void {
+    this.stopPresenceRefresh(); // Clear any existing interval
+
+    this.presenceInterval = setInterval(() => {
+      if (this.socket?.connected) {
+        this.socket.emit('ping');
+      }
+    }, this.PRESENCE_INTERVAL_MS);
+  }
+
+  /**
+   * Stop periodic presence refresh
+   */
+  private stopPresenceRefresh(): void {
+    if (this.presenceInterval) {
+      clearInterval(this.presenceInterval);
+      this.presenceInterval = null;
+    }
+  }
+
+  /**
    * Setup all WebSocket event handlers
    */
   private setupEventHandlers(): void {
@@ -77,12 +104,16 @@ class SocketService {
     this.socket.on('connect', () => {
       console.log('[Socket] Connected');
       useSocketStore.getState().setStatus('connected');
+      // Start presence refresh interval
+      this.startPresenceRefresh();
     });
 
     this.socket.on('disconnect', (reason) => {
       console.log('[Socket] Disconnected:', reason);
       useSocketStore.getState().setStatus('disconnected');
       this.listenersSetup = false;
+      // Stop presence refresh interval
+      this.stopPresenceRefresh();
     });
 
     this.socket.on('connect_error', (error) => {

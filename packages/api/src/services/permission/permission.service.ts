@@ -535,6 +535,7 @@ export class PermissionService {
 
   /**
    * Get member's roles sorted by position (highest first)
+   * Always includes the @everyone role
    */
   async getMemberRolesSorted(userId: string, serverId: string): Promise<RoleWithPermissions[]> {
     // Get role IDs for member
@@ -543,17 +544,23 @@ export class PermissionService {
       .where('user_id', userId)
       .pluck('role_id');
 
-    // Get @everyone role (all members have it)
+    // Get @everyone role by name (all members have it implicitly)
     const everyoneRole = await db('roles')
       .where('server_id', serverId)
-      .where('position', 0)
+      .where('name', '@everyone')
       .first();
 
+    // Combine role IDs, ensuring @everyone is included
     const allRoleIds = everyoneRole
       ? [everyoneRole.id, ...memberRoleIds.filter((id) => id !== everyoneRole.id)]
       : memberRoleIds;
 
-    // Get role data and sort by position descending
+    // If no roles at all, return empty array (shouldn't happen if @everyone exists)
+    if (allRoleIds.length === 0) {
+      return [];
+    }
+
+    // Get role data and sort by position descending (highest first)
     const roles = await db('roles')
       .whereIn('id', allRoleIds)
       .where('server_id', serverId)

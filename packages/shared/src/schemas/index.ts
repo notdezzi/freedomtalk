@@ -27,14 +27,21 @@ export const registerSchema = z.object({
 });
 
 // Message schemas
+// Content can be empty if attachments are present
 export const createMessageSchema = z.object({
   content: z
     .string()
-    .min(1, 'Message cannot be empty')
-    .max(VALIDATION.MESSAGE.MAX_LENGTH, `Message must be at most ${VALIDATION.MESSAGE.MAX_LENGTH} characters`),
+    .max(VALIDATION.MESSAGE.MAX_LENGTH, `Message must be at most ${VALIDATION.MESSAGE.MAX_LENGTH} characters`)
+    .default(''), // Allow empty string for attachment-only messages
   // Snowflake ID format (20 characters). Optional to support DM messages (Milestone 2.4) which don't require channels
   channelId: z.string().length(20, 'Invalid channel ID').optional(),
-});
+  dmChannelId: z.string().length(20, 'Invalid DM channel ID').optional(),
+  embeds: z.array(z.any()).max(VALIDATION.EMBED?.MAX_PER_MESSAGE || 10).optional(),
+  attachments: z.array(z.any()).max(VALIDATION.ATTACHMENT?.MAX_PER_MESSAGE || 10).optional(),
+}).refine(
+  (data) => data.content.length > 0 || (data.attachments && data.attachments.length > 0),
+  { message: 'Message must have content or attachments' }
+);
 
 // Server schemas
 export const createServerSchema = z.object({

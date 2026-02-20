@@ -1,15 +1,23 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores';
 import { useServerMembers, useKickMember, useBanMember } from '@/features/servers';
 import { useAuth } from '@/hooks/use-auth';
-import { Users, X, UserX, ShieldAlert, MessageCircle } from 'lucide-react';
-import { Avatar } from '@/components/ui';
+import { Users, X, UserX, ShieldAlert, MessageCircle, Crown } from 'lucide-react';
+import { Avatar, useConfirmDialog } from '@/components/ui';
 import { ContextMenu, type ContextMenuItem } from '@/components/common/context-menu';
 import { toast } from '@/stores/toast-store';
 import type { MemberResponse } from '@/lib/api-client';
+
+interface RoleGroup {
+  id: string;
+  name: string;
+  color: string | null;
+  position: number;
+  members: MemberResponse[];
+}
 
 interface MembersColumnProps {
   serverId?: string;
@@ -21,6 +29,58 @@ export function MembersColumn({ serverId }: MembersColumnProps) {
   const openModal = useUIStore((s) => s.openModal);
 
   const { data: members = [], isLoading } = useServerMembers(serverId);
+
+  // Group members by their highest role (both online and offline)
+  const { roleGroups, onlineNoRole, offlineNoRole } = useMemo(() => {
+    const roleMap = new Map<string, RoleGroup>();
+    const onlineNoRole: MemberResponse[] = [];
+    const offlineNoRole: MemberResponse[] = [];
+
+    // Process each member
+    for (const member of members) {
+      // Get highest role by position
+      const sortedRoles = [...(member.roles || [])].sort((a, b) => b.position - a.position);
+      const highestRole = sortedRoles[0];
+
+      if (highestRole) {
+        const existing = roleMap.get(highestRole.id);
+        if (existing) {
+          existing.members.push(member);
+        } else {
+          roleMap.set(highestRole.id, {
+            id: highestRole.id,
+            name: highestRole.name,
+            color: highestRole.color ? `#${highestRole.color.toString(16).padStart(6, '0')}` : null,
+            position: highestRole.position,
+            members: [member],
+          });
+        }
+      } else {
+        // No role - add to appropriate no-role list based on online status
+        if (member.isOnline) {
+          onlineNoRole.push(member);
+        } else {
+          offlineNoRole.push(member);
+        }
+      }
+    }
+
+    // Sort role groups by position (highest first)
+    const roleGroups = Array.from(roleMap.values())
+      .map(group => ({
+        ...group,
+        // Sort members within each group: online first, then alphabetically
+        members: group.members.sort((a, b) => {
+          if (a.isOnline !== b.isOnline) {
+            return a.isOnline ? -1 : 1;
+          }
+          return (a.displayName || a.username).localeCompare(b.displayName || b.username);
+        }),
+      }))
+      .sort((a, b) => b.position - a.position);
+
+    return { roleGroups, onlineNoRole, offlineNoRole };
+  }, [members]);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -94,29 +154,59 @@ export function MembersColumn({ serverId }: MembersColumnProps) {
             </div>
           ) : (
             <>
-              {/* Online */}
-              <div className="mb-4">
-                <h3 className="px-2 py-1 text-xs font-semibold text-foreground-subtle uppercase">
-                  Online — {onlineMembers.length}
-                </h3>
-                {onlineMembers.map((member) => (
-                  <MemberItem
-                    key={member.id}
-                    member={member}
-                    serverId={serverId}
-                    onContextMenu={handleContextMenu}
-                    onUserClick={handleUserClick}
-                  />
-                ))}
-              </div>
+              {/* Role groups (both online and offline members sorted) */}
+              {roleGroups.map((group) => {
+                // Count online members for the group
+                const onlineCount = group.members.filter(m => m.isOnline).length;
+                const totalCount = group.members.length;
 
-              {/* Offline */}
-              {offlineMembers.length > 0 && (
+                return (
+                  <div key={group.id} className="mb-4">
+                    <h3
+                      className="px-2 py-1 text-xs font-semibold uppercase"
+                      style={{ color: group.color || undefined }}
+                    >
+                      {group.name} — {onlineCount}/{totalCount}
+                    </h3>
+                    {group.members.map((member) => (
+                      <MemberItem
+                        key={member.id}
+                        member={member}
+                        serverId={serverId}
+                        onContextMenu={handleContextMenu}
+                        onUserClick={handleUserClick}
+                        roleColor={group.color}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
+
+              {/* Online members without roles */}
+              {onlineNoRole.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="px-2 py-1 text-xs font-semibold text-foreground-subtle uppercase">
+                    Online — {onlineNoRole.length}
+                  </h3>
+                  {onlineNoRole.map((member) => (
+                    <MemberItem
+                      key={member.id}
+                      member={member}
+                      serverId={serverId}
+                      onContextMenu={handleContextMenu}
+                      onUserClick={handleUserClick}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Offline members without roles */}
+              {offlineNoRole.length > 0 && (
                 <div>
                   <h3 className="px-2 py-1 text-xs font-semibold text-foreground-subtle uppercase">
-                    Offline — {offlineMembers.length}
+                    Offline — {offlineNoRole.length}
                   </h3>
-                  {offlineMembers.map((member) => (
+                  {offlineNoRole.map((member) => (
                     <MemberItem
                       key={member.id}
                       member={member}
@@ -140,6 +230,7 @@ export function MembersColumn({ serverId }: MembersColumnProps) {
         member={contextMenu.member}
         serverId={serverId}
         onClose={closeContextMenu}
+        onUserClick={handleUserClick}
       />
     </>
   );
@@ -150,12 +241,21 @@ function MemberItem({
   serverId,
   onContextMenu,
   onUserClick,
+  roleColor,
 }: {
   member: MemberResponse;
   serverId: string;
   onContextMenu: (e: React.MouseEvent, member: MemberResponse) => void;
   onUserClick: (userId: string) => void;
+  roleColor?: string | null;
 }) {
+  // Use passed roleColor or calculate from member's highest role
+  const displayColor = roleColor ?? (() => {
+    const sortedRoles = [...(member.roles || [])].sort((a, b) => b.position - a.position);
+    const highestRole = sortedRoles[0];
+    return highestRole?.color ? `#${highestRole.color.toString(16).padStart(6, '0')}` : undefined;
+  })();
+
   return (
     <button
       onClick={() => onUserClick(member.userId)}
@@ -173,12 +273,15 @@ function MemberItem({
         status={member.status as 'online' | 'idle' | 'dnd' | 'offline' | undefined}
         showStatus
       />
-      <span className="truncate text-sm">
+      <span
+        className="truncate text-sm"
+        style={{ color: displayColor }}
+      >
         {member.displayName || member.username}
       </span>
       {member.isOwner && (
-        <span title="Owner">
-          <ShieldAlert className="h-3 w-3 text-yellow-500 ml-auto" />
+        <span title="Owner" className="ml-auto">
+          <Crown className="h-3 w-3 text-yellow-500" />
         </span>
       )}
     </button>
@@ -192,6 +295,7 @@ function MemberContextMenu({
   member,
   serverId,
   onClose,
+  onUserClick,
 }: {
   open: boolean;
   x: number;
@@ -199,27 +303,34 @@ function MemberContextMenu({
   member: MemberResponse | null;
   serverId: string;
   onClose: () => void;
+  onUserClick: (userId: string) => void;
 }) {
   const { user: currentUser } = useAuth();
   const kickMember = useKickMember(serverId);
   const banMember = useBanMember(serverId);
+  const { confirm, prompt } = useConfirmDialog();
 
   if (!member) return null;
 
   const isSelf = currentUser?.id === member.userId;
-  const isOwner = member.isOwner;
 
-  const handleKick = () => {
-    if (isSelf || isOwner) return;
+  const handleKick = async () => {
+    if (isSelf) return;
 
-    const confirmed = window.confirm(
-      `Are you sure you want to kick ${member.displayName || member.username}?`
-    );
+    const confirmed = await confirm({
+      title: 'Kick Member',
+      message: `Are you sure you want to kick ${member.displayName || member.username}? They will be able to rejoin with a new invite.`,
+      confirmLabel: 'Kick',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+
     if (!confirmed) return;
 
     kickMember.mutate(member.userId, {
       onSuccess: () => {
         toast.success(`${member.displayName || member.username} has been kicked`);
+        onClose();
       },
       onError: (error) => {
         toast.error('Failed to kick member. You may not have permission.');
@@ -228,18 +339,31 @@ function MemberContextMenu({
     });
   };
 
-  const handleBan = () => {
-    if (isSelf || isOwner) return;
+  const handleBan = async () => {
+    if (isSelf) return;
 
-    const reason = window.prompt(
-      `Ban ${member.displayName || member.username}. Enter a reason (optional):`
-    );
-    // User cancelled
+    // First, get the ban reason
+    const reason = await prompt({
+      title: 'Ban Member',
+      message: `Enter a reason for banning ${member.displayName || member.username} (optional):`,
+      confirmLabel: 'Continue',
+      cancelLabel: 'Cancel',
+      variant: 'warning',
+      inputPlaceholder: 'Reason for ban...',
+    });
+
+    // User cancelled the prompt
     if (reason === null) return;
 
-    const confirmed = window.confirm(
-      `Are you sure you want to BAN ${member.displayName || member.username}? They will not be able to rejoin.`
-    );
+    // Now confirm the ban
+    const confirmed = await confirm({
+      title: 'Confirm Ban',
+      message: `Are you sure you want to BAN ${member.displayName || member.username}? They will NOT be able to rejoin this server.`,
+      confirmLabel: 'Ban',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+    });
+
     if (!confirmed) return;
 
     banMember.mutate(
@@ -247,6 +371,7 @@ function MemberContextMenu({
       {
         onSuccess: () => {
           toast.success(`${member.displayName || member.username} has been banned`);
+          onClose();
         },
         onError: (error) => {
           toast.error('Failed to ban member. You may not have permission.');
@@ -266,7 +391,10 @@ function MemberContextMenu({
       id: 'profile',
       label: 'View Profile',
       icon: <Users className="h-4 w-4" />,
-      onClick: () => toast.info('Profile view coming soon!'),
+      onClick: () => {
+        onClose();
+        onUserClick(member.userId);
+      },
     },
     {
       id: 'message',
@@ -277,8 +405,8 @@ function MemberContextMenu({
     { id: 'separator-1', label: '', separator: true },
   ];
 
-  // Only show kick/ban options for other users (not self, not owner)
-  if (!isSelf && !isOwner) {
+  // Only show kick/ban options for other users (not self)
+  if (!isSelf) {
     items.push(
       {
         id: 'kick',
