@@ -32,6 +32,7 @@ const updateServerSchema = z.object({
   afkChannelId: z.string().min(18).max(20).nullable().optional(),
   afkTimeout: z.number().int().min(0).optional(),
   preferredLocale: z.string().max(10).optional(),
+  vanityUrlCode: z.string().min(2).max(30).regex(/^[a-z0-9-]+$/, 'Vanity URL can only contain lowercase letters, numbers, and hyphens').nullable().optional(),
 });
 
 const updateMemberSchema = z.object({
@@ -462,6 +463,130 @@ export default async function serverRoutes(app: FastifyInstance) {
       // Update server with banner URL
       const server = await serverService.updateServer(serverId, { bannerUrl }, userId);
       return reply.send(successResponse(server));
+    }
+  );
+
+  /**
+   * GET /api/v1/servers/vanity/:code
+   * Get server by vanity URL code
+   */
+  app.get(
+    '/vanity/:code',
+    {
+      schema: {
+        description: 'Get server preview by vanity URL code',
+        tags: ['Servers'],
+        params: {
+          type: 'object',
+          required: ['code'],
+          properties: {
+            code: { type: 'string', minLength: 2, maxLength: 30 },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { code: string } }>, reply: FastifyReply) => {
+      const { code } = request.params;
+
+      const server = await serverService.getServerByVanityUrl(code);
+
+      if (!server) {
+        return reply.code(404).send({
+          success: false,
+          error: { code: 'VANITY_URL_NOT_FOUND', message: 'Server with this vanity URL not found' },
+        });
+      }
+
+      // Return server info similar to invite preview
+      return reply.send(successResponse({
+        server: {
+          id: server.id,
+          name: server.name,
+          icon: server.icon_url,
+          description: server.description,
+          memberCount: server.member_count,
+        },
+        vanityUrl: code,
+      }));
+    }
+  );
+
+  /**
+   * GET /api/v1/servers/:serverId/vanity
+   * Check vanity URL availability for a server
+   */
+  app.get(
+    '/:serverId/vanity',
+    {
+      schema: {
+        description: 'Get current vanity URL for a server',
+        tags: ['Servers'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['serverId'],
+          properties: {
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+          },
+        },
+      },
+      onRequest: [authenticate],
+    },
+    async (request: FastifyRequest<{ Params: { serverId: string } }>, reply: FastifyReply) => {
+      const { serverId } = request.params;
+
+      const server = await serverService.getServer(serverId);
+      if (!server) {
+        return reply.code(404).send({
+          success: false,
+          error: { code: 'SERVER_NOT_FOUND', message: 'Server not found' },
+        });
+      }
+
+      return reply.send(successResponse({
+        vanityUrlCode: server.vanity_url_code,
+      }));
+    }
+  );
+
+  /**
+   * POST /api/v1/servers/:serverId/vanity/check
+   * Check if a vanity URL code is available
+   */
+  app.post(
+    '/:serverId/vanity/check',
+    {
+      schema: {
+        description: 'Check if a vanity URL code is available',
+        tags: ['Servers'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['serverId'],
+          properties: {
+            serverId: { type: 'string', minLength: 15, maxLength: 25 },
+          },
+        },
+        body: {
+          type: 'object',
+          required: ['code'],
+          properties: {
+            code: { type: 'string', minLength: 2, maxLength: 30 },
+          },
+        },
+      },
+      onRequest: [authenticate],
+    },
+    async (request: FastifyRequest<{ Params: { serverId: string }; Body: { code: string } }>, reply: FastifyReply) => {
+      const { serverId } = request.params;
+      const { code } = request.body;
+
+      const isAvailable = await serverService.checkVanityUrlAvailability(serverId, code);
+
+      return reply.send(successResponse({
+        available: isAvailable,
+        code,
+      }));
     }
   );
 

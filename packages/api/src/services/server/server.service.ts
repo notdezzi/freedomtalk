@@ -369,6 +369,30 @@ class ServerService {
     // Return updated servers
     return this.getUserServers(userId);
   }
+
+  /**
+   * Get server by vanity URL code
+   */
+  async getServerByVanityUrl(vanityCode: string): Promise<ServerWithMembers | null> {
+    const server = await db('servers')
+      .where('vanity_url_code', vanityCode)
+      .first();
+
+    return server || null;
+  }
+
+  /**
+   * Check if a vanity URL code is available
+   * Returns true if the code is not used by any other server
+   */
+  async checkVanityUrlAvailability(serverId: string, code: string): Promise<boolean> {
+    const existingServer = await db('servers')
+      .where('vanity_url_code', code)
+      .whereNot('id', serverId)
+      .first();
+
+    return !existingServer;
+  }
 }
 
 export const serverService = new ServerService();

@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button, Input } from '@/components/ui';
 import { useServer, useUpdateServer } from '@/features/servers';
 import { toast } from '@/stores/toast-store';
 import { apiClient } from '@/lib/api-client';
-import { Image, Upload } from 'lucide-react';
+import { Image, Upload, Link as LinkIcon, Check, X, Loader2 } from 'lucide-react';
 
 interface OverviewTabProps {
   serverId: string;
@@ -19,6 +19,13 @@ export function OverviewTab({ serverId }: OverviewTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
+  // Vanity URL state
+  const [vanityUrl, setVanityUrl] = useState('');
+  const [originalVanityUrl, setOriginalVanityUrl] = useState('');
+  const [isCheckingVanity, setIsCheckingVanity] = useState(false);
+  const [vanityAvailable, setVanityAvailable] = useState<boolean | null>(null);
+  const [isSavingVanity, setIsSavingVanity] = useState(false);
+
   const { data: server, isLoading } = useServer(serverId);
   const updateServer = useUpdateServer();
 
@@ -27,8 +34,79 @@ export function OverviewTab({ serverId }: OverviewTabProps) {
     if (server) {
       setName(server.name || '');
       setDescription(server.description || '');
+      const initialVanity = (server as any).vanityUrlCode || (server as any).vanity_url_code || '';
+      setVanityUrl(initialVanity);
+      setOriginalVanityUrl(initialVanity);
     }
   }, [server]);
+
+  // Check vanity URL availability
+  const checkVanityAvailability = useCallback(async (code: string) => {
+    if (!code || code.length < 2) {
+      setVanityAvailable(null);
+      return;
+    }
+
+    // Validate format
+    if (!/^[a-z0-9-]+$/.test(code)) {
+      setVanityAvailable(false);
+      return;
+    }
+
+    // Skip check if unchanged
+    if (code === originalVanityUrl) {
+      setVanityAvailable(null);
+      return;
+    }
+
+    setIsCheckingVanity(true);
+    try {
+      const response = await apiClient.request(`/api/v1/servers/${serverId}/vanity/check`, {
+        method: 'POST',
+        body: JSON.stringify({ code }),
+      });
+      if (response.success && response.data) {
+        setVanityAvailable(response.data.available);
+      } else {
+        setVanityAvailable(false);
+      }
+    } catch (error) {
+      setVanityAvailable(false);
+    } finally {
+      setIsCheckingVanity(false);
+    }
+  }, [serverId, originalVanityUrl]);
+
+  // Debounced vanity URL check
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (vanityUrl !== originalVanityUrl) {
+        checkVanityAvailability(vanityUrl);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [vanityUrl, originalVanityUrl, checkVanityAvailability]);
+
+  // Save vanity URL
+  const handleSaveVanityUrl = async () => {
+    if (vanityAvailable === false) return;
+
+    setIsSavingVanity(true);
+    try {
+      await updateServer.mutateAsync({
+        serverId,
+        data: { vanityUrlCode: vanityUrl || null },
+      });
+      setOriginalVanityUrl(vanityUrl);
+      setVanityAvailable(null);
+      toast.success('Vanity URL updated');
+    } catch (error) {
+      toast.error('Failed to update vanity URL');
+    } finally {
+      setIsSavingVanity(false);
+    }
+  };
 
   const handleSave = () => {
     updateServer.mutate(
@@ -250,6 +328,68 @@ export function OverviewTab({ serverId }: OverviewTabProps) {
             className="w-full bg-background-surface text-foreground rounded-lg px-3 py-2 border border-border focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
             placeholder="Tell the world about your server"
           />
+        </div>
+
+        {/* Vanity URL */}
+        <div>
+          <label className="text-xs font-semibold text-foreground-muted uppercase mb-2 block">
+            Vanity URL
+          </label>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 relative">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center text-foreground-muted text-sm">
+                <LinkIcon className="h-4 w-4 mr-1" />
+                {window.location.origin}/invite/v/
+              </div>
+              <input
+                type="text"
+                value={vanityUrl}
+                onChange={(e) => {
+                  const value = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                  setVanityUrl(value);
+                  setVanityAvailable(null);
+                }}
+                placeholder="my-server"
+                className="w-full bg-background-surface text-foreground rounded-lg pl-[180px] pr-10 py-2 border border-border focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {isCheckingVanity && (
+                  <Loader2 className="h-4 w-4 animate-spin text-foreground-muted" />
+                )}
+                {!isCheckingVanity && vanityAvailable === true && (
+                  <Check className="h-4 w-4 text-success" />
+                )}
+                {!isCheckingVanity && vanityAvailable === false && (
+                  <X className="h-4 w-4 text-error" />
+                )}
+              </div>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleSaveVanityUrl}
+              disabled={
+                isSavingVanity ||
+                vanityUrl === originalVanityUrl ||
+                vanityAvailable === false
+              }
+            >
+              {isSavingVanity ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+          <p className="text-xs text-foreground-subtle mt-2">
+            Use lowercase letters, numbers, and hyphens only. Minimum 2 characters.
+          </p>
+          {vanityAvailable === false && (
+            <p className="text-xs text-error mt-1">
+              This vanity URL is already taken.
+            </p>
+          )}
+          {vanityUrl && vanityAvailable === true && (
+            <p className="text-xs text-success mt-1">
+              Vanity URL is available!
+            </p>
+          )}
         </div>
       </div>
 
