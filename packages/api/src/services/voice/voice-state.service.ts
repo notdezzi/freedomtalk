@@ -33,7 +33,7 @@ export interface VoiceStateWithUser extends VoiceState {
 export interface CreateVoiceStateInput {
   channelId: string;
   userId: string;
-  serverId: string;
+  serverId?: string; // Optional for DM channels
   sessionId: string;
   selfMute?: boolean;
   selfDeaf?: boolean;
@@ -55,8 +55,12 @@ class VoiceStateService {
    * Create a voice state (user joins voice channel)
    */
   async createVoiceState(input: CreateVoiceStateInput): Promise<VoiceState> {
-    // Check if user is already in a voice channel in this server
-    const existingState = await this.getUserVoiceStateInServer(input.serverId, input.userId);
+    // For server channels, check if user is already in a voice channel in this server
+    // For DM channels, skip this check since there's no server
+    let existingState = null;
+    if (input.serverId) {
+      existingState = await this.getUserVoiceStateInServer(input.serverId, input.userId);
+    }
     if (existingState) {
       // Move to new channel by updating existing state
       const [updated] = await db('voice_states')

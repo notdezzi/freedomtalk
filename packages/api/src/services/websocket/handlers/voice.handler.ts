@@ -20,7 +20,7 @@ interface VoiceSession {
   sessionId: string;
   channelId: string;
   userId: string;
-  serverId: string;
+  serverId: string | null;
 }
 
 // Store active voice sessions per socket
@@ -95,7 +95,7 @@ class VoiceHandler {
         await voiceStateService.createVoiceState({
           channelId,
           userId,
-          serverId: serverId || undefined,
+          serverId: serverId ?? undefined,
           sessionId,
         });
 
@@ -148,6 +148,21 @@ class VoiceHandler {
             username: socket.data.user?.username || 'User',
             avatar: socket.data.user?.avatar || null,
           });
+        } else {
+          // For DM channels, notify all participants of the call
+          // This allows the recipient to see the incoming call even if not in the voice channel
+          const participantIds = await dmChannelService.getParticipantUserIds(channelId);
+          for (const participantId of participantIds) {
+            if (participantId !== userId) {
+              // Emit to the participant's user room
+              socket.to(`user:${participantId}`).emit('dm:call_started', {
+                channelId,
+                callerId: userId,
+                callerUsername: socket.data.user?.username || 'User',
+                callerAvatar: socket.data.user?.avatar || null,
+              });
+            }
+          }
         }
 
         callback?.({
@@ -192,6 +207,18 @@ class VoiceHandler {
         // Also broadcast to server room for UI updates (only for server channels)
         if (serverId) {
           socket.to(`server:${serverId}`).emit('voice:user_left', { sessionId, channelId });
+        } else {
+          // For DM channels, check if the call has ended (no more participants)
+          const remainingStates = await voiceStateService.getChannelVoiceStates(channelId);
+          if (remainingStates.length === 0) {
+            // Call has ended, notify all participants
+            const participantIds = await dmChannelService.getParticipantUserIds(channelId);
+            for (const participantId of participantIds) {
+              socket.to(`user:${participantId}`).emit('dm:call_ended', {
+                channelId,
+              });
+            }
+          }
         }
 
         // Cleanup

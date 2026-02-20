@@ -5,10 +5,11 @@ import { MessageView } from '@/components/messaging';
 import { useParams } from 'next/navigation';
 import { useChannelMessages, useSendMessage, useEditMessage, useDeleteMessage, useAddReaction, useRemoveReaction, usePinMessage, useUnpinMessage } from '@/features/channels';
 import { useDMChannel } from '@/features/dms';
-import { useAuthStore, useUIStore } from '@/stores';
+import { useAuthStore, useUIStore, useVoiceStore } from '@/stores';
 import { useMemo, useCallback, useState } from 'react';
 import { Avatar } from '@/components/ui';
 import { toast } from '@/stores/toast-store';
+import { DMCallPanel, DMCallButtons } from '@/components/voice/dm-call-panel';
 
 export default function DMPage() {
   const params = useParams();
@@ -147,6 +148,11 @@ export default function DMPage() {
     openModal('user-profile', { userId });
   }, [openModal]);
 
+  // Handle joining a call
+  const handleJoinCall = useCallback(() => {
+    // Could show a toast or notification that call started
+  }, []);
+
   // Loading state
   if (channelLoading) {
     return (
@@ -186,7 +192,24 @@ export default function DMPage() {
               </span>
             </div>
           </div>
+          {/* Call buttons */}
+          {recipient && (
+            <DMCallButtons
+              channelId={channelId}
+              recipientId={recipient.id}
+              onJoinCall={handleJoinCall}
+            />
+          )}
         </div>
+
+        {/* Call panel (shown when in a call) */}
+        {recipient && (
+          <DMCallPanel
+            channelId={channelId}
+            recipient={recipient}
+            onJoinCall={handleJoinCall}
+          />
+        )}
 
         {/* Messages */}
         <MessageView

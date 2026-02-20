@@ -55,6 +55,8 @@ export function useSocket() {
       'channel:update',
       'channel:delete',
       'dm:create',
+      'dm:call_started',
+      'dm:call_ended',
       'invite:create',
       'invite:delete',
       'friend_request:received',
@@ -251,6 +253,18 @@ export function useSocket() {
       socket.on('dm:create', (data: any) => {
         console.log('[Socket] DM created:', data);
         queryClient.invalidateQueries({ queryKey: queryKeys.dms.list() });
+      });
+
+      // DM call events
+      socket.on('dm:call_started', (data: any) => {
+        console.log('[Socket] DM call started:', data);
+        // Could show a notification or toast here
+        // For now, just log it - the DM page will handle showing the call UI
+      });
+
+      socket.on('dm:call_ended', (data: any) => {
+        console.log('[Socket] DM call ended:', data);
+        // Could show a notification or update call state
       });
 
       // Invite events

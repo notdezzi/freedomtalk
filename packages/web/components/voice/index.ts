@@ -6,3 +6,4 @@ export { VoiceGridView } from './voice-grid-view';
 export type { VoiceGridViewProps } from './voice-grid-view';
 export { VoiceControls } from './voice-controls';
 export type { VoiceControlsProps } from './voice-controls';
+export { DMCallPanel, DMCallButtons } from './dm-call-panel';

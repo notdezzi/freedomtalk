@@ -4,6 +4,7 @@ import { QueryProvider } from '@/lib/query-provider';
 import { ToastContainer } from '@/components/common';
 import { ModalRenderer } from '@/components/modals';
 import { ConfirmDialogProvider } from '@/components/ui';
+import { IncomingCallNotification } from '@/components/voice/incoming-call-notification';
 import { useAuth } from '@/hooks/use-auth';
 import { useSocket } from '@/hooks/use-socket';
 import { useRouter, usePathname } from 'next/navigation';
@@ -68,6 +69,7 @@ export default function AppLayout({
           {children}
           <ToastContainer />
           <ModalRenderer />
+          <IncomingCallNotification />
         </SocketProvider>
       </ConfirmDialogProvider>
     </QueryProvider>
