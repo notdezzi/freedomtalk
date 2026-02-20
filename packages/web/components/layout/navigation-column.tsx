@@ -7,11 +7,12 @@ import { UserPanel } from './user-panel';
 import { VoicePanel } from '@/components/voice';
 import { useUIStore, useVoiceStore } from '@/stores';
 import { ContextMenu, useContextMenu, Dropdown } from '@/components/ui';
-import { Home, Plus, Users, Settings, UserPlus, LogOut, Trash2, Edit2, X, ChevronDown, FolderPlus, Hash, Volume2, VolumeX, GripVertical, MicOff } from 'lucide-react';
+import { Home, Plus, Users, Settings, UserPlus, LogOut, Trash2, Edit2, X, ChevronDown, FolderPlus, Hash, Volume2, VolumeX, GripVertical, MicOff, Copy } from 'lucide-react';
 import { useServers, useServerChannelsAndCategories, useLeaveServer, useUpdateServerPositions, useUpdateChannelPositions, useUpdateCategoryPositions } from '@/features/servers';
 import { useDMChannels, useCloseDM } from '@/features/dms';
 import { useAuthStore } from '@/stores';
 import { useVoiceConnection, useServerVoiceStates, useCan } from '@/hooks';
+import { useDeveloperMode } from '@/hooks/use-developer-mode';
 import { PERMISSION_FLAGS } from '@freedomtalk/shared';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useMemo, useState, useRef } from 'react';
@@ -22,6 +23,9 @@ export function NavigationColumn() {
   const params = useParams();
   const router = useRouter();
   const openModal = useUIStore((s) => s.openModal);
+
+  // Developer mode for Copy ID
+  const isDeveloperMode = useDeveloperMode();
 
   // Get current user ID
   const currentUserId = useAuthStore((s) => s.user?.id);
@@ -417,7 +421,7 @@ export function NavigationColumn() {
     const serverData = servers.find(s => s.id === targetServerId);
     const isOwner = (serverData?.ownerId || (serverData as any)?.owner_id) === currentUserId;
 
-    return [
+    const baseItems = [
       {
         label: 'Invite People',
         icon: <UserPlus className="h-4 w-4" />,
@@ -459,6 +463,20 @@ export function NavigationColumn() {
             },
           ]),
     ];
+
+    // Add Copy ID if developer mode is enabled
+    if (isDeveloperMode) {
+      baseItems.push(
+        { label: 'divider', onClick: () => {}, divider: true },
+        {
+          label: 'Copy Server ID',
+          icon: <Copy className="h-4 w-4" />,
+          onClick: () => navigator.clipboard.writeText(targetServerId),
+        }
+      );
+    }
+
+    return baseItems;
   };
 
   // Channel context menu
@@ -473,7 +491,7 @@ export function NavigationColumn() {
     // Check if user can manage channels
     if (!canManageChannels) return [];
 
-    return [
+    const baseItems = [
       {
         label: 'Edit Channel',
         icon: <Edit2 className="h-4 w-4" />,
@@ -486,6 +504,20 @@ export function NavigationColumn() {
         danger: true,
       },
     ];
+
+    // Add Copy ID if developer mode is enabled
+    if (isDeveloperMode) {
+      baseItems.push(
+        { label: 'divider', onClick: () => {}, divider: true },
+        {
+          label: 'Copy Channel ID',
+          icon: <Copy className="h-4 w-4" />,
+          onClick: () => navigator.clipboard.writeText(channel.id),
+        }
+      );
+    }
+
+    return baseItems;
   };
 
   // Channel list context menu (for creating channels/categories)

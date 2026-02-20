@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores';
 import { useServerMembers, useKickMember, useBanMember } from '@/features/servers';
 import { useAuth } from '@/hooks/use-auth';
-import { Users, X, UserX, ShieldAlert, MessageCircle, Crown } from 'lucide-react';
+import { useDeveloperMode } from '@/hooks/use-developer-mode';
+import { Users, X, UserX, ShieldAlert, MessageCircle, Crown, Copy } from 'lucide-react';
 import { Avatar, useConfirmDialog } from '@/components/ui';
 import { ContextMenu, type ContextMenuItem } from '@/components/common/context-menu';
 import { toast } from '@/stores/toast-store';
@@ -309,6 +310,7 @@ function MemberContextMenu({
   const kickMember = useKickMember(serverId);
   const banMember = useBanMember(serverId);
   const { confirm, prompt } = useConfirmDialog();
+  const isDeveloperMode = useDeveloperMode();
 
   if (!member) return null;
 
@@ -421,6 +423,22 @@ function MemberContextMenu({
         icon: <ShieldAlert className="h-4 w-4" />,
         danger: true,
         onClick: handleBan,
+      }
+    );
+  }
+
+  // Add Copy ID if developer mode is enabled
+  if (isDeveloperMode) {
+    items.push(
+      { id: 'separator-dev', label: '', separator: true },
+      {
+        id: 'copy-id',
+        label: 'Copy User ID',
+        icon: <Copy className="h-4 w-4" />,
+        onClick: () => {
+          navigator.clipboard.writeText(member.userId);
+          onClose();
+        },
       }
     );
   }

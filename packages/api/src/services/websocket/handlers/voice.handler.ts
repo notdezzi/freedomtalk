@@ -13,6 +13,7 @@ import { channelService } from '../../channel/channel.service';
 import { serverService } from '../../server/server.service';
 import { serverBanService } from '../../server/server-ban.service';
 import { permissionService } from '../../permission';
+import { dmChannelService } from '../../dm/dm-channel.service';
 import { PERMISSION_FLAGS } from '@freedomtalk/shared';
 
 interface VoiceSession {
@@ -49,41 +50,57 @@ class VoiceHandler {
       try {
         const { channelId } = data;
 
-        // Get channel info
+        // First, try to get server channel
         const channel = await channelService.getChannel(channelId);
-        if (!channel || channel.type !== 'voice') {
-          return callback?.({ success: false, error: 'Invalid voice channel' });
+
+        // Check if it's a server channel or DM channel
+        const isServerChannel = channel && channel.server_id;
+
+        if (isServerChannel) {
+          // Server voice channel
+          if (channel.type !== 'voice') {
+            return callback?.({ success: false, error: 'Invalid voice channel' });
+          }
+
+          // Check if user is a member of the server
+          const isMember = await serverService.isMember(channel.server_id, userId);
+          if (!isMember) {
+            return callback?.({ success: false, error: 'You are not a member of this server' });
+          }
+
+          // Check if user is banned from the server
+          const isBanned = await serverBanService.isBanned(channel.server_id, userId);
+          if (isBanned) {
+            return callback?.({ success: false, error: 'You are banned from this server' });
+          }
+
+          // Check CONNECT permission
+          const hasConnectPermission = await permissionService.hasChannelPermission(userId, channelId, PERMISSION_FLAGS.CONNECT);
+          if (!hasConnectPermission) {
+            return callback?.({ success: false, error: 'You do not have permission to connect to this voice channel' });
+          }
+        } else {
+          // DM voice channel - verify user is a participant
+          const isParticipant = await dmChannelService.isParticipant(channelId, userId);
+          if (!isParticipant) {
+            return callback?.({ success: false, error: 'You are not a participant of this DM channel' });
+          }
         }
 
-        // Check if user is a member of the server
-        const isMember = await serverService.isMember(channel.server_id, userId);
-        if (!isMember) {
-          return callback?.({ success: false, error: 'You are not a member of this server' });
-        }
-
-        // Check if user is banned from the server
-        const isBanned = await serverBanService.isBanned(channel.server_id, userId);
-        if (isBanned) {
-          return callback?.({ success: false, error: 'You are banned from this server' });
-        }
-
-        // Check CONNECT permission
-        const hasConnectPermission = await permissionService.hasChannelPermission(userId, channelId, PERMISSION_FLAGS.CONNECT);
-        if (!hasConnectPermission) {
-          return callback?.({ success: false, error: 'You do not have permission to connect to this voice channel' });
-        }
+        // Determine server ID (null for DM channels)
+        const serverId = isServerChannel ? channel!.server_id : null;
 
         // Create voice state
         const sessionId = uuidv4();
         await voiceStateService.createVoiceState({
           channelId,
           userId,
-          serverId: channel.server_id,
+          serverId: serverId || undefined,
           sessionId,
         });
 
         // Store session
-        socketSessions.set(socket.id, { sessionId, channelId, userId, serverId: channel.server_id });
+        socketSessions.set(socket.id, { sessionId, channelId, userId, serverId });
 
         // Join socket room for the voice channel
         socket.join(`voice:${channelId}`);
@@ -122,14 +139,16 @@ class VoiceHandler {
           avatar: socket.data.user?.avatar || null,
         });
 
-        // Also broadcast to server room for UI updates (users not in voice)
-        socket.to(`server:${channel.server_id}`).emit('voice:user_joined', {
-          userId,
-          sessionId,
-          channelId,
-          username: socket.data.user?.username || 'User',
-          avatar: socket.data.user?.avatar || null,
-        });
+        // Also broadcast to server room for UI updates (only for server channels)
+        if (serverId) {
+          socket.to(`server:${serverId}`).emit('voice:user_joined', {
+            userId,
+            sessionId,
+            channelId,
+            username: socket.data.user?.username || 'User',
+            avatar: socket.data.user?.avatar || null,
+          });
+        }
 
         callback?.({
           success: true,
@@ -170,8 +189,10 @@ class VoiceHandler {
         // Notify others in voice channel
         socket.to(`voice:${channelId}`).emit('voice:user_left', { sessionId, channelId });
 
-        // Also broadcast to server room for UI updates
-        socket.to(`server:${serverId}`).emit('voice:user_left', { sessionId, channelId });
+        // Also broadcast to server room for UI updates (only for server channels)
+        if (serverId) {
+          socket.to(`server:${serverId}`).emit('voice:user_left', { sessionId, channelId });
+        }
 
         // Cleanup
         socketSessions.delete(socket.id);
@@ -260,13 +281,15 @@ class VoiceHandler {
             selfStream: isScreen,
           });
 
-          // Also broadcast to server room for UI updates
-          socket.to(`server:${session.serverId}`).emit('voice:user_state', {
-            sessionId: session.sessionId,
-            channelId: session.channelId,
-            selfVideo: !isScreen,
-            selfStream: isScreen,
-          });
+          // Also broadcast to server room for UI updates (only for server channels)
+          if (session.serverId) {
+            socket.to(`server:${session.serverId}`).emit('voice:user_state', {
+              sessionId: session.sessionId,
+              channelId: session.channelId,
+              selfVideo: !isScreen,
+              selfStream: isScreen,
+            });
+          }
         }
 
         // Notify others about new producer
@@ -365,12 +388,14 @@ class VoiceHandler {
           ...data,
         });
 
-        // Also broadcast to server room for UI updates
-        socket.to(`server:${session.serverId}`).emit('voice:user_state', {
-          sessionId: session.sessionId,
-          channelId: session.channelId,
-          ...data,
-        });
+        // Also broadcast to server room for UI updates (only for server channels)
+        if (session.serverId) {
+          socket.to(`server:${session.serverId}`).emit('voice:user_state', {
+            sessionId: session.sessionId,
+            channelId: session.channelId,
+            ...data,
+          });
+        }
 
         callback?.({ success: true, data: updated });
       } catch (error: any) {
@@ -404,11 +429,13 @@ class VoiceHandler {
             channelId: session.channelId,
           });
 
-          // Also broadcast to server room for UI updates
-          socket.to(`server:${session.serverId}`).emit('voice:user_left', {
-            sessionId: session.sessionId,
-            channelId: session.channelId,
-          });
+          // Also broadcast to server room for UI updates (only for server channels)
+          if (session.serverId) {
+            socket.to(`server:${session.serverId}`).emit('voice:user_left', {
+              sessionId: session.sessionId,
+              channelId: session.channelId,
+            });
+          }
         } catch (error) {
           logger.error({ error }, 'Error cleaning up voice session on disconnect');
         }

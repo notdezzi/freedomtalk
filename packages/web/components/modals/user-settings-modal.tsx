@@ -19,19 +19,36 @@ import {
   Check,
   X,
   LogOut,
+  Code,
+  Copy,
 } from 'lucide-react';
 
 interface UserSettingsModalProps {
   onClose: () => void;
 }
 
-type SettingsSection = 'my-account' | 'security' | 'voice-video';
+type SettingsSection = 'my-account' | 'security' | 'voice-video' | 'advanced';
 
 export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const logout = useAuthStore((s) => s.logout);
   const [activeSection, setActiveSection] = useState<SettingsSection>('my-account');
+
+  // Developer mode state
+  const [developerMode, setDeveloperMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('developer-mode') === 'true';
+    }
+    return false;
+  });
+
+  // Update localStorage when developer mode changes
+  useEffect(() => {
+    localStorage.setItem('developer-mode', String(developerMode));
+    // Dispatch custom event for other components to listen to
+    window.dispatchEvent(new CustomEvent('developer-mode-change', { detail: developerMode }));
+  }, [developerMode]);
 
   // Profile state
   const [displayName, setDisplayName] = useState('');
@@ -137,18 +154,7 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       videoStreamRef.current = stream;
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        // Wait for video metadata to load before playing
-        videoRef.current.onloadedmetadata = () => {
-          if (videoRef.current) {
-            videoRef.current.play().catch(err => {
-              console.error('Failed to play video:', err);
-              setVideoError('Failed to start video playback');
-            });
-          }
-        };
-      }
+      // Enable video first to render the video element
       setIsVideoEnabled(true);
     } catch (error) {
       console.error('Failed to start video:', error);
@@ -156,6 +162,21 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
       setIsVideoEnabled(false);
     }
   };
+
+  // Attach video stream when video element becomes available
+  useEffect(() => {
+    if (isVideoEnabled && videoStreamRef.current && videoRef.current) {
+      videoRef.current.srcObject = videoStreamRef.current;
+      videoRef.current.onloadedmetadata = () => {
+        if (videoRef.current) {
+          videoRef.current.play().catch(err => {
+            console.error('Failed to play video:', err);
+            setVideoError('Failed to start video playback');
+          });
+        }
+      };
+    }
+  }, [isVideoEnabled]);
 
   // Start mic test
   const startMicTest = async () => {
@@ -332,6 +353,7 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
     { id: 'my-account' as const, label: 'My Account', icon: <User className="h-4 w-4" /> },
     { id: 'security' as const, label: 'Security', icon: <Shield className="h-4 w-4" /> },
     { id: 'voice-video' as const, label: 'Voice & Video', icon: <Mic className="h-4 w-4" /> },
+    { id: 'advanced' as const, label: 'Advanced', icon: <Code className="h-4 w-4" /> },
   ];
 
   return (
@@ -742,6 +764,58 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                 <p className="text-xs text-foreground-subtle mt-2">
                   Camera preview is only visible to you
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Advanced Section */}
+          {activeSection === 'advanced' && (
+            <div className="p-6">
+              <h3 className="text-xl font-semibold text-foreground mb-6">Advanced</h3>
+
+              <div className="space-y-6">
+                {/* Developer Mode */}
+                <div className="bg-background-surface rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Code className="h-5 w-5 text-foreground-muted" />
+                        <h4 className="text-sm font-medium text-foreground">Developer Mode</h4>
+                      </div>
+                      <p className="text-sm text-foreground-muted mb-3">
+                        Enables additional context menu options like Copy ID for channels, servers, users, and roles.
+                      </p>
+                      <div className="flex items-center gap-2 text-xs text-foreground-subtle">
+                        <Copy className="h-3 w-3" />
+                        <span>Copy IDs will appear in right-click menus</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setDeveloperMode(!developerMode)}
+                      className={cn(
+                        'relative w-12 h-6 rounded-full transition-colors',
+                        developerMode ? 'bg-accent' : 'bg-background-elevated'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
+                          developerMode ? 'translate-x-7' : 'translate-x-1'
+                        )}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div className="bg-background-surface/50 rounded-lg p-4 border border-border">
+                  <h4 className="text-sm font-medium text-foreground mb-2">About Developer Mode</h4>
+                  <ul className="text-xs text-foreground-muted space-y-1 list-disc list-inside">
+                    <li>Copy Channel ID, Server ID, User ID, Role ID from context menus</li>
+                    <li>Useful for bot development and API testing</li>
+                    <li>IDs are unique identifiers for each entity</li>
+                  </ul>
+                </div>
               </div>
             </div>
           )}
