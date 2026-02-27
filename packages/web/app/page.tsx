@@ -1,4 +1,14 @@
-import { Navbar, Hero, Features, WhyUs, CTA, Footer } from '@/components/landing';
+import {
+  Navbar,
+  Hero,
+  NarrativeVoice,
+  NarrativeText,
+  NarrativeVideo,
+  NarrativeCommunities,
+  SystemDepth,
+  CTA,
+  Footer
+} from '@/components/landing';
 
 export default function Home() {
   return (
@@ -6,8 +16,11 @@ export default function Home() {
       <Navbar />
       <main>
         <Hero />
-        <Features />
-        <WhyUs />
+        <NarrativeVoice />
+        <NarrativeText />
+        <NarrativeVideo />
+        <NarrativeCommunities />
+        <SystemDepth />
         <CTA />
       </main>
       <Footer />
