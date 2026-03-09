@@ -1,10 +1,11 @@
 import { Socket } from 'socket.io';
 import { z } from 'zod';
 import { logger } from '../../../config/logger';
-import { WS_EVENTS, VALIDATION } from '@freedomtalk/shared';
+import { WS_EVENTS, VALIDATION, PERMISSION_FLAGS } from '@freedomtalk/shared';
 import { messageService } from '../../message/message.service';
 import { messageRouter } from '../message.router';
 import { dmChannelService } from '../../dm/dm-channel.service';
+import { permissionService } from '../../permission';
 
 /**
  * Message create data schema
@@ -62,6 +63,30 @@ export async function handleMessageCreate(socket: Socket, data: unknown): Promis
     }
 
     const { content, channelId, dmChannelId, embeds } = validation.data;
+
+    // Authorization check for channel messages
+    if (channelId) {
+      const hasPermission = await permissionService.hasChannelPermission(user.id, channelId, PERMISSION_FLAGS.SEND_MESSAGES);
+      if (!hasPermission) {
+        socket.emit(WS_EVENTS.ERROR, {
+          code: 'FORBIDDEN',
+          message: 'You do not have permission to send messages in this channel',
+        });
+        return;
+      }
+    }
+
+    // Authorization check for DM messages
+    if (dmChannelId) {
+      const isParticipant = await dmChannelService.isParticipant(dmChannelId, user.id);
+      if (!isParticipant) {
+        socket.emit(WS_EVENTS.ERROR, {
+          code: 'FORBIDDEN',
+          message: 'You are not a participant of this DM channel',
+        });
+        return;
+      }
+    }
 
     // Create message
     // Note: We don't check subscription here because messages are broadcast

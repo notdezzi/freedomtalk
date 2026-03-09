@@ -11,6 +11,7 @@ import { successResponse } from '../../utils/errors';
 import { messageService } from '../../services/message/message.service';
 import { messageRouter } from '../../services/websocket/message.router';
 import { permissionService } from '../../services/permission';
+import { dmChannelService } from '../../services/dm/dm-channel.service';
 import { VALIDATION, PERMISSION_FLAGS } from '@freedomtalk/shared';
 
 /**
@@ -101,6 +102,17 @@ export default async function messageRoutes(app: FastifyInstance) {
           return reply.code(403).send({
             success: false,
             error: { code: 'FORBIDDEN', message: 'You do not have permission to send messages in this channel' }
+          });
+        }
+      }
+
+      // Check DM channel participation for DM messages
+      if (dmChannelId) {
+        const isParticipant = await dmChannelService.isParticipant(dmChannelId, userId);
+        if (!isParticipant) {
+          return reply.code(403).send({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'You are not a participant of this DM channel' }
           });
         }
       }
