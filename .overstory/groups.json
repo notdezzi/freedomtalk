@@ -1,0 +1,14 @@
+[
+	{
+		"id": "group-1e3e1c41",
+		"name": "security-fixes-mar9",
+		"memberIssueIds": [
+			"freedomtalk-23m",
+			"freedomtalk-4i7",
+			"freedomtalk-k0j"
+		],
+		"status": "active",
+		"createdAt": "2026-03-09T09:21:52.515Z",
+		"completedAt": null
+	}
+]

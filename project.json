@@ -1,0 +1,91 @@
+{                                                                                                                                      
+    "id": "freedomtalk",                                                                                                                 
+    "title": "FreedomTalk",                                                                                                              
+    "subtitle": "Real-time Communication Platform",                                                                                      
+    "description": "A full-featured Discord clone built with a microservices architecture. Features real-time messaging via WebSockets, voice/video calls with WebRTC, server management, file attachments, and role-based permissions.",                                      
+    "longDescription": "FreedomTalk is a comprehensive real-time communication platform that replicates Discord's core functionality. Built as a monorepo with npm workspaces, it features a Fastify backend with Socket.io for real-time messaging, a Next.js frontend with React 19, and containerized infrastructure with Docker. The platform supports horizontal scaling through Redis pub/sub, includes a complete authentication system with 2FA, and implements WebRTC for voice and video communication.",
+    "client": "Personal Project",
+    "industry": "Communication Software",
+    "role": "Full Stack Developer",
+    "status": "In Development",
+    "color": "#5865F2",
+    "tags": ["Next.js", "Fastify", "PostgreSQL", "Socket.io", "Redis", "Docker", "TypeScript", "WebRTC"],
+    "features": [
+      {
+        "title": "Real-time Messaging",
+        "description": "WebSocket-based instant messaging with Socket.io and Redis adapter for horizontal scaling across multiple server instances"
+      },
+      {
+        "title": "Voice & Video Calls",
+        "description": "WebRTC-powered voice and video communication with SFU architecture for efficient multi-party calls"
+      },
+      {
+        "title": "Server Management",
+        "description": "Create and manage servers with customizable channels, categories, and role-based permission systems"
+      },
+      {
+        "title": "File Attachments",
+        "description": "Secure file upload and storage via MinIO/S3-compatible object storage with preview generation"
+      },
+      {
+        "title": "Message Features",
+        "description": "Rich message interactions including reactions, replies, threading, and embeds with Open Graph metadata"
+      },
+      {
+        "title": "User Presence",
+        "description": "Real-time presence indicators, typing notifications, and custom status support"
+      },
+      {
+        "title": "Authentication",
+        "description": "Secure JWT-based authentication with httpOnly cookies, refresh tokens, and optional TOTP two-factor auth"
+      },
+      {
+        "title": "Snowflake IDs",
+        "description": "Distributed ID generation using Snowflake algorithm for sortable, unique identifiers across services"
+      }
+    ],
+    "techStack": {
+      "frontend": ["Next.js 16", "React 19", "TypeScript", "Tailwind CSS 4", "Zustand"],
+      "backend": ["Fastify 5", "Socket.io 4", "Knex", "Zod"],
+      "tools": ["Vitest", "MinIO", "RabbitMQ"],
+      "infrastructure": ["Docker", "PostgreSQL", "Redis", "TimescaleDB"]
+    },
+    "pages": [
+      "Authentication (Login, Register, 2FA)",
+      "Server browser and discovery",
+      "Server channels (text, voice, video)",
+      "Direct messages and group DMs",
+      "User settings and profile",
+      "Server settings and management",
+      "Member list and roles",
+      "Notification center"
+    ],
+    "github": "https://github.com/notdezzi/freedomtalk",
+    "website": null,
+    "media": [
+      {
+        "type": "video",
+        "label": "FreedomTalk Demo",
+        "src": "/projects/freedomtalk/freedomtalk.mp4"
+      },
+      {
+        "type": "image",
+        "label": "Server View",
+        "src": "/projects/freedomtalk/server-view.png"
+      },
+      {
+        "type": "image",
+        "label": "Direct Messages",
+        "src": "/projects/freedomtalk/dm-view.png"
+      }
+    ],
+    "highlights": [
+      "Monorepo architecture with npm workspaces and shared types package",
+      "Layered backend architecture (routes → services → data)",
+      "Horizontal scaling support via Redis pub/sub adapter",
+      "Complete WebSocket event system with presence and room management",
+      "Database migrations with Knex and Snowflake ID generation",
+      "Containerized development environment with Docker Compose"
+    ],
+    "dateCompleted": null
+  }
