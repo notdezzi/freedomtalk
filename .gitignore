@@ -83,3 +83,6 @@ backups/
 *.dump
 *.sql.gz
 
+
+# Dolt database files (added by bd init)
+.dolt/

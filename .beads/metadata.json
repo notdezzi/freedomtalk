@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "freedomtalk",
+  "project_id": "1399a0b4-a5d2-470e-aad7-0726d26963ff"
+}
