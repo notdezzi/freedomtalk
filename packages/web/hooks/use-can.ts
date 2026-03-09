@@ -17,6 +17,22 @@ import { useMemo } from 'react';
 import { usePermissionBreakdown, useChannelPermissionBreakdown } from '@/features/permissions';
 import { PERMISSION_FLAGS, type PermissionFlag } from '@freedomtalk/shared';
 
+type PermissionDecision = {
+  result: 'allow' | 'deny';
+};
+
+function getPermissionMap(breakdown: unknown): Record<string, PermissionDecision> | null {
+  if (!breakdown || typeof breakdown !== 'object') {
+    return null;
+  }
+
+  if ('permissions' in breakdown && breakdown.permissions && typeof breakdown.permissions === 'object') {
+    return breakdown.permissions as Record<string, PermissionDecision>;
+  }
+
+  return breakdown as Record<string, PermissionDecision>;
+}
+
 /**
  * Helper to find permission name from flag value.
  * Returns the key name (e.g., 'MANAGE_SERVER') for a given bigint flag.
@@ -82,15 +98,13 @@ export function useCan(
     const { data: breakdown } = useChannelPermissionBreakdown(channelId);
 
     return useMemo(() => {
-      // Return false if no breakdown data available (loading, error, or no channel)
-      if (!breakdown) return false;
+      const permissions = getPermissionMap(breakdown);
+      if (!permissions) return false;
 
-      // Find the permission name from the flag
       const permName = getPermissionName(perm);
       if (!permName) return false;
 
-      // Check if the permission result is 'allow'
-      return breakdown[permName]?.result === 'allow';
+      return permissions[permName]?.result === 'allow';
     }, [breakdown, perm]);
   } else {
     // Server-level permission check
@@ -99,15 +113,13 @@ export function useCan(
     const { data: breakdown } = usePermissionBreakdown(serverId);
 
     return useMemo(() => {
-      // Return false if no breakdown data available (loading, error, or no server)
-      if (!breakdown) return false;
+      const permissions = getPermissionMap(breakdown);
+      if (!permissions) return false;
 
-      // Find the permission name from the flag
       const permName = getPermissionName(perm);
       if (!permName) return false;
 
-      // Check if the permission result is 'allow'
-      return breakdown[permName]?.result === 'allow';
+      return permissions[permName]?.result === 'allow';
     }, [breakdown, serverId, perm]);
   }
 }

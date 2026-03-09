@@ -9,6 +9,10 @@ import { FastifyInstance } from 'fastify';
 import { db } from '../../config/database';
 import { PERMISSION_FLAGS } from '@freedomtalk/shared';
 
+function testId(seed: number): string {
+  return String(seed).padEnd(18, '0').slice(0, 18);
+}
+
 interface TestUser {
   id: string;
   email: string;
@@ -334,9 +338,9 @@ describe('Channel Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
-      expect(Array.isArray(body.data)).toBe(true);
+      expect(Array.isArray(body.data.channels)).toBe(true);
       // Should have at least the #general channel and our new channel
-      expect(body.data.length).toBeGreaterThanOrEqual(2);
+      expect(body.data.channels.length).toBeGreaterThanOrEqual(2);
     });
 
     it('should create channel in category', async () => {
@@ -422,6 +426,97 @@ describe('Channel Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
+    });
+
+    it('should hide channels from members denied VIEW_CHANNEL', async () => {
+      const memberId = testId(Date.now());
+      await db('server_members').insert({
+        id: memberId,
+        server_id: testServerId,
+        user_id: secondUser.id,
+        nickname: null,
+        avatar_url: null,
+        mute: false,
+        deaf: false,
+        pending: false,
+        joined_at: new Date(),
+        boosted_since: null,
+        communication_disabled_until: null,
+      });
+
+      const createResponse = await app.inject({
+        method: 'POST',
+        url: `/api/v1/servers/${testServerId}/channels`,
+        headers: {
+          authorization: `Bearer ${testUser.accessToken}`,
+        },
+        payload: {
+          name: 'test-hidden-channel',
+          type: 'text',
+        },
+      });
+
+      const hiddenChannelId = JSON.parse(createResponse.body).data.id;
+
+      const overwriteResponse = await app.inject({
+        method: 'PUT',
+        url: `/api/v1/channels/${hiddenChannelId}/permissions/${secondUser.id}`,
+        headers: {
+          authorization: `Bearer ${testUser.accessToken}`,
+        },
+        payload: {
+          type: 'member',
+          deny: PERMISSION_FLAGS.VIEW_CHANNEL.toString(),
+        },
+      });
+
+      expect(overwriteResponse.statusCode).toBe(200);
+
+      const listResponse = await app.inject({
+        method: 'GET',
+        url: `/api/v1/servers/${testServerId}/channels`,
+        headers: {
+          authorization: `Bearer ${secondUser.accessToken}`,
+        },
+      });
+
+      expect(listResponse.statusCode).toBe(200);
+      const body = JSON.parse(listResponse.body);
+      expect(body.success).toBe(true);
+      expect(body.data.channels.some((channel: { id: string }) => channel.id === hiddenChannelId)).toBe(false);
+    });
+
+    it('should allow @everyone overwrites using the server id as target', async () => {
+      const createResponse = await app.inject({
+        method: 'POST',
+        url: `/api/v1/servers/${testServerId}/channels`,
+        headers: {
+          authorization: `Bearer ${testUser.accessToken}`,
+        },
+        payload: {
+          name: 'test-everyone-overwrite',
+          type: 'text',
+        },
+      });
+
+      const channelId = JSON.parse(createResponse.body).data.id;
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/api/v1/channels/${channelId}/permissions/${testServerId}`,
+        headers: {
+          authorization: `Bearer ${testUser.accessToken}`,
+        },
+        payload: {
+          type: 'role',
+          deny: PERMISSION_FLAGS.SEND_MESSAGES.toString(),
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(true);
+      expect(body.data.target_id).toBe(testServerId);
     });
   });
 });

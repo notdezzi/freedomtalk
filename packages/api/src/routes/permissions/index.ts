@@ -154,9 +154,12 @@ export default async function permissionRoutes(app: FastifyInstance) {
 
       // Validate target exists
       if (targetType === 'role') {
-        const role = await roleService.getRole(targetId);
-        if (!role || role.server_id !== channel.server_id) {
-          return reply.code(400).send({ success: false, error: { code: 'INVALID_TARGET', message: 'Role not found in this server' } });
+        const isEveryoneOverwrite = targetId === channel.server_id;
+        if (!isEveryoneOverwrite) {
+          const role = await roleService.getRole(targetId);
+          if (!role || role.server_id !== channel.server_id) {
+            return reply.code(400).send({ success: false, error: { code: 'INVALID_TARGET', message: 'Role not found in this server' } });
+          }
         }
       } else {
         const isMember = await serverService.isMember(channel.server_id, targetId);

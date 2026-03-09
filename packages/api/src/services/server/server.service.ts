@@ -189,15 +189,10 @@ class ServerService {
   /**
    * Update server settings
    */
-  async updateServer(serverId: string, input: UpdateServerInput, userId: string): Promise<ServerWithMembers> {
-    // Check if user is server owner
+  async updateServer(serverId: string, input: UpdateServerInput, _userId: string): Promise<ServerWithMembers> {
     const server = await this.getServer(serverId);
     if (!server) {
       throw new AppError(404, 'SERVER_NOT_FOUND', 'Server not found');
-    }
-
-    if (server.owner_id !== userId) {
-      throw new AppError(403, 'FORBIDDEN', 'Only the server owner can update server settings');
     }
 
     const updateData: Record<string, any> = {

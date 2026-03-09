@@ -7,6 +7,11 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { build } from '../../app';
 import { FastifyInstance } from 'fastify';
 import { db } from '../../config/database';
+import { PERMISSION_FLAGS } from '@freedomtalk/shared';
+
+function testId(seed: number): string {
+  return String(seed).padEnd(18, '0').slice(0, 18);
+}
 
 interface TestUser {
   id: string;
@@ -166,7 +171,7 @@ describe('Server Routes', () => {
         },
       });
 
-      const channels = JSON.parse(channelsResponse.body).data;
+      const channels = JSON.parse(channelsResponse.body).data.channels;
       expect(channels.length).toBeGreaterThan(0);
       expect(channels[0].name).toBe('general');
     });
@@ -233,6 +238,74 @@ describe('Server Routes', () => {
       expect(body.success).toBe(true);
       expect(body.data.name).toBe('Updated Server Name');
       expect(body.data.description).toBe('Updated description');
+    });
+
+    it('should allow a member with MANAGE_SERVER to update server settings', async () => {
+      const createResponse = await app.inject({
+        method: 'POST',
+        url: '/api/v1/servers',
+        headers: {
+          authorization: `Bearer ${testUser.accessToken}`,
+        },
+        payload: {
+          name: 'Test Server Manager Update',
+        },
+      });
+
+      const serverId = JSON.parse(createResponse.body).data.id;
+
+      const roleResponse = await app.inject({
+        method: 'POST',
+        url: `/api/v1/servers/${serverId}/roles`,
+        headers: {
+          authorization: `Bearer ${testUser.accessToken}`,
+        },
+        payload: {
+          name: 'Server Manager',
+          allowPermissions: PERMISSION_FLAGS.MANAGE_SERVER.toString(),
+        },
+      });
+
+      const roleId = JSON.parse(roleResponse.body).data.id;
+      const memberId = testId(Date.now());
+      const memberRoleId = testId(Date.now() + 1);
+
+      await db('server_members').insert({
+        id: memberId,
+        server_id: serverId,
+        user_id: secondUser.id,
+        nickname: null,
+        avatar_url: null,
+        mute: false,
+        deaf: false,
+        pending: false,
+        joined_at: new Date(),
+        boosted_since: null,
+        communication_disabled_until: null,
+      });
+
+      await db('member_roles').insert({
+        id: memberRoleId,
+        server_id: serverId,
+        user_id: secondUser.id,
+        role_id: roleId,
+      });
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/servers/${serverId}`,
+        headers: {
+          authorization: `Bearer ${secondUser.accessToken}`,
+        },
+        payload: {
+          name: 'Updated By Manager',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(true);
+      expect(body.data.name).toBe('Updated By Manager');
     });
 
     it('should delete server (owner only)', async () => {

@@ -58,6 +58,7 @@ export function NavigationColumn() {
 
   // Permission checks
   const canManageChannels = useCan(serverId, PERMISSION_FLAGS.MANAGE_CHANNELS);
+  const canManageServer = useCan(serverId, PERMISSION_FLAGS.MANAGE_SERVER);
 
   // Drag and drop state for channels
   const [draggedChannelId, setDraggedChannelId] = useState<string | null>(null);
@@ -524,11 +525,7 @@ export function NavigationColumn() {
   const handleChannelListContextMenu = (e: React.MouseEvent) => {
     if (!serverId) return;
 
-    // Check if user can manage channels
-    const serverData = servers.find(s => s.id === serverId);
-    const isOwner = (serverData?.ownerId || (serverData as any)?.owner_id) === currentUserId;
-
-    if (!isOwner) return;
+    if (!canManageChannels) return;
 
     channelListContextMenu.openContextMenu(e, { serverId });
   };
@@ -565,7 +562,7 @@ export function NavigationColumn() {
         icon: <UserPlus className="h-4 w-4" />,
         onClick: () => openModal('invite-people', { serverId }),
       },
-      ...(isOwner
+      ...(canManageServer
         ? [
             {
               id: 'settings',
@@ -573,6 +570,10 @@ export function NavigationColumn() {
               icon: <Settings className="h-4 w-4" />,
               onClick: () => openModal('server-settings', { serverId }),
             },
+          ]
+        : []),
+      ...(canManageChannels
+        ? [
             {
               id: 'create-channel',
               label: 'Create Channel',
@@ -826,49 +827,44 @@ export function NavigationColumn() {
                 });
 
                 return (
-                  <div
+                  <ChannelCategory
                     key={category.id}
-                    draggable={canManageChannels}
-                    onDragStart={(e) => handleCategoryDragStart(e, category.id)}
-                    onDragEnd={handleChannelDragEnd}
-                    onDragOver={(e) => handleCategoryDragOver(e, category.id)}
-                    onDragLeave={handleCategoryDragLeave}
-                    onDrop={(e) => handleCategoryDrop(e, category.id)}
-                    className={cn(
-                      draggedCategoryId === category.id && 'opacity-50',
-                      dragOverCategoryIdForReorder === category.id && 'border-t-2 border-white'
-                    )}
-                  >
-                    <ChannelCategory
-                      name={category.name}
-                      channels={sortedChannels.map(item => ({
-                        id: item.id,
-                        name: item.name || '',
-                        type: (item.type === 'voice' ? 'voice' : 'text') as 'voice' | 'text',
-                      }))}
-                      activeChannelId={activeChannelId}
-                      onChannelClick={(channel) => handleChannelClick({ id: channel.id, type: channel.type as 'text' | 'voice' | undefined })}
-                      onChannelContextMenu={(e, channel) => handleChannelContextMenu(e, { id: channel.id, name: channel.name })}
-                      onAddClick={() => openModal('create-channel', { serverId, categoryId: category.id })}
-                      isCollapsed={collapsedCategories.has(category.id)}
-                      onToggleCollapse={() => toggleCategoryCollapse(category.id)}
-                      isDraggable={canManageChannels}
-                      draggedChannelId={draggedChannelId}
-                      dragOverChannelId={dragOverChannelId}
-                      dragOverPosition={dragOverPosition}
-                      onChannelDragStart={handleChannelDragStart}
-                      onChannelDragEnd={handleChannelDragEnd}
-                      onChannelDragOver={handleChannelDragOver}
-                      onChannelDragLeave={handleChannelDragLeave}
-                      onChannelDrop={handleChannelDrop}
-                      categoryId={category.id}
-                      onDropZoneDragOver={handleCategoryDropZoneDragOver}
-                      onDropZoneDrop={handleCategoryDropZoneDrop}
-                      dragOverCategoryId={dragOverCategoryId}
-                      voiceUsersByChannel={voiceUsersMap}
-                      activeVoiceChannelId={voiceStore.currentChannelId}
-                    />
-                  </div>
+                    name={category.name}
+                    channels={sortedChannels.map(item => ({
+                      id: item.id,
+                      name: item.name || '',
+                      type: (item.type === 'voice' ? 'voice' : 'text') as 'voice' | 'text',
+                    }))}
+                    activeChannelId={activeChannelId}
+                    onChannelClick={(channel) => handleChannelClick({ id: channel.id, type: channel.type as 'text' | 'voice' | undefined })}
+                    onChannelContextMenu={(e, channel) => handleChannelContextMenu(e, { id: channel.id, name: channel.name })}
+                    onAddClick={() => openModal('create-channel', { serverId, categoryId: category.id })}
+                    isCollapsed={collapsedCategories.has(category.id)}
+                    onToggleCollapse={() => toggleCategoryCollapse(category.id)}
+                    isDraggable={canManageChannels}
+                    draggedChannelId={draggedChannelId}
+                    dragOverChannelId={dragOverChannelId}
+                    dragOverPosition={dragOverPosition}
+                    onChannelDragStart={handleChannelDragStart}
+                    onChannelDragEnd={handleChannelDragEnd}
+                    onChannelDragOver={handleChannelDragOver}
+                    onChannelDragLeave={handleChannelDragLeave}
+                    onChannelDrop={handleChannelDrop}
+                    categoryId={category.id}
+                    onDropZoneDragOver={handleCategoryDropZoneDragOver}
+                    onDropZoneDrop={handleCategoryDropZoneDrop}
+                    dragOverCategoryId={dragOverCategoryId}
+                    voiceUsersByChannel={voiceUsersMap}
+                    activeVoiceChannelId={voiceStore.currentChannelId}
+                    isCategoryDraggable={canManageChannels}
+                    isCategoryDragging={draggedCategoryId === category.id}
+                    isCategoryDragOver={dragOverCategoryIdForReorder === category.id}
+                    onCategoryDragStart={(e) => handleCategoryDragStart(e, category.id)}
+                    onCategoryDragEnd={handleChannelDragEnd}
+                    onCategoryDragOver={(e) => handleCategoryDragOver(e, category.id)}
+                    onCategoryDragLeave={handleCategoryDragLeave}
+                    onCategoryDrop={(e) => handleCategoryDrop(e, category.id)}
+                  />
                 );
               })}
           </div>

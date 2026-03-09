@@ -95,12 +95,34 @@ export default async function channelRoutes(app: FastifyInstance) {
         return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'Not a member of this server' } });
       }
 
-      const [channels, categories] = await Promise.all([
+      const [allChannels, allCategories] = await Promise.all([
         channelService.getServerChannels(serverId),
         categoryService.getServerCategories(serverId),
       ]);
 
-      return reply.send(successResponse({ channels, categories }));
+      const visibleChannels = (
+        await Promise.all(
+          allChannels.map(async (channel) => {
+            const canView = await permissionService.hasChannelPermission(
+              userId,
+              channel.id,
+              PERMISSION_FLAGS.VIEW_CHANNEL
+            );
+
+            return canView ? channel : null;
+          })
+        )
+      ).filter((channel): channel is NonNullable<typeof channel> => channel !== null);
+
+      const visibleCategoryIds = new Set(
+        visibleChannels
+          .map((channel) => channel.category_id)
+          .filter((categoryId): categoryId is string => Boolean(categoryId))
+      );
+
+      const visibleCategories = allCategories.filter((category) => visibleCategoryIds.has(category.id));
+
+      return reply.send(successResponse({ channels: visibleChannels, categories: visibleCategories }));
     }
   );
 

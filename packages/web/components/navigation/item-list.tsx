@@ -178,6 +178,14 @@ export function ChannelCategory({
   dragOverCategoryId,
   voiceUsersByChannel,
   activeVoiceChannelId,
+  isCategoryDraggable = false,
+  isCategoryDragging = false,
+  isCategoryDragOver = false,
+  onCategoryDragStart,
+  onCategoryDragEnd,
+  onCategoryDragOver,
+  onCategoryDragLeave,
+  onCategoryDrop,
 }: {
   name: string;
   channels: SimpleChannel[];
@@ -202,15 +210,32 @@ export function ChannelCategory({
   dragOverCategoryId?: string | null;
   voiceUsersByChannel?: Record<string, VoiceUser[]>;
   activeVoiceChannelId?: string | null;
+  isCategoryDraggable?: boolean;
+  isCategoryDragging?: boolean;
+  isCategoryDragOver?: boolean;
+  onCategoryDragStart?: (e: React.DragEvent) => void;
+  onCategoryDragEnd?: () => void;
+  onCategoryDragOver?: (e: React.DragEvent) => void;
+  onCategoryDragLeave?: () => void;
+  onCategoryDrop?: (e: React.DragEvent) => void;
 }) {
   return (
     <div className="py-1">
       {/* Category header */}
       <button
         onClick={onToggleCollapse}
+        draggable={isCategoryDraggable}
+        onDragStart={onCategoryDragStart}
+        onDragEnd={onCategoryDragEnd}
+        onDragOver={onCategoryDragOver}
+        onDragLeave={onCategoryDragLeave}
+        onDrop={onCategoryDrop}
         className={cn(
           'flex w-full items-center gap-1 px-1 py-0.5 text-xs font-semibold uppercase tracking-wide',
-          'text-foreground-subtle hover:text-foreground transition-colors'
+          'text-foreground-subtle hover:text-foreground transition-colors',
+          isCategoryDraggable && 'cursor-grab',
+          isCategoryDragging && 'opacity-50',
+          isCategoryDragOver && 'border-t-2 border-white'
         )}
       >
         <ChevronDown
