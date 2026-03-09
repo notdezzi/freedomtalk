@@ -67,7 +67,7 @@ class EmailVerificationService {
         });
 
       // Generate verification link
-      const verificationLink = `${process.env.WEB_URL || 'http://localhost:3000'}/verify-email?token=${token}`;
+      const verificationLink = `${process.env.WEB_URL || 'http://localhost:3000'}/auth/verify-email?token=${token}`;
 
       // Send verification email
       await emailService.sendVerificationEmail(user.email, verificationLink);

@@ -5,25 +5,36 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { MessageCircle, CheckCircle, XCircle } from 'lucide-react';
+import { apiClient } from '@/lib/api-client';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   useEffect(() => {
     const verifyEmail = async () => {
       if (!token) {
         setStatus('error');
+        setErrorMessage('No verification token provided');
         return;
       }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      try {
+        const response = await apiClient.verifyEmail(token);
 
-      // For demo, randomly succeed or fail
-      setStatus(Math.random() > 0.3 ? 'success' : 'error');
+        if (response.success) {
+          setStatus('success');
+        } else {
+          setStatus('error');
+          setErrorMessage(response.error?.message || 'Verification failed');
+        }
+      } catch (error) {
+        setStatus('error');
+        setErrorMessage('An unexpected error occurred');
+      }
     };
 
     verifyEmail();
@@ -75,7 +86,7 @@ function VerifyEmailContent() {
           </div>
           <h1 className="text-2xl font-bold mb-2">Verification failed</h1>
           <p className="text-foreground-muted mb-6">
-            This verification link is invalid or has expired. Please request a new one.
+            {errorMessage || 'This verification link is invalid or has expired. Please request a new one.'}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/auth/verify-pending" className="btn btn-primary">

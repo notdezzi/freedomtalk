@@ -645,6 +645,54 @@ export default async function authRoutes(app: FastifyInstance) {
   );
 
   /**
+   * POST /api/v1/auth/verify-email
+   * Verify email using token
+   */
+  app.post(
+    '/verify-email',
+    {
+      ...getRateLimitConfig(5, '1 hour'),
+    },
+    async (request: FastifyRequest<{ Body: { token: string } }>, reply: FastifyReply) => {
+      const { token } = request.body;
+
+      if (!token) {
+        return reply.code(400).send({
+          success: false,
+          error: { code: 'INVALID_TOKEN', message: 'Verification token is required' },
+        });
+      }
+
+      try {
+        // Import the email verification service
+        const { emailVerificationService } = await import('../../services/auth/email-verification.service');
+
+        // Verify the token
+        const verified = await emailVerificationService.verifyEmail(token, request.ip);
+
+        if (!verified) {
+          return reply.code(400).send({
+            success: false,
+            error: { code: 'INVALID_TOKEN', message: 'Invalid or expired verification token' },
+          });
+        }
+
+        logger.info({ ip: request.ip }, 'Email verified successfully');
+
+        reply.send(successResponse({
+          message: 'Email verified successfully',
+        }));
+      } catch (error) {
+        logger.error({ error }, 'Error in verify email');
+        return reply.code(500).send({
+          success: false,
+          error: { code: 'VERIFY_ERROR', message: 'Failed to verify email' },
+        });
+      }
+    }
+  );
+
+  /**
    * POST /api/v1/auth/resend-verification
    * Resend email verification
    */
@@ -661,19 +709,9 @@ export default async function authRoutes(app: FastifyInstance) {
         const user = await db('users').where({ email: email.toLowerCase() }).first();
 
         if (user && !user.email_verified) {
-          // Generate verification token
-          const verificationToken = snowflake.generate();
-
-          // Update user with new verification token
-          await db('users').where({ id: user.id }).update({
-            verification_token: verificationToken,
-            updated_at: new Date(),
-          });
-
-          // Send verification email
-          const { emailService } = await import('../../services/email/email.service');
-          const verifyLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/verify-email?token=${verificationToken}`;
-          await emailService.sendVerificationEmail(email, verifyLink);
+          // Use the email verification service for consistent token generation and link format
+          const { emailVerificationService } = await import('../../services/auth/email-verification.service');
+          await emailVerificationService.sendVerificationEmail(user.id, request.ip);
 
           logger.info({ userId: user.id, email }, 'Verification email resent');
         }

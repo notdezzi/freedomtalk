@@ -500,6 +500,13 @@ class ApiClient {
     });
   }
 
+  async verifyEmail(token: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('/api/v1/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  }
+
   // Generic HTTP methods
   async get<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint);
