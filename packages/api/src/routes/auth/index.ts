@@ -528,22 +528,26 @@ export default async function authRoutes(app: FastifyInstance) {
         const user = await db('users').where({ email: email.toLowerCase() }).first();
 
         if (user) {
-          // Generate reset token
-          const resetToken = snowflake.generate();
+          // Generate reset token (raw token to send to user)
+          const crypto = await import('crypto');
+          const rawToken = crypto.randomBytes(32).toString('hex');
+          const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
           const expiresAt = new Date(Date.now() + 3600000); // 1 hour
 
-          // Store reset token in database
-          await db('password_reset_tokens').insert({
+          // Store hashed reset token in database (password_resets table)
+          await db('password_resets').insert({
             id: snowflake.generate(),
             user_id: user.id,
-            token: resetToken,
+            token_hash: tokenHash,
+            is_used: false,
             expires_at: expiresAt,
+            ip_address: request.ip,
             created_at: new Date(),
-          }).onConflict('user_id').merge(); // Replace any existing token
+          }).onConflict('user_id').merge(['token_hash', 'is_used', 'used_at', 'expires_at', 'ip_address', 'created_at']);
 
-          // Send reset email
+          // Send reset email with raw token (not hashed)
           const { emailService } = await import('../../services/email/email.service');
-          const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/reset-password?token=${resetToken}`;
+          const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/reset-password?token=${rawToken}`;
           await emailService.sendPasswordResetEmail(email, resetLink);
 
           logger.info({ userId: user.id, email }, 'Password reset email sent');
@@ -576,30 +580,54 @@ export default async function authRoutes(app: FastifyInstance) {
       const { token, password } = request.body;
 
       try {
-        // Find reset token
-        const resetToken = await db('password_reset_tokens').where({ token }).first();
+        // Hash the incoming token to compare with stored hash
+        const crypto = await import('crypto');
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
-        if (!resetToken || new Date() > new Date(resetToken.expires_at)) {
+        // Find reset token by hash
+        const resetToken = await db('password_resets').where({ token_hash: tokenHash }).first();
+
+        if (!resetToken) {
           return reply.code(400).send({
             success: false,
             error: { code: 'INVALID_TOKEN', message: 'Invalid or expired reset token' },
           });
         }
 
+        // Check if token has been used
+        if (resetToken.is_used) {
+          return reply.code(400).send({
+            success: false,
+            error: { code: 'INVALID_TOKEN', message: 'Reset token has already been used' },
+          });
+        }
+
+        // Check if token has expired
+        if (new Date() > new Date(resetToken.expires_at)) {
+          return reply.code(400).send({
+            success: false,
+            error: { code: 'INVALID_TOKEN', message: 'Reset token has expired' },
+          });
+        }
+
         // Hash new password
         const hashedPassword = await passwordService.hashPassword(password);
 
-        // Update user password
-        await db('users').where({ id: resetToken.user_id }).update({
-          password_hash: hashedPassword,
-          updated_at: new Date(),
+        // Update user password and mark token as used in a transaction
+        await db.transaction(async (trx) => {
+          await trx('users').where({ id: resetToken.user_id }).update({
+            password_hash: hashedPassword,
+            updated_at: new Date(),
+          });
+
+          await trx('password_resets').where({ id: resetToken.id }).update({
+            is_used: true,
+            used_at: new Date(),
+          });
         });
 
-        // Delete reset token
-        await db('password_reset_tokens').where({ id: resetToken.id }).delete();
-
-        // Invalidate all sessions for this user
-        await db('sessions').where({ user_id: resetToken.user_id }).delete();
+        // Invalidate all Redis sessions for this user
+        await sessionService.deleteUserSessions(resetToken.user_id);
 
         logger.info({ userId: resetToken.user_id }, 'Password reset successful');
 
