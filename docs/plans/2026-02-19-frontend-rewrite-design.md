@@ -10,7 +10,7 @@
 
 This document outlines the design for a complete frontend rewrite of FreedomTalk's main application. The rewrite focuses on:
 
-1. **New Layout Architecture** - Sticky header + 3-column content layout as specified in app.md
+1. **New Layout Architecture** - Sticky header + 3-column content layout as specified in `docs/archive/app-followups.md`
 2. **Highly Generalized Components** - Slot-based components for maximum code reuse
 3. **Hybrid State Management** - React Query for server state, Zustand for client state
 4. **Feature-Based Organization** - Clear separation of concerns

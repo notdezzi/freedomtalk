@@ -200,7 +200,13 @@ npm run start --workspace=@freedomtalk/web         # Production server
 | RabbitMQ | 5672 | Message queue |
 | RabbitMQ Management | 15672 | Admin UI at `http://localhost:15672` |
 
-For detailed Docker configuration, see [DOCKER.md](./DOCKER.md).
+For detailed Docker configuration, see [docs/setup/docker.md](./docs/setup/docker.md).
+
+Documentation is organized under [`docs/`](./docs):
+- Setup and environment guides: [`docs/setup`](./docs/setup)
+- Architecture and implementation planning: [`docs/architecture`](./docs/architecture)
+- Product and roadmap docs: [`docs/product`](./docs/product) and [`docs/roadmap`](./docs/roadmap)
+- Historical notes and superseded planning: [`docs/archive`](./docs/archive)
 
 ---
 
