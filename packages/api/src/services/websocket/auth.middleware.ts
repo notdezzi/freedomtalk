@@ -1,5 +1,6 @@
 import { Socket } from 'socket.io';
 import { jwtService } from '../auth/jwt.service';
+import { sessionService } from '../auth/session.service';
 import { db } from '../../config/database';
 import { logger } from '../../config/logger';
 import { WS_EVENTS } from '@freedomtalk/shared';
@@ -134,6 +135,31 @@ export async function authenticateSocket(socket: Socket, next: (err?: Error) => 
         message: `Account is ${user.accountStatus}`,
       });
       return next(new Error(`Account is ${user.accountStatus}`));
+    }
+
+    // MFA INTEGRATION: Check if MFA is required (mirrors HTTP auth middleware)
+    if (user.mfaEnabled) {
+      // If MFA is enabled, sessionId MUST be present in the token
+      if (!payload.sessionId) {
+        logger.warn({ socketId: socket.id, userId: user.id }, 'WebSocket connection attempted without session ID for MFA-enabled user');
+        socket.emit(WS_EVENTS.AUTHENTICATION_ERROR, {
+          code: 'MFA_REQUIRED',
+          message: 'MFA verification required',
+        });
+        return next(new Error('MFA verification required'));
+      }
+
+      // Get session to check MFA verification status
+      const session = await sessionService.getSession(payload.sessionId);
+
+      if (!session || !session.mfaVerified) {
+        logger.warn({ socketId: socket.id, userId: user.id }, 'WebSocket connection attempted without MFA verification');
+        socket.emit(WS_EVENTS.AUTHENTICATION_ERROR, {
+          code: 'MFA_REQUIRED',
+          message: 'MFA verification required',
+        });
+        return next(new Error('MFA verification required'));
+      }
     }
 
     // Attach user to socket
