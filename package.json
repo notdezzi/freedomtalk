@@ -33,7 +33,7 @@
     "@typescript-eslint/eslint-plugin": "^8.20.0",
     "@typescript-eslint/parser": "^8.20.0",
     "eslint": "^8.57.1",
-    "eslint-config-next": "^15.1.6",
+    "eslint-config-next": "^14.0.4",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
     "playwright": "^1.58.2",
@@ -57,5 +57,17 @@
     "websocket"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@fastify/swagger-ui": "6.1.1",
+    "@vitest/ui": "5.0.3",
+    "minio": "^7.0.16",
+    "next": "16.4.0",
+    "nodemailer": "10.0.15",
+    "sharp": "0.35.5",
+    "vitest": "5.0.3"
+  },
+  "overrides": {
+    "tar": "^7.5.21"
+  }
 }
