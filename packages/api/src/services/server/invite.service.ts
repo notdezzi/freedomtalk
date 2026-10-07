@@ -145,7 +145,7 @@ class InviteService {
         expires_at: expiresAt,
       });
 
-    const invite = await this.getInviteByCode(code) as Promise<InviteWithDetails>;
+    const invite = (await this.getInviteByCode(code)) as InviteWithDetails;
 
     // Emit INVITE_CREATE event to server room
     const inviteData = await invite;

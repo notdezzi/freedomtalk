@@ -1,11 +1,11 @@
 /**
  * Password Hashing Service
  * 
- * Provides secure password hashing and verification using bcrypt.
+ * Provides secure password hashing and verification using bcrypt (bcryptjs).
  * Includes password strength validation and rehash detection.
  */
 
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { logger } from '../../config/logger';
 
 /**
