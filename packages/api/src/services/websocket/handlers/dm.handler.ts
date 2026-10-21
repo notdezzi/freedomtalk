@@ -283,14 +283,25 @@ async function handleRecipientRemove(socket: Socket, data: unknown): Promise<voi
 }
 
 /**
- * Register DM channel event handlers
+ * Register DM channel event handlers.
+ *
+ * @param socket - Socket instance
+ * @param wrapEvent - Optional wrapper applied to each event registration
+ *   (used by the WebSocket layer to rate limit events)
  */
-export function registerDMChannelHandlers(socket: Socket): void {
-  socket.on(DM_EVENTS.CREATE, (data) => handleDMChannelCreate(socket, data));
-  socket.on(DM_EVENTS.UPDATE, (data) => handleDMChannelUpdate(socket, data));
-  socket.on(DM_EVENTS.DELETE, (data) => handleDMChannelDelete(socket, data));
-  socket.on(DM_EVENTS.RECIPIENT_ADD, (data) => handleRecipientAdd(socket, data));
-  socket.on(DM_EVENTS.RECIPIENT_REMOVE, (data) => handleRecipientRemove(socket, data));
+export function registerDMChannelHandlers(
+  socket: Socket,
+  wrapEvent?: (event: string, handler: (...args: any[]) => void) => void
+): void {
+  const on = wrapEvent ?? ((event: string, handler: (...args: any[]) => void) => {
+    socket.on(event, handler);
+  });
+
+  on(DM_EVENTS.CREATE, (data) => handleDMChannelCreate(socket, data));
+  on(DM_EVENTS.UPDATE, (data) => handleDMChannelUpdate(socket, data));
+  on(DM_EVENTS.DELETE, (data) => handleDMChannelDelete(socket, data));
+  on(DM_EVENTS.RECIPIENT_ADD, (data) => handleRecipientAdd(socket, data));
+  on(DM_EVENTS.RECIPIENT_REMOVE, (data) => handleRecipientRemove(socket, data));
 
   logger.debug({ socketId: socket.id }, 'DM channel handlers registered');
 }

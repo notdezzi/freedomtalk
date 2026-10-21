@@ -245,7 +245,16 @@ class ServerService {
       throw new AppError(403, 'FORBIDDEN', 'Only the server owner can delete the server');
     }
 
-    await db('servers').where('id', serverId).delete();
+    // messages.channel_id is ON DELETE SET NULL, so deleting channels would
+    // orphan every server message as an invisible row forever — hard-delete
+    // them first, in the same transaction as the server row.
+    await db.transaction(async (trx) => {
+      await trx('messages')
+        .whereIn('channel_id', trx('channels').select('id').where('server_id', serverId))
+        .delete();
+
+      await trx('servers').where('id', serverId).delete();
+    });
   }
 
   /**

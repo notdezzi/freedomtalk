@@ -19,6 +19,11 @@ import {
   ALL_PERMISSIONS,
   Permissions,
 } from '@freedomtalk/shared';
+import {
+  isServerOwner,
+  actorHasAdministrator,
+  getHighestRolePosition,
+} from './hierarchy';
 
 /**
  * Helper to convert bigint to hex string for database storage
@@ -166,16 +171,49 @@ class RoleService {
 
   /**
    * Update a role
+   *
+   * @param roleId - Role to update
+   * @param input - Fields to update
+   * @param actor - Optional acting user for authorization checks:
+   *                the role must belong to the actor's server context and
+   *                hierarchy/ADMINISTRATOR rules are enforced when provided.
    */
-  async updateRole(roleId: string, input: UpdateRoleInput): Promise<RoleData> {
+  async updateRole(roleId: string, input: UpdateRoleInput, actor?: { serverId: string; userId: string }): Promise<RoleData> {
     const role = await this.getRole(roleId);
     if (!role) {
+      throw new AppError(404, 'ROLE_NOT_FOUND', 'Role not found');
+    }
+
+    // Cross-server guard: the role must belong to the server the route is
+    // mounted under, otherwise a MANAGE_ROLES member of server A could
+    // rewrite a role in server B by ID.
+    if (actor && role.server_id !== actor.serverId) {
       throw new AppError(404, 'ROLE_NOT_FOUND', 'Role not found');
     }
 
     // Cannot modify @everyone role's name
     if (role.name === '@everyone' && input.name !== undefined) {
       throw new AppError(400, 'CANNOT_MODIFY_EVERYONE', 'Cannot rename the @everyone role');
+    }
+
+    // Hierarchy: cannot modify a role positioned at or above the actor's
+    // highest role (owner bypasses).
+    if (actor) {
+      await this.assertActorAboveRole(actor.serverId, actor.userId, role);
+    }
+
+    // ADMINISTRATOR can only be granted by an actor who already has it
+    // (or the owner, who bypasses hierarchy above).
+    if (actor && input.allowPermissions !== undefined) {
+      const newAllow = input.allowPermissions;
+      const hadAdministrator =
+        (hexToBigint(role.allow_permissions) & PERMISSION_FLAGS.ADMINISTRATOR) !== 0n;
+      if (!hadAdministrator && (newAllow & PERMISSION_FLAGS.ADMINISTRATOR) !== 0n) {
+        const hasAdmin = await actorHasAdministrator(actor.serverId, actor.userId);
+        if (!hasAdmin) {
+          throw new AppError(403, 'FORBIDDEN', 'You cannot grant the ADMINISTRATOR permission');
+        }
+      }
     }
 
     const updateData: Record<string, unknown> = {
@@ -239,10 +277,17 @@ class RoleService {
 
   /**
    * Delete a role
+   *
+   * @param roleId - Role to delete
+   * @param actor - Optional acting user for authorization checks (see updateRole)
    */
-  async deleteRole(roleId: string): Promise<void> {
+  async deleteRole(roleId: string, actor?: { serverId: string; userId: string }): Promise<void> {
     const role = await this.getRole(roleId);
     if (!role) {
+      throw new AppError(404, 'ROLE_NOT_FOUND', 'Role not found');
+    }
+
+    if (actor && role.server_id !== actor.serverId) {
       throw new AppError(404, 'ROLE_NOT_FOUND', 'Role not found');
     }
 
@@ -251,13 +296,42 @@ class RoleService {
       throw new AppError(400, 'CANNOT_DELETE_EVERYONE', 'Cannot delete the @everyone role');
     }
 
-    // Remove role from all members
-    await db('member_roles')
-      .where('role_id', roleId)
-      .delete();
+    if (actor) {
+      await this.assertActorAboveRole(actor.serverId, actor.userId, role);
+    }
 
-    // Delete role
-    await db('roles').where('id', roleId).delete();
+    // Remove role from all members and delete the role atomically
+    await db.transaction(async (trx) => {
+      await trx('member_roles')
+        .where('role_id', roleId)
+        .delete();
+
+      await trx('roles').where('id', roleId).delete();
+    });
+  }
+
+  /**
+   * Hierarchy check via the shared hierarchy module: the actor's highest
+   * role position must exceed the target role's position (owner bypasses).
+   */
+  private async assertActorAboveRole(
+    serverId: string,
+    userId: string,
+    targetRole: RoleData
+  ): Promise<void> {
+    if (await isServerOwner(serverId, userId)) {
+      return;
+    }
+
+    const highestPosition = await getHighestRolePosition(serverId, userId);
+
+    if (highestPosition <= targetRole.position) {
+      throw new AppError(
+        403,
+        'FORBIDDEN',
+        'You cannot modify a role at or above your highest role'
+      );
+    }
   }
 
   /**

@@ -62,16 +62,18 @@ export function VideoGrid({
       ]
     : videoUsers;
 
-  // Calculate grid layout
+  // Calculate count (grid columns adapt responsively via auto-fit)
   const count = allVideoUsers.length + (selfStream ? 1 : 0) + streamUsers.length;
-  const columns = count <= 2 ? 1 : count <= 4 ? 2 : 3;
 
   if (count === 0) {
     return null;
   }
 
   return (
-    <div className={cn('grid gap-2 p-2', className)} style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
+    <div
+      className={cn('grid gap-2 p-2', className)}
+      style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}
+    >
       {/* Screen shares */}
       {selfStream && localScreenStream && (
         <ScreenShareItem stream={localScreenStream} username="You" />
@@ -166,7 +168,7 @@ function VideoItem({ user }: { user: VideoUserDisplay }) {
 
       {/* Username overlay */}
       <div className="absolute bottom-0 left-0 right-0 flex items-center gap-1 bg-black/50 px-2 py-1">
-        {user.selfMute && <MicOff className="h-3 w-3 text-red-400" />}
+        {user.selfMute && <MicOff className="h-3 w-3 text-error" />}
         <span className="text-xs text-white truncate">{user.username}</span>
       </div>
 

@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { useState, Suspense, useEffect } from 'react';
-import { Eye, EyeOff, MessageCircle, ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, AlertCircle, CheckCircle, QrCode, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { BrandLockup } from '@/components/brand/brand';
 
 function LoginForm() {
   const router = useRouter();
@@ -86,6 +88,9 @@ function LoginForm() {
     }
   };
 
+  const oauthButtonClass =
+    'btn btn-secondary w-full font-semibold text-foreground';
+
   // MFA verification form
   if (mfaRequired) {
     return (
@@ -98,7 +103,7 @@ function LoginForm() {
             setMfaCode('');
             setMfaError(null);
           }}
-          className="inline-flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground transition-colors mb-8"
+          className="inline-flex items-center gap-2 text-sm font-medium text-foreground-muted hover:text-foreground transition-colors mb-8"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to login
@@ -121,7 +126,7 @@ function LoginForm() {
 
         <form onSubmit={handleMfaSubmit} className="space-y-6">
           <div>
-            <label htmlFor="mfa-code" className="block text-sm font-medium mb-2">
+            <label htmlFor="mfa-code" className="block text-sm font-semibold tracking-[0.5px] text-foreground-muted mb-2">
               Authentication Code
             </label>
             <input
@@ -140,11 +145,11 @@ function LoginForm() {
 
           <button
             type="submit"
-            className="btn btn-primary w-full"
+            className="btn btn-primary w-full font-bold"
             disabled={isLoading || mfaCode.length !== 6}
           >
             {isLoading ? (
-              <div className="w-5 h-5 border-2 border-background border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
               'Verify'
             )}
@@ -152,7 +157,7 @@ function LoginForm() {
 
           <p className="text-center text-sm text-foreground-muted">
             Lost access to your authenticator?{' '}
-            <Link href="/auth/2fa/recovery" className="text-accent hover:text-accent-hover transition-colors">
+            <Link href="/auth/2fa/recovery" className="text-secondary hover:underline">
               Use a backup code
             </Link>
           </p>
@@ -163,30 +168,16 @@ function LoginForm() {
 
   return (
     <div className="animate-fade-in">
-      {/* Back link */}
-      <Link
-        href="/"
-        className="inline-flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground transition-colors mb-8"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to home
+      {/* Brand */}
+      <Link href="/" className="inline-flex mb-8" aria-label="FreedomTalk home">
+        <BrandLockup size={40} />
       </Link>
-
-      {/* Logo */}
-      <div className="flex items-center gap-2 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-secondary flex items-center justify-center">
-          <MessageCircle className="w-5 h-5 text-background" />
-        </div>
-        <span className="text-xl font-bold">
-          Freedom<span className="gradient-text">Talk</span>
-        </span>
-      </div>
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-2">Welcome back</h1>
+        <h1 className="text-2xl font-bold mb-2">Welcome back!</h1>
         <p className="text-foreground-muted">
-          Enter your credentials to access your account
+          We&apos;re excited to see you again!
         </p>
       </div>
 
@@ -209,14 +200,16 @@ function LoginForm() {
       )}
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium mb-2">
-            Email
+          <label htmlFor="email" className="block text-sm font-semibold tracking-[0.5px] text-foreground-muted mb-2">
+            Email or Phone Number
           </label>
           <input
             id="email"
-            type="email"
+            type="text"
+            inputMode="email"
+            autoComplete="username"
             className="input"
             placeholder="you@example.com"
             value={formData.email}
@@ -229,13 +222,14 @@ function LoginForm() {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium mb-2">
+          <label htmlFor="password" className="block text-sm font-semibold tracking-[0.5px] text-foreground-muted mb-2">
             Password
           </label>
           <div className="relative">
             <input
               id="password"
               type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
               className="input pr-12"
               placeholder="Enter your password"
               value={formData.password}
@@ -248,7 +242,7 @@ function LoginForm() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground-subtle hover:text-foreground transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-foreground-subtle hover:text-foreground transition-colors rounded"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? (
@@ -260,39 +254,32 @@ function LoginForm() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              className="w-4 h-4 rounded border-border bg-background-surface accent-accent"
-            />
-            <span className="text-sm text-foreground-muted">Remember me</span>
-          </label>
-          <Link
-            href="/auth/forgot-password"
-            className="text-sm text-accent hover:text-accent-hover transition-colors"
-          >
-            Forgot password?
-          </Link>
-        </div>
-
         <button
           type="submit"
-          className="btn btn-primary w-full"
+          className="btn btn-primary w-full font-bold"
           disabled={isLoading}
         >
           {isLoading ? (
-            <div className="w-5 h-5 border-2 border-background border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : (
-            'Sign In'
+            'Log In'
           )}
         </button>
+
+        <p className="text-center">
+          <Link
+            href="/auth/forgot-password"
+            className="text-sm text-secondary hover:underline"
+          >
+            Forgot your password?
+          </Link>
+        </p>
       </form>
 
       {/* Divider */}
       <div className="flex items-center gap-4 my-8">
         <div className="flex-1 h-px bg-border" />
-        <span className="text-sm text-foreground-subtle">or continue with</span>
+        <span className="text-sm font-semibold tracking-[0.5px] text-foreground-subtle">or</span>
         <div className="flex-1 h-px bg-border" />
       </div>
 
@@ -300,7 +287,7 @@ function LoginForm() {
       <div className="grid grid-cols-2 gap-4">
         <button
           type="button"
-          className="btn btn-secondary"
+          className={oauthButtonClass}
           onClick={() => {
             // Redirect to Google OAuth
             window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/google/authorize`;
@@ -328,7 +315,7 @@ function LoginForm() {
         </button>
         <button
           type="button"
-          className="btn btn-secondary"
+          className={oauthButtonClass}
           onClick={() => {
             // Redirect to GitHub OAuth
             window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/github/authorize`;
@@ -341,16 +328,35 @@ function LoginForm() {
         </button>
       </div>
 
-      {/* Sign up link */}
+      {/* Register link */}
       <p className="mt-8 text-center text-sm text-foreground-muted">
-        Don&apos;t have an account?{' '}
+        Need an account?{' '}
         <Link
           href="/auth/register"
-          className="text-accent hover:text-accent-hover transition-colors font-medium"
+          className="text-secondary hover:underline font-medium"
         >
-          Sign up for free
+          Register
         </Link>
       </p>
+
+      {/* QR code login */}
+      <details className="group mt-8 rounded-lg border border-border">
+        <summary className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none text-sm font-semibold text-foreground marker:content-[''] hover:bg-background-elevated rounded-lg transition-colors">
+          <QrCode className="w-5 h-5 text-foreground-muted" />
+          <span className="flex-1">Log in with QR Code</span>
+          <ChevronDown className="w-4 h-4 text-foreground-muted transition-transform duration-200 group-open:rotate-180" />
+        </summary>
+        <div className="flex flex-col items-center gap-4 px-4 pb-6 pt-2 text-center">
+          <div className="rounded-lg bg-white p-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <Image src="/qr-login.svg" alt="QR code linking to freedomtalk.app" width={200} height={200} loading="lazy" />
+          </div>
+          <p className="text-sm text-foreground-muted max-w-[36ch]">
+            Scan this with the <strong className="text-foreground">FreedomTalk mobile app</strong> to
+            log in instantly.
+          </p>
+        </div>
+      </details>
     </div>
   );
 }

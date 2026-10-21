@@ -1,0 +1,179 @@
+version: '3.8'
+
+# Horizontal-scale stack: two API nodes + a worker behind nginx, sharing
+# one set of stateful services. Proves the multi-node story from
+# docs/scaling.md. Run with:
+#
+#   JWT_PRIVATE_KEY=... JWT_PUBLIC_KEY=... docker compose \
+#     -f docker-compose.scale.yml up -d --build
+#
+# Then: app on http://localhost:8080, RabbitMQ UI on 15672.
+# JWT keys: openssl genrsa 2048 | base64 -w0 (values are \n-escaped by
+# the API, see packages/api/src/services/auth/jwt.service.ts), or point
+# compose at a .env file.
+
+services:
+  # ---------- Stateful shared services ----------
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: freedomtalk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: freedomtalk
+    command: postgres -c shared_preload_libraries=timescaledb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: freedomtalk-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: freedomtalk-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbitmq
+      RABBITMQ_DEFAULT_PASS: rabbitmq
+    ports:
+      - '15672:15672' # management UI only; AMQP stays on the internal network
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: freedomtalk-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.10
+    container_name: freedomtalk-meilisearch
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-masterKey}
+      MEILI_ENV: development
+    volumes:
+      - meilisearch_data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:7700/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------- Stateless app tier ----------
+  x-api: &api
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    environment: &api-env
+      NODE_ENV: production
+      PORT: '3000'
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/freedomtalk
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://rabbitmq:rabbitmq@rabbitmq:5672
+      MEILISEARCH_HOST: http://meilisearch:7700
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-masterKey}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: '9000'
+      MINIO_USE_SSL: 'false'
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:-}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+      SESSION_ENCRYPTION_KEY: ${SESSION_ENCRYPTION_KEY:-00000000000000000000000000000000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+
+  api-1:
+    <<: *api
+    container_name: freedomtalk-api-1
+    environment:
+      <<: *api-env
+      WORKER_ID: '1' # snowflake worker id — must be unique per node
+      NODE_ID: api-1
+  api-2:
+    <<: *api
+    container_name: freedomtalk-api-2
+    environment:
+      <<: *api-env
+      WORKER_ID: '2' # snowflake worker id — must be unique per node
+      NODE_ID: api-2
+
+  worker:
+    <<: *api
+    container_name: freedomtalk-worker
+    command: node dist/workers/index.js
+    environment:
+      <<: *api-env
+      WORKER_ID: '3'
+
+  # ---------- Edge ----------
+  nginx:
+    image: nginx:alpine
+    container_name: freedomtalk-nginx
+    restart: unless-stopped
+    ports:
+      - '8080:80'
+    volumes:
+      - ./deploy/nginx/nginx-scale.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api-1
+      - api-2
+      - worker
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  minio_data:
+    driver: local
+  meilisearch_data:
+    driver: local
+
+networks:
+  default:
+    name: freedomtalk-network

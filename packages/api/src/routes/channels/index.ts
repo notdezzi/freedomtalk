@@ -161,7 +161,6 @@ export default async function channelRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          201: { type: 'object' },
         },
       },
       onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_CHANNELS)],
@@ -398,7 +397,6 @@ export default async function channelRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
     },
@@ -445,7 +443,6 @@ export default async function channelRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          201: { type: 'object' },
         },
       },
       onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_CHANNELS)],
@@ -492,7 +489,6 @@ export default async function channelRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
       preHandler: validateBody(updateCategorySchema),

@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import type { Socket } from 'socket.io-client';
 
 export type ConnectionStatus =
   | 'connecting'
@@ -8,32 +7,17 @@ export type ConnectionStatus =
   | 'reconnecting'
   | 'error';
 
-interface QueuedMessage {
-  id: string;
-  event: string;
-  data: unknown;
-  timestamp: number;
-  retries: number;
-}
-
 interface SocketStore {
-  socket: Socket | null;
   status: ConnectionStatus;
   error: string | null;
   reconnectAttempts: number;
   lastConnected: Date | null;
-  queuedMessages: QueuedMessage[];
   subscriptions: Set<string>;
 
-  setSocket: (socket: Socket | null) => void;
   setStatus: (status: ConnectionStatus) => void;
   setError: (error: string | null) => void;
   setReconnectAttempts: (attempts: number) => void;
   setLastConnected: (date: Date | null) => void;
-
-  queueMessage: (event: string, data: unknown) => void;
-  removeQueuedMessage: (id: string) => void;
-  clearQueue: () => void;
 
   subscribe: (roomId: string) => void;
   unsubscribe: (roomId: string) => void;
@@ -43,37 +27,20 @@ interface SocketStore {
   reset: () => void;
 }
 
+// The socket instance itself lives in lib/socket.ts (singleton); this store
+// only mirrors connection metadata. The old offline-queue (`queuedMessages`)
+// and `setSocket` were removed — nothing ever enqueued or called them.
 export const useSocketStore = create<SocketStore>((set, get) => ({
-  socket: null,
   status: 'disconnected',
   error: null,
   reconnectAttempts: 0,
   lastConnected: null,
-  queuedMessages: [],
   subscriptions: new Set(),
 
-  setSocket: (socket) => set({ socket }),
   setStatus: (status) => set({ status }),
   setError: (error) => set({ error }),
   setReconnectAttempts: (attempts) => set({ reconnectAttempts: attempts }),
   setLastConnected: (date) => set({ lastConnected: date }),
-
-  queueMessage: (event, data) => {
-    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    set((state) => ({
-      queuedMessages: [
-        ...state.queuedMessages,
-        { id, event, data, timestamp: Date.now(), retries: 0 },
-      ],
-    }));
-  },
-
-  removeQueuedMessage: (id) =>
-    set((state) => ({
-      queuedMessages: state.queuedMessages.filter((m) => m.id !== id),
-    })),
-
-  clearQueue: () => set({ queuedMessages: [] }),
 
   subscribe: (roomId) => {
     set((state) => ({
@@ -95,12 +62,10 @@ export const useSocketStore = create<SocketStore>((set, get) => ({
 
   reset: () =>
     set({
-      socket: null,
       status: 'disconnected',
       error: null,
       reconnectAttempts: 0,
       lastConnected: null,
-      queuedMessages: [],
       subscriptions: new Set(),
     }),
 }));

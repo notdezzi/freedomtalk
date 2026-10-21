@@ -40,14 +40,14 @@ function ToastItem({ toast }: { toast: Toast }) {
         colors[toast.type]
       )}
     >
-      <Icon className="h-5 w-5 shrink-0 text-background" />
-      <p className="flex-1 text-sm font-medium text-background">{toast.message}</p>
+      <Icon className="h-5 w-5 shrink-0 text-white" />
+      <p className="flex-1 text-sm font-medium text-white">{toast.message}</p>
       <button
         onClick={() => removeToast(toast.id)}
         className="shrink-0 rounded-full p-1 hover:bg-background/20 transition-colors"
         aria-label="Dismiss"
       >
-        <X className="h-4 w-4 text-background" />
+        <X className="h-4 w-4 text-white" />
       </button>
     </div>
   );

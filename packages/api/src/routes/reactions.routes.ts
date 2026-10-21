@@ -10,6 +10,7 @@ import { requireAuth } from '../middleware/auth.middleware';
 import { successResponse } from '../utils/errors';
 import { reactionService } from '../services/reaction/reaction.service';
 import { messageService } from '../services/message/message.service';
+import { assertMessageReadAccess } from '../services/message/message-access';
 import { channelService } from '../services/channel/channel.service';
 import { roleService } from '../services/server/role.service';
 import { PERMISSION_FLAGS, Permissions } from '@freedomtalk/shared';
@@ -164,6 +165,10 @@ export default async function reactionRoutes(app: FastifyInstance) {
       const { messageId, emoji } = request.params;
       const userId = request.user!.id;
 
+      // Visibility check: 404 if the message doesn't exist or is inaccessible
+      const message = await messageService.getMessage(messageId);
+      await assertMessageReadAccess(userId, message);
+
       const parsed = parseEmoji(emoji);
       const reaction = await reactionService.addReaction(
         messageId,
@@ -210,6 +215,10 @@ export default async function reactionRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Params: { messageId: string; emoji: string } }>, reply: FastifyReply) => {
       const { messageId, emoji } = request.params;
       const userId = request.user!.id;
+
+      // Visibility check: 404 if the message doesn't exist or is inaccessible
+      const message = await messageService.getMessage(messageId);
+      await assertMessageReadAccess(userId, message);
 
       const parsed = parseEmoji(emoji);
       await reactionService.removeReaction(
@@ -269,6 +278,10 @@ export default async function reactionRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Params: { messageId: string; emoji: string } }>, reply: FastifyReply) => {
       const { messageId, emoji } = request.params;
       const userId = request.user!.id;
+
+      // Visibility check: 404 if the message doesn't exist or is inaccessible
+      const message = await messageService.getMessage(messageId);
+      await assertMessageReadAccess(userId, message);
 
       // Check permission: message author or MANAGE_MESSAGES permission required
       const canManage = await canManageReactions(messageId, userId);
@@ -338,6 +351,10 @@ export default async function reactionRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Params: { messageId: string } }>, reply: FastifyReply) => {
       const { messageId } = request.params;
       const userId = request.user!.id;
+
+      // Visibility check: 404 if the message doesn't exist or is inaccessible
+      const message = await messageService.getMessage(messageId);
+      await assertMessageReadAccess(userId, message);
 
       // Check permission: message author or MANAGE_MESSAGES permission required
       const canManage = await canManageReactions(messageId, userId);
@@ -417,6 +434,11 @@ export default async function reactionRoutes(app: FastifyInstance) {
     }>, reply: FastifyReply) => {
       const { messageId, emoji } = request.params;
       const { limit = 100, offset = 0 } = request.query;
+      const userId = request.user!.id;
+
+      // Visibility check: 404 if the message doesn't exist or is inaccessible
+      const message = await messageService.getMessage(messageId);
+      await assertMessageReadAccess(userId, message);
 
       const parsed = parseEmoji(emoji);
       const users = await reactionService.getReactionUsers(
@@ -484,6 +506,10 @@ export default async function reactionRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Params: { messageId: string } }>, reply: FastifyReply) => {
       const { messageId } = request.params;
       const userId = request.user!.id;
+
+      // Visibility check: 404 if the message doesn't exist or is inaccessible
+      const message = await messageService.getMessage(messageId);
+      await assertMessageReadAccess(userId, message);
 
       const reactions = await reactionService.getReactionsByMessage(messageId);
 

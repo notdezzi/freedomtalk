@@ -21,6 +21,7 @@
     "restore:db": "npm run restore:db --workspace=@freedomtalk/scripts",
     "backup:list": "npm run backup:list --workspace=@freedomtalk/scripts",
     "test": "SKIP_RATE_LIMIT=true npx playwright test",
+    "test:unit": "npm run test --workspace=@freedomtalk/api",
     "test:api": "SKIP_RATE_LIMIT=true npx playwright test --project=api",
     "test:e2e": "SKIP_RATE_LIMIT=true npx playwright test --project=e2e-chromium",
     "test:ui": "SKIP_RATE_LIMIT=true npx playwright test --ui"

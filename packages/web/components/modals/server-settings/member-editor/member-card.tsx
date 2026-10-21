@@ -92,7 +92,7 @@ export function MemberCard({ member, roles, isSelected, onClick }: MemberCardPro
             {displayName}
           </span>
           {member.isOwner && (
-            <ShieldAlert className="h-3.5 w-3.5 text-yellow-500 flex-shrink-0" />
+            <ShieldAlert className="h-3.5 w-3.5 text-warning flex-shrink-0" />
           )}
         </div>
 
@@ -132,7 +132,7 @@ export function MemberCard({ member, roles, isSelected, onClick }: MemberCardPro
       <div
         className={cn(
           'h-2 w-2 rounded-full flex-shrink-0',
-          member.isOnline ? 'bg-green-500' : 'bg-gray-500'
+          member.isOnline ? 'bg-success' : 'bg-foreground-subtle'
         )}
         title={member.isOnline ? 'Online' : 'Offline'}
       />

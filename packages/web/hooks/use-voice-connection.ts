@@ -18,6 +18,9 @@ export function useVoiceConnection() {
   const user = useAuthStore((s) => s.user);
   const voiceClientRef = useRef<VoiceClient | null>(null);
 
+  // Store actions are created once and never change identity — read them via
+  // getState() instead of subscribing, so voice-state churn (users, streams,
+  // speaking flags) does not re-render every consumer of this hook.
   const {
     setConnected,
     setConnecting,
@@ -30,7 +33,7 @@ export function useVoiceConnection() {
     setLocalAudioStream,
     setLocalVideoStream,
     setLocalScreenStream,
-  } = useVoiceStore();
+  } = useVoiceStore.getState();
 
   // Initialize voice client when socket is ready
   useEffect(() => {

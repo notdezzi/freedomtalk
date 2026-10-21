@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { notFound } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 import { Device } from 'mediasoup-client';
 import { getStoredAccessToken } from '@/lib/api-client';
@@ -19,6 +20,10 @@ interface ProducerInfo {
 }
 
 export default function SFUDebugPage() {
+  // Developer-only debug tool — 404 unless explicitly enabled at build time.
+  // The gate sits after the hooks (notFound throws) to keep hook order stable.
+  const sfuDebugEnabled = !!process.env.NEXT_PUBLIC_ENABLE_SFU_DEBUG;
+
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
@@ -540,6 +545,10 @@ export default function SFUDebugPage() {
   // Count producers by kind
   const videoConsumers = Array.from(consumers.values()).filter(c => c.kind === 'video').length;
   const audioConsumers = Array.from(consumers.values()).filter(c => c.kind === 'audio').length;
+
+  if (!sfuDebugEnabled) {
+    notFound();
+  }
 
   return (
     <div style={{

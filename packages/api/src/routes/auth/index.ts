@@ -4,11 +4,12 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { z } from 'zod';
 import { registerSchema, loginSchema, refreshTokenSchema, oauth2CallbackSchema } from '@freedomtalk/shared';
 import { validateBody, validateQuery } from '../../middleware/validation.middleware';
 import { requireAuth } from '../../middleware/auth.middleware';
 import { successResponse } from '../../utils/errors';
-import { AuthenticationError, ConflictError, ApiError, ApiErrorCode } from '../../types/api.types';
+import { AuthenticationError, ConflictError, ApiError, ApiErrorCode, ValidationError } from '../../types/api.types';
 import { jwtService } from '../../services/auth/jwt.service';
 import { sessionService } from '../../services/auth/session.service';
 import { passwordService } from '../../services/auth/password.service';
@@ -19,8 +20,12 @@ import { db } from '../../config/database';
 import { logger } from '../../config/logger';
 import { snowflake } from '../../utils/snowflake';
 
-// Check if rate limiting should be skipped (test environment)
-const isTestEnv = process.env.NODE_ENV === 'test' || process.env.SKIP_RATE_LIMIT === 'true';
+// Check if rate limiting should be skipped (test environment only).
+// SECURITY: SKIP_RATE_LIMIT must never disable limits in production — a
+// single misconfigured variable would otherwise remove all auth throttles.
+const isTestEnv =
+  process.env.NODE_ENV === 'test' ||
+  (process.env.SKIP_RATE_LIMIT === 'true' && process.env.NODE_ENV !== 'production');
 
 // Helper to get rate limit config (returns undefined in test mode)
 function getRateLimitConfig(max: number, timeWindow: string): { config: { rateLimit: { max: number; timeWindow: string } } } | {} {
@@ -35,6 +40,10 @@ function getRateLimitConfig(max: number, timeWindow: string): { config: { rateLi
 }
 
 export default async function authRoutes(app: FastifyInstance) {
+  // bcrypt hash of an unrelated password, used to equalize response timing
+  // when login is attempted for an unknown email.
+  const DUMMY_BCRYPT_HASH = '$2b$12$C6UzMDM.H6dfI/f/IKcEeO7ZBk9H3GDtPqYV5cM1MO0uUjQFOE8py';
+
   /**
    * POST /api/v1/auth/register
    * Register a new user with atomic user+profile creation using Knex transaction
@@ -93,18 +102,27 @@ export default async function authRoutes(app: FastifyInstance) {
     async (request: FastifyRequest<{ Body: { username: string; email: string; password: string } }>, reply: FastifyReply) => {
       const { username, email, password } = request.body;
 
+      // Enforce the password policy (complexity validator)
+      const strength = passwordService.validatePasswordStrength(password);
+      if (!strength.valid) {
+        throw new ValidationError(strength.errors.join('. '), strength.errors);
+      }
+
       // SECURITY FIX: Use Knex transaction for atomic user+profile creation
       const result = await db.transaction(async (trx) => {
         // Check if email already exists
         const existingEmail = await trx('users').where({ email }).first();
+        // SECURITY: one generic conflict response for both cases so the
+        // endpoint cannot be used to enumerate registered emails/usernames.
+        const conflict = new ConflictError('An account with these details already exists');
         if (existingEmail) {
-          throw new ConflictError('Email already registered');
+          throw conflict;
         }
 
         // Check if username already exists
         const existingUsername = await trx('users').where({ username }).first();
         if (existingUsername) {
-          throw new ConflictError('Username already taken');
+          throw conflict;
         }
 
         // Hash password
@@ -217,6 +235,10 @@ export default async function authRoutes(app: FastifyInstance) {
       // Find user by email
       const user = await db('users').where({ email }).first();
       if (!user) {
+        // SECURITY: run a dummy bcrypt compare so unknown-email responses
+        // take the same time as wrong-password responses (timing
+        // enumeration of registered accounts).
+        await passwordService.verifyPassword(password, DUMMY_BCRYPT_HASH);
         throw new AuthenticationError('Invalid credentials');
       }
 
@@ -283,10 +305,16 @@ export default async function authRoutes(app: FastifyInstance) {
    * POST /api/v1/auth/mfa/verify
    * Verify MFA code and complete login
    */
+  const mfaVerifySchema = z.object({
+    sessionId: z.string().min(10).max(128),
+    code: z.string().min(6).max(32),
+  });
+
   app.post(
     '/mfa/verify',
     {
       ...getRateLimitConfig(5, '5 minutes'),
+      preHandler: validateBody(mfaVerifySchema),
     },
     async (request: FastifyRequest<{ Body: { sessionId: string; code: string } }>, reply: FastifyReply) => {
       const { sessionId, code } = request.body;
@@ -356,41 +384,97 @@ export default async function authRoutes(app: FastifyInstance) {
   );
 
   /**
+   * POST /api/v1/auth/mfa/setup
+   * Generate MFA secret + QR code + backup codes (not yet enabled).
+   * Requires a verified code on /mfa/enable to activate.
+   */
+  app.post(
+    '/mfa/setup',
+    {
+      ...getRateLimitConfig(5, '10 minutes'),
+      onRequest: [requireAuth],
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const user = request.user!;
+      const setup = await mfaService.setupMFA(user.id, user.email);
+      return reply.send(
+        successResponse({
+          secret: setup.secret,
+          qrCodeUrl: setup.qrCodeUrl,
+          backupCodes: setup.backupCodes,
+        })
+      );
+    }
+  );
+
+  /**
+   * POST /api/v1/auth/mfa/enable
+   * Verify a TOTP code and enable MFA for the account.
+   */
+  const mfaEnableSchema = z.object({ code: z.string().min(6).max(8) });
+
+  app.post(
+    '/mfa/enable',
+    {
+      ...getRateLimitConfig(5, '10 minutes'),
+      onRequest: [requireAuth],
+      preHandler: validateBody(mfaEnableSchema),
+    },
+    async (request, reply) => {
+      const { code } = request.body as { code: string };
+      const enabled = await mfaService.enableMFA(request.user!.id, code);
+      if (!enabled) {
+        throw new AuthenticationError('Invalid MFA code');
+      }
+      return reply.send(successResponse({ enabled: true }));
+    }
+  );
+
+  /**
+   * POST /api/v1/auth/mfa/disable
+   * Disable MFA — requires the current password so a stolen session
+   * cannot silently strip the second factor.
+   */
+  const mfaDisableSchema = z.object({ password: z.string().min(1).max(128) });
+
+  app.post(
+    '/mfa/disable',
+    {
+      ...getRateLimitConfig(5, '10 minutes'),
+      onRequest: [requireAuth],
+      preHandler: validateBody(mfaDisableSchema),
+    },
+    async (request, reply) => {
+      const { password } = request.body as { password: string };
+      const user = await db('users').where({ id: request.user!.id }).first();
+      if (!user) {
+        throw new AuthenticationError('User not found');
+      }
+      const valid = await passwordService.verifyPassword(password, user.password_hash);
+      if (!valid) {
+        throw new AuthenticationError('Invalid password');
+      }
+      const disabled = await mfaService.disableMFA(request.user!.id);
+      if (!disabled) {
+        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, 'Failed to disable MFA', 500);
+      }
+      return reply.send(successResponse({ enabled: false }));
+    }
+  );
+
+  /**
    * POST /api/v1/auth/mfa/backup-codes
-   * Regenerate MFA backup codes
+   * Regenerate backup codes (requires MFA enabled).
    */
   app.post(
     '/mfa/backup-codes',
     {
-      preHandler: requireAuth,
+      ...getRateLimitConfig(5, '10 minutes'),
+      onRequest: [requireAuth],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = request.user!.id;
-
-      try {
-        // Get user to verify MFA is enabled
-        const user = await db('users').where({ id: userId }).first();
-
-        if (!user || !user.mfa_enabled) {
-          return reply.code(400).send({
-            success: false,
-            error: { code: 'MFA_NOT_ENABLED', message: 'MFA must be enabled to regenerate backup codes' },
-          });
-        }
-
-        // Regenerate backup codes
-        const backupCodes = await mfaService.regenerateBackupCodes(userId);
-
-        logger.info({ userId }, 'Backup codes regenerated');
-
-        return reply.send(successResponse({ backupCodes }));
-      } catch (error: any) {
-        logger.error({ error, userId }, 'Error regenerating backup codes');
-        return reply.code(500).send({
-          success: false,
-          error: { code: 'BACKUP_CODES_ERROR', message: error.message || 'Failed to regenerate backup codes' },
-        });
-      }
+      const backupCodes = await mfaService.regenerateBackupCodes(request.user!.id);
+      return reply.send(successResponse({ backupCodes }));
     }
   );
 
@@ -409,7 +493,7 @@ export default async function authRoutes(app: FastifyInstance) {
 
       try {
         // Verify refresh token
-        const payload = await jwtService.verifyToken(refresh_token);
+        const payload = await jwtService.verifyToken(refresh_token, 'refresh');
 
         if (payload.type !== 'refresh' || !payload.sessionId) {
           throw new AuthenticationError('Invalid refresh token');
@@ -571,13 +655,26 @@ export default async function authRoutes(app: FastifyInstance) {
    * POST /api/v1/auth/reset-password
    * Reset password using token
    */
+  const resetPasswordSchema = z.object({
+    token: z.string().min(10).max(256),
+    password: z.string().min(8).max(128),
+  });
+
   app.post(
     '/reset-password',
     {
       ...getRateLimitConfig(5, '1 hour'),
+      preHandler: validateBody(resetPasswordSchema),
     },
     async (request: FastifyRequest<{ Body: { token: string; password: string } }>, reply: FastifyReply) => {
       const { token, password } = request.body;
+
+      // Enforce the same password policy as registration — the validator
+      // exists but was previously never called on this path.
+      const strength = passwordService.validatePasswordStrength(password);
+      if (!strength.valid) {
+        throw new ValidationError(strength.errors.join('. '), strength.errors);
+      }
 
       try {
         // Hash the incoming token to compare with stored hash
@@ -768,6 +865,21 @@ export default async function authRoutes(app: FastifyInstance) {
         // Check if user exists
         let user = await db('users').where({ email: profile.email }).first();
 
+        // SECURITY: linking into an existing account requires a VERIFIED
+        // email — an attacker who controls an unverified OAuth email must
+        // not be able to take over the matching local account. Banned or
+        // deactivated accounts are also refused.
+        if (user && !(profile.emailVerified || user.email_verified)) {
+          throw new ApiError(
+            ApiErrorCode.OAUTH2_ERROR,
+            'OAuth email is not verified; account linking refused',
+            403
+          );
+        }
+        if (user && user.account_status !== 'active') {
+          throw new ApiError(ApiErrorCode.OAUTH2_ERROR, 'Account is not active', 403);
+        }
+
         if (!user) {
           // Create new user with transaction
           const result = await db.transaction(async (trx) => {
@@ -885,6 +997,20 @@ export default async function authRoutes(app: FastifyInstance) {
         // Check if user exists
         let user = await db('users').where({ email: profile.email }).first();
 
+        // SECURITY: same verified-email and account-status rules as Google
+        // (GitHub service already filters to verified emails, but enforce
+        // here too so the guarantee does not depend on the service layer).
+        if (user && !(profile.emailVerified || user.email_verified)) {
+          throw new ApiError(
+            ApiErrorCode.OAUTH2_ERROR,
+            'OAuth email is not verified; account linking refused',
+            403
+          );
+        }
+        if (user && user.account_status !== 'active') {
+          throw new ApiError(ApiErrorCode.OAUTH2_ERROR, 'Account is not active', 403);
+        }
+
         if (!user) {
           // Create new user with transaction
           const result = await db.transaction(async (trx) => {
@@ -976,7 +1102,7 @@ export default async function authRoutes(app: FastifyInstance) {
       }
 
       const token = authHeader.substring(7);
-      const payload = await jwtService.verifyToken(token);
+      const payload = await jwtService.verifyToken(token, 'access');
 
       // Get user info
       const user = await db('users').where({ id: payload.userId }).first();

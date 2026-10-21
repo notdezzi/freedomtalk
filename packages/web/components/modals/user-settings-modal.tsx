@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import { Modal } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores';
@@ -414,9 +415,12 @@ export function UserSettingsModal({ onClose }: UserSettingsModalProps) {
                 <div className="flex items-center gap-4">
                   <div className="relative">
                     {avatarUrl ? (
-                      <img
+                      <Image
                         src={avatarUrl}
                         alt="Avatar"
+                        width={80}
+                        height={80}
+                        loading="lazy"
                         className="h-20 w-20 rounded-full object-cover"
                       />
                     ) : (

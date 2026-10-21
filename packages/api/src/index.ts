@@ -7,8 +7,12 @@ import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { testConnection, closePool, connectRedis, disconnectRedis } from './config';
+import { startOtel, stopOtel } from './config/otel';
+import { connectRabbitMQ, disconnectRabbitMQ } from './config/rabbitmq';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
+import { RedisRateLimitStore } from './config/rate-limit-store';
 import routes from './routes/index.js';
+import { readyHandler } from './routes/ready';
 import { wsServer } from './services/websocket/websocket.server';
 import { registerHandlers } from './services/websocket/handlers';
 import { initializeMeilisearchIndices } from './services/search/meilisearch.client.js';
@@ -42,6 +46,8 @@ const app = Fastify({
   requestIdLogLabel: 'reqId',
   disableRequestLogging: false,
   requestIdHeader: 'x-request-id',
+  // Trust the reverse proxy (see app.ts) so rate limits key on real client IPs
+  trustProxy: process.env.TRUST_PROXY === 'true',
 });
 
 /**
@@ -59,9 +65,16 @@ async function registerPlugins() {
     credentials: true,
   });
 
-  // Cookie support
+  // Cookie support — fail fast rather than silently using the committed
+  // default secret in production.
+  const cookieSecret =
+    process.env.COOKIE_SECRET ||
+    (isDevelopment ? 'freedomtalk-cookie-secret-change-in-production' : '');
+  if (!cookieSecret) {
+    throw new Error('COOKIE_SECRET must be set in production');
+  }
   await app.register(cookie, {
-    secret: process.env.COOKIE_SECRET || 'freedomtalk-cookie-secret-change-in-production',
+    secret: cookieSecret,
     parseOptions: {
       httpOnly: true,
       secure: !isDevelopment,
@@ -69,8 +82,9 @@ async function registerPlugins() {
     },
   });
 
-  // Swagger documentation (register before routes)
-  if (process.env.SWAGGER_ENABLED !== 'false') {
+  // Swagger documentation (register before routes) — explicit opt-in
+  // outside development so /docs never ships by default in production.
+  if (isDevelopment || process.env.SWAGGER_ENABLED === 'true') {
     await app.register(swagger, {
       openapi: {
         info: {
@@ -127,14 +141,15 @@ async function registerPlugins() {
     });
   }
 
-  // Rate limiting (in-memory store)
-  // Note: Using in-memory store for now. For distributed rate limiting across
-  // multiple instances, consider using ioredis client in future milestone.
+  // Rate limiting — Redis-backed when configured so limits are shared
+  // across scaled API instances (see app.ts for rationale).
   await app.register(rateLimit, {
     global: true,
     max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
     timeWindow: process.env.RATE_LIMIT_WINDOW || '1 minute',
-    cache: 10000, // Cache size for in-memory store
+    ...(process.env.RATE_LIMIT_STORE === 'redis' && process.env.REDIS_URL
+      ? { store: RedisRateLimitStore }
+      : { cache: 10000 }),
     skipOnError: true,
   });
 
@@ -147,7 +162,7 @@ async function registerPlugins() {
  * Register routes
  */
 async function registerRoutes() {
-  // Health check endpoint
+  // Health check endpoint (pure liveness)
   app.get('/health', async () => {
     return {
       status: 'ok',
@@ -155,6 +170,9 @@ async function registerRoutes() {
       uptime: process.uptime(),
     };
   });
+
+  // Readiness endpoint (dependency-aware probes)
+  app.get('/ready', readyHandler);
 
   // Register API routes
   await app.register(routes);
@@ -272,6 +290,13 @@ async function gracefulShutdown(signal: string) {
     await disconnectRedis();
     app.log.info('Redis disconnected');
 
+    // Disconnect RabbitMQ
+    await disconnectRabbitMQ();
+    app.log.info('RabbitMQ disconnected');
+
+    // Flush any pending OpenTelemetry spans
+    await stopOtel();
+
     process.exit(0);
   } catch (error) {
     app.log.error({ err: error }, 'Error during graceful shutdown');
@@ -284,6 +309,10 @@ async function gracefulShutdown(signal: string) {
  */
 async function start() {
   try {
+    // Start OpenTelemetry (no-op unless OTEL_ENABLED=true) before any
+    // infrastructure connects so instrumentation patches apply
+    startOtel();
+
     // Register plugins
     await registerPlugins();
 
@@ -297,6 +326,12 @@ async function start() {
     await app.listen({ port: PORT, host: HOST });
 
     app.log.info(`Server listening on ${HOST}:${PORT}`);
+
+    // Connect to RabbitMQ in the background (non-fatal): the API publishes
+    // domain events for the search/embed/mention worker pipeline but must
+    // serve traffic even while the broker is down — publishEvent() drops
+    // events with a warning until the connection lands.
+    connectRabbitMQ({ required: false, retries: 10 }).catch(() => undefined);
 
     // Initialize WebSocket server after Fastify starts
     await initializeWebSocket();

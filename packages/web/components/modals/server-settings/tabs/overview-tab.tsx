@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import NextImage from 'next/image';
 import { Button, Input } from '@/components/ui';
 import { useServer, useUpdateServer } from '@/features/servers';
 import { toast } from '@/stores/toast-store';
@@ -226,9 +227,12 @@ export function OverviewTab({ serverId }: OverviewTabProps) {
             onClick={() => bannerInputRef.current?.click()}
           >
             {server?.banner ? (
-              <img
+              <NextImage
                 src={server.banner}
                 alt={server.name}
+                fill
+                loading="lazy"
+                sizes="600px"
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -264,9 +268,12 @@ export function OverviewTab({ serverId }: OverviewTabProps) {
               onClick={() => fileInputRef.current?.click()}
             >
               {server?.icon ? (
-                <img
+                <NextImage
                   src={server.icon}
                   alt={server.name}
+                  width={80}
+                  height={80}
+                  loading="lazy"
                   className="h-full w-full rounded-lg object-cover"
                 />
               ) : (
@@ -332,9 +339,9 @@ export function OverviewTab({ serverId }: OverviewTabProps) {
           <label className="text-xs font-semibold text-foreground-muted uppercase mb-2 block">
             Vanity URL
           </label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col md:flex-row md:items-center gap-2">
             <div className="flex-1 relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center text-foreground-muted text-sm">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 hidden md:flex items-center text-foreground-muted text-sm">
                 <LinkIcon className="h-4 w-4 mr-1" />
                 {window.location.origin}/invite/v/
               </div>
@@ -347,7 +354,7 @@ export function OverviewTab({ serverId }: OverviewTabProps) {
                   setVanityAvailable(null);
                 }}
                 placeholder="my-server"
-                className="w-full bg-background-surface text-foreground rounded-lg pl-[180px] pr-10 py-2 border border-border focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
+                className="w-full bg-background-surface text-foreground rounded-lg pl-3 md:pl-[180px] pr-10 py-2 border border-border focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 {isCheckingVanity && (

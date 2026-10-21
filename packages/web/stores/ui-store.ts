@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import type { ReactNode } from 'react';
 
 export type ModalType =
   | 'create-server'
@@ -25,14 +24,6 @@ interface ModalState {
   data: Record<string, unknown>;
 }
 
-interface ContextMenuState {
-  open: boolean;
-  x: number;
-  y: number;
-  type: string | null;
-  data: Record<string, unknown>;
-}
-
 interface UIStore {
   // Modal state
   activeModal: ModalState;
@@ -44,20 +35,14 @@ interface UIStore {
   toggleMembersSidebar: () => void;
   setMembersSidebarOpen: (open: boolean) => void;
 
-  // Context menu state
-  contextMenu: ContextMenuState;
-  openContextMenu: (x: number, y: number, type: string, data?: Record<string, unknown>) => void;
-  closeContextMenu: () => void;
-
-  // Theme
-  theme: 'dark' | 'light';
-  toggleTheme: () => void;
-
   // Mobile
-  isMobile: boolean;
-  setIsMobile: (isMobile: boolean) => void;
+  isMobileNavOpen: boolean;
+  setMobileNavOpen: (open: boolean) => void;
 }
 
+// Note: the app is intentionally dark-only. The old `theme`/`toggleTheme`
+// pair was removed (it never affected any class wiring); re-introduce with a
+// designed light palette if a light theme is ever built.
 export const useUIStore = create<UIStore>((set) => ({
   // Modal state
   activeModal: { type: null, data: {} },
@@ -77,24 +62,9 @@ export const useUIStore = create<UIStore>((set) => ({
   setMembersSidebarOpen: (open) =>
     set({ isMembersSidebarOpen: open }),
 
-  // Context menu state
-  contextMenu: { open: false, x: 0, y: 0, type: null, data: {} },
-
-  openContextMenu: (x, y, type, data = {}) =>
-    set({ contextMenu: { open: true, x, y, type, data } }),
-
-  closeContextMenu: () =>
-    set({ contextMenu: { open: false, x: 0, y: 0, type: null, data: {} } }),
-
-  // Theme
-  theme: 'dark',
-
-  toggleTheme: () =>
-    set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
-
   // Mobile
-  isMobile: false,
+  isMobileNavOpen: false,
 
-  setIsMobile: (isMobile) =>
-    set({ isMobile }),
+  setMobileNavOpen: (open) =>
+    set({ isMobileNavOpen: open }),
 }));

@@ -30,7 +30,7 @@ export default function OnboardingWelcomePage() {
       <h1 className="text-4xl sm:text-5xl font-bold mb-4">
         Welcome to FreedomTalk
         {user?.username && (
-          <span className="gradient-text">, {user.username}</span>
+          <span className="brand-text">, {user.username}</span>
         )}
         !
       </h1>
@@ -49,7 +49,7 @@ export default function OnboardingWelcomePage() {
           <p className="text-sm text-foreground-muted">Instant messaging with zero lag</p>
         </div>
         <div className="card text-center">
-          <div className="w-12 h-12 rounded-xl bg-secondary-muted flex items-center justify-center mx-auto mb-3">
+          <div className="w-12 h-12 rounded-xl bg-background-surface flex items-center justify-center mx-auto mb-3">
             <Users className="w-6 h-6 text-secondary" />
           </div>
           <h3 className="font-semibold mb-1">Communities</h3>

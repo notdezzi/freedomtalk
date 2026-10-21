@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { Eye, EyeOff, MessageCircle, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { BrandLockup } from '@/components/brand/brand';
 
 const passwordRequirements = [
   { label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
@@ -26,8 +27,7 @@ function ResetPasswordContent() {
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     password: '',
-    confirmPassword: '',
-  });
+    confirmPassword: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,12 +112,7 @@ function ResetPasswordContent() {
 
       {/* Logo */}
       <div className="flex items-center gap-2 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-secondary flex items-center justify-center">
-          <MessageCircle className="w-5 h-5 text-background" />
-        </div>
-        <span className="text-xl font-bold">
-          Freedom<span className="gradient-text">Talk</span>
-        </span>
+        <BrandLockup size={40} wordmarkClassName="text-xl" />
       </div>
 
       {/* Header */}
@@ -222,7 +217,7 @@ function ResetPasswordContent() {
 function LoadingFallback() {
   return (
     <div className="animate-fade-in text-center">
-      <div className="w-16 h-16 rounded-full bg-secondary-muted flex items-center justify-center mx-auto mb-6">
+      <div className="w-16 h-16 rounded-full bg-background-surface flex items-center justify-center mx-auto mb-6">
         <Loader2 className="w-8 h-8 text-secondary animate-spin" />
       </div>
       <h1 className="text-2xl font-bold mb-2">Loading...</h1>

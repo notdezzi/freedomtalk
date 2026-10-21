@@ -56,10 +56,15 @@ class VoiceStateService {
    */
   async createVoiceState(input: CreateVoiceStateInput): Promise<VoiceState> {
     // For server channels, check if user is already in a voice channel in this server
-    // For DM channels, skip this check since there's no server
+    // For DM channels, key on (channel, user) so rejoining the same DM call
+    // updates the existing row instead of inserting duplicates
     let existingState = null;
     if (input.serverId) {
       existingState = await this.getUserVoiceStateInServer(input.serverId, input.userId);
+    } else {
+      existingState = await db('voice_states')
+        .where({ channel_id: input.channelId, user_id: input.userId })
+        .first();
     }
     if (existingState) {
       // Move to new channel by updating existing state
@@ -107,11 +112,23 @@ class VoiceStateService {
 
   /**
    * Delete a voice state (user leaves voice channel)
+   *
+   * DM rows are additionally keyed on (channel, user): when the deleted
+   * session belongs to a DM channel, any duplicate/stale rows for the same
+   * (channel, user) pair are swept too so DM voice states don't accumulate.
    */
   async deleteVoiceState(sessionId: string): Promise<void> {
+    const state = await this.getVoiceStateBySession(sessionId);
+
     await db('voice_states')
       .where({ session_id: sessionId })
       .delete();
+
+    if (state && !state.server_id) {
+      await db('voice_states')
+        .where({ channel_id: state.channel_id, user_id: state.user_id })
+        .delete();
+    }
   }
 
   /**

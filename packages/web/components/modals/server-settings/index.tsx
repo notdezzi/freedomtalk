@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Modal, Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useServer, useLeaveServer } from '@/features/servers';
@@ -114,16 +115,19 @@ export function ServerSettingsModal({ serverId, onClose }: ServerSettingsModalPr
 
   return (
     <Modal open onClose={onClose} className="!p-0 !max-w-4xl !bg-background-elevated">
-      <div className="flex h-[500px]">
+      <div className="flex h-[min(80dvh,640px)]">
         {/* Left Sidebar */}
         <div className="w-56 bg-background-surface border-r border-border flex flex-col">
           {/* Server Header */}
           <div className="p-4 border-b border-border">
             <div className="flex items-center gap-3">
               {server.icon ? (
-                <img
+                <Image
                   src={server.icon}
                   alt={server.name}
+                  width={40}
+                  height={40}
+                  loading="lazy"
                   className="h-10 w-10 rounded-lg object-cover"
                 />
               ) : (

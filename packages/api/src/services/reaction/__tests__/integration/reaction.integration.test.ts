@@ -7,18 +7,27 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { db } from '../../../../config/database';
 import { generateSnowflakeId } from '../../../../utils/snowflake';
 import { reactionService } from '../../reaction.service';
+import {
+  createTestServerFixture,
+  cleanupTestServerFixture,
+  TestServerFixture,
+} from '../../../../testing/fixtures';
 
 describe('Reaction Integration Tests', () => {
   let testUserId1: string;
   let testUserId2: string;
   let testMessageId: string;
   let testChannelId: string;
+  let fixture: TestServerFixture;
 
   beforeAll(async () => {
+    // Create server/channel fixture so the message satisfies its FK
+    fixture = await createTestServerFixture('reacttest');
+    testChannelId = fixture.channelId;
+
     // Create test users
     testUserId1 = generateSnowflakeId();
     testUserId2 = generateSnowflakeId();
-    testChannelId = generateSnowflakeId();
     testMessageId = generateSnowflakeId();
 
     await db('users').insert([
@@ -27,8 +36,7 @@ describe('Reaction Integration Tests', () => {
         email: 'test1@example.com',
         username: 'testuser1',
         password_hash: 'hash',
-        display_name: 'Test User 1',
-        created_at: new Date(),
+          created_at: new Date(),
         updated_at: new Date(),
       },
       {
@@ -36,8 +44,7 @@ describe('Reaction Integration Tests', () => {
         email: 'test2@example.com',
         username: 'testuser2',
         password_hash: 'hash',
-        display_name: 'Test User 2',
-        created_at: new Date(),
+          created_at: new Date(),
         updated_at: new Date(),
       },
     ]);
@@ -58,6 +65,7 @@ describe('Reaction Integration Tests', () => {
     await db('reactions').where('message_id', testMessageId).del();
     await db('messages').where('id', testMessageId).del();
     await db('users').whereIn('id', [testUserId1, testUserId2]).del();
+    await cleanupTestServerFixture(fixture);
   });
 
   describe('addReaction', () => {
@@ -116,7 +124,7 @@ describe('Reaction Integration Tests', () => {
       expect(reactions.length).toBeGreaterThan(0);
 
       // Check grouping
-      const thumbsUp = reactions.find((r: any) => r.emoji === '👍');
+      const thumbsUp = reactions.find((r: any) => r.emoji_unicode === '👍');
       expect(thumbsUp).toBeDefined();
       expect(thumbsUp?.count).toBe(2); // Both users reacted
     });
@@ -144,7 +152,7 @@ describe('Reaction Integration Tests', () => {
 
       // Verify it's gone
       const reactions = await reactionService.getReactionsByMessage(testMessageId);
-      const laugh = reactions.find((r: any) => r.emoji === '😂');
+      const laugh = reactions.find((r: any) => r.emoji_unicode === '😂');
       expect(laugh).toBeUndefined();
     });
   });

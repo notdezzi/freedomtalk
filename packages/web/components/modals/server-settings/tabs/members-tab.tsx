@@ -140,9 +140,9 @@ export function MembersTab({ serverId }: MembersTabProps) {
     <div className="h-full flex flex-col">
       <h3 className="text-xl font-semibold text-foreground mb-6">Members</h3>
 
-      <div className="flex-1 flex gap-6 min-h-0">
+      <div className="flex-1 flex flex-col md:flex-row gap-6 min-h-0">
         {/* Member list panel */}
-        <div className="w-1/2 min-w-[280px] flex flex-col">
+        <div className="w-full md:w-1/2 md:min-w-[280px] flex flex-col">
           <MemberList
             members={members}
             roles={roles}
@@ -153,7 +153,7 @@ export function MembersTab({ serverId }: MembersTabProps) {
         </div>
 
         {/* Selected member details panel */}
-        <div className="flex-1 min-w-[280px]">
+        <div className="flex-1 md:min-w-[280px]">
           {selectedMember ? (
             <div className="h-full flex flex-col">
               {/* Member info header */}
@@ -177,7 +177,7 @@ export function MembersTab({ serverId }: MembersTabProps) {
                     </h4>
                     {selectedMember.isOwner && (
                       <span title="Owner">
-                        <ShieldAlert className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                        <ShieldAlert className="h-4 w-4 text-warning flex-shrink-0" />
                       </span>
                     )}
                   </div>

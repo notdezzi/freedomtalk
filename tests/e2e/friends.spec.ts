@@ -3,7 +3,7 @@
  * Tests for friend requests, accept, reject, remove in the new FreedomTalk layout
  */
 
-import { test, expect, createTestUser } from '../fixtures';
+import { test, expect, createTestUser, createServerViaUI } from '../fixtures';
 
 test.describe('Friends System', () => {
   test.describe('Friends Page', () => {
@@ -142,19 +142,14 @@ test.describe('Friends System', () => {
       // Go to a server first
       const server = { name: 'Test Server ' + Date.now() };
 
-      await authenticatedPage.goto('/app');
-      await authenticatedPage.click('button[aria-label="Add server"]').catch(() => {});
-      await authenticatedPage.waitForTimeout(500);
-      await authenticatedPage.click('button:has-text("Create My Own")').catch(() => {});
-      await authenticatedPage.waitForTimeout(300);
-      await authenticatedPage.fill('input[type="text"]', server.name).catch(() => {});
-      await authenticatedPage.click('button:has-text("Create")').catch(() => {});
-      await expect(authenticatedPage).toHaveURL(/\/servers\//, { timeout: 15000 });
+      await createServerViaUI(authenticatedPage, server.name);
 
-      // Now click Friends button to go back
-      await authenticatedPage.click('button:has-text("Friends")').catch(() => {});
+      // The Friends button lives in the home view's sidebar — go home first
+      await authenticatedPage.click('button[aria-label="Home"]');
+      await expect(authenticatedPage).toHaveURL(/\/app$/, { timeout: 10000 });
 
-      // Should be on /app (friends page)
+      // Click Friends to navigate to the friends page
+      await authenticatedPage.locator('button:has-text("Friends")').first().click();
       await expect(authenticatedPage).toHaveURL(/\/app$/, { timeout: 10000 });
     });
   });

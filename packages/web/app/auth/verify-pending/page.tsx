@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { MessageCircle, ArrowLeft, Mail, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Mail, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { BrandLockup } from '@/components/brand/brand';
 
 export default function VerifyPendingPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -44,12 +45,7 @@ export default function VerifyPendingPage() {
 
       {/* Logo */}
       <div className="flex items-center gap-2 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-secondary flex items-center justify-center">
-          <MessageCircle className="w-5 h-5 text-background" />
-        </div>
-        <span className="text-xl font-bold">
-          Freedom<span className="gradient-text">Talk</span>
-        </span>
+        <BrandLockup size={40} wordmarkClassName="text-xl" />
       </div>
 
       {isSent ? (
@@ -70,7 +66,7 @@ export default function VerifyPendingPage() {
         <>
           {/* Header */}
           <div className="mb-8 text-center">
-            <div className="w-16 h-16 rounded-full bg-secondary-muted flex items-center justify-center mx-auto mb-6">
+            <div className="w-16 h-16 rounded-full bg-background-surface flex items-center justify-center mx-auto mb-6">
               <Mail className="w-8 h-8 text-secondary" />
             </div>
             <h1 className="text-2xl font-bold mb-2">Verify your email</h1>

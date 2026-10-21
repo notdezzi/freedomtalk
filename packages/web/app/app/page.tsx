@@ -347,7 +347,7 @@ export default function AppPage() {
                 placeholder="Search friends"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-background-surface text-foreground rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                className="w-full bg-field border border-border text-foreground rounded-lg pl-10 pr-4 py-2 text-sm placeholder:text-placeholder focus:outline-none focus:border-accent"
               />
             </div>
 
@@ -395,7 +395,7 @@ export default function AppPage() {
                     </button>
                     <button
                       onClick={() => handleStartDM(friend.id)}
-                      className="p-2 text-foreground-muted hover:text-foreground hover:bg-background-elevated rounded"
+                      className="p-2 text-foreground-muted hover:text-foreground hover:bg-background-hover rounded-lg"
                       aria-label="Message"
                     >
                       <MessageCircle className="h-5 w-5" />
@@ -439,7 +439,7 @@ export default function AppPage() {
             >
               Pending
               {pendingRequests.length > 0 && (
-                <span className="bg-error text-foreground text-xs rounded-full px-1.5">
+                <span className="bg-error text-white text-xs rounded-full px-1.5">
                   {pendingRequests.length}
                 </span>
               )}
@@ -470,13 +470,13 @@ export default function AppPage() {
       </div>
 
       {/* Friend Context Menu */}
-      <ContextMenu
-        open={contextMenu.open}
-        x={contextMenu.x}
-        y={contextMenu.y}
-        items={getFriendContextMenuItems()}
-        onClose={closeContextMenu}
-      />
+      {contextMenu.open && (
+        <ContextMenu
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          items={getFriendContextMenuItems()}
+          onClose={closeContextMenu}
+        />
+      )}
     </AppShell>
   );
 }

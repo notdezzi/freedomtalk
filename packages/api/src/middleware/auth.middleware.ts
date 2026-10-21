@@ -104,7 +104,7 @@ export async function requireAuth(
     // Verify token
     let payload;
     try {
-      payload = await jwtService.verifyToken(token);
+      payload = await jwtService.verifyToken(token, 'access');
     } catch (error) {
       logger.warn({ error }, 'Invalid or expired token');
       return reply.status(401).send(
@@ -181,7 +181,7 @@ export async function optionalAuth(
     // Verify token
     let payload;
     try {
-      payload = await jwtService.verifyToken(token);
+      payload = await jwtService.verifyToken(token, 'access');
     } catch (error) {
       // Invalid token, continue without authentication
       logger.debug({ error }, 'Invalid token in optionalAuth');

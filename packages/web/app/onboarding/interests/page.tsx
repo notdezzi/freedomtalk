@@ -178,7 +178,7 @@ export default function OnboardingInterestsPage() {
                     onClick={() => toggleTag(tag)}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                       selectedTags.has(tag)
-                        ? 'bg-accent text-background'
+                        ? 'bg-accent text-white'
                         : 'bg-background-surface text-foreground-muted hover:text-foreground hover:bg-background-surface/80'
                     }`}
                   >

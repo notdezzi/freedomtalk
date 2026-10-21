@@ -17,16 +17,14 @@ export interface VoiceGridViewProps {
 
 export function VoiceGridView({ channelId, channelName, className }: VoiceGridViewProps) {
   const currentUser = useAuthStore((s) => s.user);
-  const {
-    users,
-    currentChannelId,
-    selfVideo,
-    selfStream,
-    selfMute,
-    selfDeaf,
-    localVideoStream,
-    localScreenStream,
-  } = useVoiceStore();
+  const users = useVoiceStore((s) => s.users);
+  const currentChannelId = useVoiceStore((s) => s.currentChannelId);
+  const selfVideo = useVoiceStore((s) => s.selfVideo);
+  const selfStream = useVoiceStore((s) => s.selfStream);
+  const selfMute = useVoiceStore((s) => s.selfMute);
+  const selfDeaf = useVoiceStore((s) => s.selfDeaf);
+  const localVideoStream = useVoiceStore((s) => s.localVideoStream);
+  const localScreenStream = useVoiceStore((s) => s.localScreenStream);
 
   // Get current user's speaking state from store
   const currentSessionId = useVoiceStore((s) => s.sessionId);
@@ -63,16 +61,12 @@ export function VoiceGridView({ channelId, channelName, className }: VoiceGridVi
       ]
     : audioOnlyUsers;
 
-  // Calculate grid columns for audio-only users
-  const audioCount = allAudioOnlyUsers.length;
-  const audioColumns = audioCount <= 2 ? 2 : audioCount <= 6 ? 3 : 4;
-
   // Check if we have any video or screen shares
   const hasVideo = videoUsers.length > 0 || selfVideo;
   const hasStream = streamUsers.length > 0 || selfStream;
 
   return (
-    <div className={cn('flex h-full flex-col bg-background', className)}>
+    <div className={cn('flex h-full flex-col bg-chat', className)}>
       {/* Main content area */}
       <div className="flex-1 overflow-y-auto p-4">
         {/* Channel header */}
@@ -104,8 +98,8 @@ export function VoiceGridView({ channelId, channelName, className }: VoiceGridVi
         {/* Audio-only users grid */}
         {allAudioOnlyUsers.length > 0 && (
           <div
-            className={cn('grid gap-3', `grid-cols-${audioColumns}`)}
-            style={{ gridTemplateColumns: `repeat(${audioColumns}, 1fr)` }}
+            className="grid gap-3"
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}
           >
             {allAudioOnlyUsers.map((user) => (
               <AudioOnlyTile key={user.sessionId} user={user} isSelf={user.userId === currentUser?.id} />

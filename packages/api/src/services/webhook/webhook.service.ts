@@ -210,6 +210,7 @@ class WebhookService {
         channelId: webhook.channel_id,
         authorId: webhook.id, // Use webhook ID as author
         content,
+        bypassAuthorCheck: true, // webhook authors are not users-table rows
       });
 
       // Log the webhook execution

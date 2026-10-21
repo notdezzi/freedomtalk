@@ -23,7 +23,7 @@ interface TestUser {
 
 async function createTestUser(app: FastifyInstance, suffix: string): Promise<TestUser> {
   const email = `test-channel-${suffix}@example.com`;
-  const username = `testchannel-${suffix}`;
+  const username = `testchannel_${suffix}`;
 
   const registerResponse = await app.inject({
     method: 'POST',
@@ -121,8 +121,8 @@ describe('Channel Routes', () => {
 
   beforeEach(async () => {
     const timestamp = Date.now();
-    testUser = await createTestUser(app, `ch-${timestamp}`);
-    secondUser = await createTestUser(app, `ch2-${timestamp}`);
+    testUser = await createTestUser(app, `ch_${timestamp}`);
+    secondUser = await createTestUser(app, `ch2_${timestamp}`);
     testServerId = await createTestServer(app, testUser.accessToken, 'Test Channel Server');
   });
 
@@ -547,7 +547,7 @@ describe('Role Routes', () => {
 
   beforeEach(async () => {
     const timestamp = Date.now();
-    testUser = await createTestUser(app, `role-${timestamp}`);
+    testUser = await createTestUser(app, `role_${timestamp}`);
     testServerId = await createTestServer(app, testUser.accessToken, 'Test Role Server');
   });
 
@@ -684,15 +684,16 @@ describe('Role Routes', () => {
 
     const response = await app.inject({
       method: 'PUT',
-      url: `/api/v1/servers/${testServerId}/members/${testUser.id}/roles/${roleId}`,
+      url: `/api/v1/servers/${testServerId}/members/${testUser.id}/roles`,
       headers: {
         authorization: `Bearer ${testUser.accessToken}`,
       },
+      payload: {
+        roleIds: [roleId],
+      },
     });
 
-    expect(response.statusCode).toBe(200);
-    const body = JSON.parse(response.body);
-    expect(body.success).toBe(true);
+    expect(response.statusCode).toBe(204);
   });
 
   it('should remove role from member', async () => {
@@ -713,18 +714,24 @@ describe('Role Routes', () => {
     // Assign role first
     await app.inject({
       method: 'PUT',
-      url: `/api/v1/servers/${testServerId}/members/${testUser.id}/roles/${roleId}`,
+      url: `/api/v1/servers/${testServerId}/members/${testUser.id}/roles`,
       headers: {
         authorization: `Bearer ${testUser.accessToken}`,
       },
+      payload: {
+        roleIds: [roleId],
+      },
     });
 
-    // Remove role
+    // Remove role by setting an empty role set
     const response = await app.inject({
-      method: 'DELETE',
-      url: `/api/v1/servers/${testServerId}/members/${testUser.id}/roles/${roleId}`,
+      method: 'PUT',
+      url: `/api/v1/servers/${testServerId}/members/${testUser.id}/roles`,
       headers: {
         authorization: `Bearer ${testUser.accessToken}`,
+      },
+      payload: {
+        roleIds: [],
       },
     });
 
@@ -761,7 +768,7 @@ describe('Permission Routes', () => {
 
   beforeEach(async () => {
     const timestamp = Date.now();
-    testUser = await createTestUser(app, `perm-${timestamp}`);
+    testUser = await createTestUser(app, `perm_${timestamp}`);
     testServerId = await createTestServer(app, testUser.accessToken, 'Test Perm Server');
 
     // Create a test channel
@@ -808,7 +815,7 @@ describe('Permission Routes', () => {
       },
     });
 
-    expect(response.statusCode).toBe(201);
+    expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body.success).toBe(true);
     expect(body.data.target_id).toBe(roleId);
@@ -860,7 +867,7 @@ describe('Permission Routes', () => {
 
     // Update overwrite
     const response = await app.inject({
-      method: 'PATCH',
+      method: 'PUT',
       url: `/api/v1/channels/${testChannelId}/permissions/${roleId}`,
       headers: {
         authorization: `Bearer ${testUser.accessToken}`,
@@ -917,13 +924,13 @@ describe('Permission Routes', () => {
 
   it('should check user permission', async () => {
     const response = await app.inject({
-      method: 'GET',
+      method: 'POST',
       url: `/api/v1/channels/${testChannelId}/permissions/check`,
       headers: {
         authorization: `Bearer ${testUser.accessToken}`,
       },
-      query: {
-        permission: PERMISSION_FLAGS.VIEW_CHANNEL.toString(),
+      payload: {
+        permissions: ['VIEW_CHANNEL'],
       },
     });
 
@@ -931,6 +938,6 @@ describe('Permission Routes', () => {
     const body = JSON.parse(response.body);
     expect(body.success).toBe(true);
     // Owner should have all permissions
-    expect(body.data.has_permission).toBe(true);
+    expect(body.data.results.VIEW_CHANNEL).toBe(true);
   });
 });

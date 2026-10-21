@@ -7,22 +7,22 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { db } from '../../../../config/database';
 import { generateSnowflakeId } from '../../../../utils/snowflake';
 import { VALIDATION } from '@freedomtalk/shared';
+import {
+  createTestServerFixture,
+  cleanupTestServerFixture,
+  TestServerFixture,
+} from '../../../../testing/fixtures';
 
 describe('Attachment Integration Tests', () => {
   let testMessageId: string;
   let testUserId: string;
+  let fixture: TestServerFixture;
 
   beforeAll(async () => {
-    // Create test user
-    testUserId = generateSnowflakeId();
-    await db('users').insert({
-      id: testUserId,
-      email: 'attachmenttest@example.com',
-      username: 'attachmenttestuser',
-      password_hash: 'hash',
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
+    // Create server/channel fixture so the message satisfies its FK
+    fixture = await createTestServerFixture('attachtest');
+
+    testUserId = fixture.ownerId;
 
     // Create test message
     testMessageId = generateSnowflakeId();
@@ -30,7 +30,7 @@ describe('Attachment Integration Tests', () => {
       id: testMessageId,
       content: 'Test message for attachments',
       author_id: testUserId,
-      channel_id: generateSnowflakeId(),
+      channel_id: fixture.channelId,
       created_at: new Date(),
       updated_at: new Date(),
     });
@@ -39,7 +39,7 @@ describe('Attachment Integration Tests', () => {
   afterAll(async () => {
     await db('message_attachments').where('message_id', testMessageId).del();
     await db('messages').where('id', testMessageId).del();
-    await db('users').where('id', testUserId).del();
+    await cleanupTestServerFixture(fixture);
   });
 
   describe('File Validation Constants', () => {
@@ -97,7 +97,7 @@ describe('Attachment Integration Tests', () => {
       expect(attachment).toBeDefined();
       expect(attachment.filename).toBe('test-image.png');
       expect(attachment.mime_type).toBe('image/png');
-      expect(attachment.size).toBe(1024);
+      expect(Number(attachment.size)).toBe(1024);
     });
 
     it('should store image dimensions', async () => {
@@ -162,7 +162,7 @@ describe('Attachment Integration Tests', () => {
         id: messageId,
         content: 'To be deleted',
         author_id: testUserId,
-        channel_id: generateSnowflakeId(),
+        channel_id: fixture.channelId,
         created_at: new Date(),
         updated_at: new Date(),
       });

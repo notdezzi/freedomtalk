@@ -6,6 +6,7 @@
 
 import { Device } from 'mediasoup-client';
 import { Socket } from 'socket.io-client';
+import { socketService } from './socket';
 
 interface TransportOptions {
   id: string;
@@ -91,11 +92,35 @@ export class VoiceClient {
   public onDisconnected?: () => void;
   public onRemoteStreamChanged?: (sessionId: string, kind: 'audio' | 'video' | 'screen', stream: MediaStream | null) => void;
   public onSpeaking?: (speaking: boolean) => void;
+  public onDeviceChange?: (devices: MediaDeviceInfo[]) => void;
 
   constructor(socket: Socket) {
     this.socket = socket;
     this.setupSocketHandlers();
+    this.setupDeviceListener();
   }
+
+  /**
+   * Watch for media device changes (headphones plugged/unplugged, camera
+   * unplug, OS-level device switches). If the input device backing the live
+   * audio track disappears, the track fires `ended`, which stops the
+   * producer (see the producer handlers below).
+   */
+  private setupDeviceListener(): void {
+    if (this.deviceChangeHandler) return;
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.addEventListener) return;
+    // Bound arrow so removeEventListener in cleanup() gets the same identity
+    this.deviceChangeHandler = () => {
+      navigator.mediaDevices?.enumerateDevices?.().then((devices) => {
+        this.onDeviceChange?.(devices);
+      }).catch(() => {
+        this.onDeviceChange?.([]);
+      });
+    };
+    navigator.mediaDevices.addEventListener('devicechange', this.deviceChangeHandler);
+  }
+
+  private deviceChangeHandler: (() => void) | null = null;
 
   /**
    * Setup socket event handlers for voice events
@@ -147,6 +172,28 @@ export class VoiceClient {
    * Join a voice channel with auto-setup
    */
   async joinChannel(channelId: string): Promise<void> {
+    // Follow device plug/unplug while connected (re-armed after each cleanup)
+    this.setupDeviceListener();
+
+    // If socketService replaced its socket while ours was down (auth
+    // changes, reconnect churn), follow the live instance — emits into a
+    // dead socket are dropped without ever invoking the ack.
+    if (!this.socket?.connected) {
+      const live = socketService.getSocket();
+      if (live && live !== this.socket) {
+        this.socket = live;
+        this.socketHandlersSetup = false;
+        this.setupSocketHandlers();
+        // Media state belongs to the dead connection
+        this.device = null;
+        this.sessionId = null;
+        this.rtpCapabilities = null;
+        this.sendTransport = null;
+        this.recvTransport = null;
+        this.isConsuming = false;
+      }
+    }
+
     // If already joining, wait a bit and check again (handles race conditions)
     if (this.isJoining) {
       console.log('VoiceClient: Already joining a channel, waiting...');
@@ -280,6 +327,55 @@ export class VoiceClient {
   // Abort function for ongoing join
   private abortJoin: (() => void) | null = null;
 
+  // Auto-rejoin (ICE failure recovery)
+  private rejoinTimer: NodeJS.Timeout | null = null;
+
+  /**
+   * Monitor ICE connection state on a transport. `failed` is terminal in
+   * WebRTC — schedule one automatic leave+rejoin to rebuild transports.
+   */
+  private attachTransportMonitoring(transport: any, label: string): void {
+    transport.on('connectionstatechange', (state: string) => {
+      console.log(`[VoiceClient] ${label} transport connection state:`, state);
+      if (state === 'failed') {
+        this.scheduleAutoRejoin();
+      }
+    });
+  }
+
+  private scheduleAutoRejoin(): void {
+    if (this.rejoinTimer) return;
+    const channelId = this.channelId;
+    if (!channelId || this.isJoining) return;
+
+    this.rejoinTimer = setTimeout(() => {
+      this.rejoinTimer = null;
+      if (this.channelId !== channelId || this.isJoining) return;
+      console.warn('[VoiceClient] ICE connection failed — auto-rejoining channel');
+      void this.attemptRejoin(channelId);
+    }, 1500);
+  }
+
+  /**
+   * Tear down the broken media session and rejoin the same channel.
+   * Skips the usual onDisconnected notification — the rejoin restores
+   * state immediately; only surface an error when the rejoin itself fails.
+   */
+  private async attemptRejoin(channelId: string): Promise<void> {
+    this.isJoining = false;
+    this.isConsuming = false;
+    this.socket.emit('voice:leave', () => {});
+    await this.cleanup();
+
+    try {
+      await this.joinChannel(channelId);
+    } catch (error: any) {
+      console.error('[VoiceClient] Auto-rejoin failed:', error);
+      this.onError?.(error?.message || 'Voice connection lost — could not rejoin');
+      this.onDisconnected?.();
+    }
+  }
+
   /**
    * Leave the current voice channel
    */
@@ -321,6 +417,8 @@ export class VoiceClient {
           iceCandidates: transportOptions.iceCandidates,
           dtlsParameters: transportOptions.dtlsParameters,
         });
+
+        this.attachTransportMonitoring(this.sendTransport, 'send');
 
         this.sendTransport.on('connect', async ({ dtlsParameters }: any, callback: any, errback: any) => {
           // Guard against duplicate connect calls
@@ -397,6 +495,8 @@ export class VoiceClient {
           iceCandidates: transportOptions.iceCandidates,
           dtlsParameters: transportOptions.dtlsParameters,
         });
+
+        this.attachTransportMonitoring(this.recvTransport, 'recv');
 
         this.recvTransport.on('connect', async ({ dtlsParameters }: any, callback: any, errback: any) => {
           // Guard against duplicate connect calls
@@ -556,7 +656,15 @@ export class VoiceClient {
       this.startSpeakingDetection();
     } catch (error: any) {
       console.error('Error starting audio:', error);
-      this.onError?.(error.message || 'Failed to start audio');
+      // Permission denial is recoverable — tell the user what to do instead
+      // of a generic failure; they can unmute to trigger a fresh request.
+      if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') {
+        this.onError?.('Microphone access denied — allow it in your browser settings, then unmute to retry');
+      } else if (error?.name === 'NotFoundError') {
+        this.onError?.('No microphone found');
+      } else {
+        this.onError?.(error.message || 'Failed to start audio');
+      }
       throw error;
     }
   }
@@ -683,7 +791,13 @@ export class VoiceClient {
       });
     } catch (error: any) {
       console.error('Error starting video:', error);
-      this.onError?.(error.message || 'Failed to start video');
+      if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') {
+        this.onError?.('Camera access denied — allow it in your browser settings, then retry');
+      } else if (error?.name === 'NotFoundError') {
+        this.onError?.('No camera found');
+      } else {
+        this.onError?.(error.message || 'Failed to start video');
+      }
       throw error;
     }
   }
@@ -828,6 +942,18 @@ export class VoiceClient {
    * Cleanup resources
    */
   async cleanup(): Promise<void> {
+    // Stop pending auto-rejoin
+    if (this.rejoinTimer) {
+      clearTimeout(this.rejoinTimer);
+      this.rejoinTimer = null;
+    }
+
+    // Detach the device watcher (joinChannel re-arms it)
+    if (this.deviceChangeHandler && typeof navigator !== 'undefined' && navigator.mediaDevices?.removeEventListener) {
+      navigator.mediaDevices.removeEventListener('devicechange', this.deviceChangeHandler);
+      this.deviceChangeHandler = null;
+    }
+
     // Stop producing
     await this.stopAudio();
     await this.stopVideo();

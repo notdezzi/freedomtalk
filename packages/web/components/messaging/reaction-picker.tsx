@@ -67,8 +67,10 @@ export function ReactionPicker({ onSelect, onClose, position }: ReactionPickerPr
   const content = (
     <div
       ref={containerRef}
+      role="dialog"
+      aria-label="Add reaction"
       className={cn(
-        'z-50 w-80 rounded-lg bg-background-elevated shadow-xl border border-border',
+        'z-50 w-80 rounded-lg bg-background-elevated shadow-md border border-border',
         'animate-in fade-in-0 zoom-in-95'
       )}
       style={position ? { position: 'fixed', left: position.x, top: position.y } : { position: 'relative' }}
@@ -80,7 +82,8 @@ export function ReactionPicker({ onSelect, onClose, position }: ReactionPickerPr
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search emoji..."
-          className="w-full rounded bg-background-surface px-2 py-1 text-sm text-foreground placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-accent"
+          aria-label="Search emoji"
+          className="w-full rounded-lg bg-field border border-border px-2 py-1 text-sm text-foreground placeholder:text-placeholder focus:outline-none focus:border-accent"
           autoFocus
         />
       </div>
@@ -92,7 +95,8 @@ export function ReactionPicker({ onSelect, onClose, position }: ReactionPickerPr
             <button
               key={emoji}
               onClick={() => onSelect(emoji)}
-              className="rounded p-1.5 text-xl hover:bg-background-surface"
+              aria-label={`React with ${emoji}`}
+              className="rounded p-2.5 text-xl hover:bg-background-surface"
             >
               {emoji}
             </button>
@@ -102,13 +106,16 @@ export function ReactionPicker({ onSelect, onClose, position }: ReactionPickerPr
 
       {/* Category tabs */}
       {!search && (
-        <div className="flex border-b border-border">
+        <div className="flex border-b border-border" role="tablist" aria-label="Emoji categories">
           {EMOJI_CATEGORIES.map((cat, index) => (
             <button
               key={cat.name}
+              role="tab"
+              aria-selected={activeCategory === index}
+              aria-label={cat.name}
               onClick={() => setActiveCategory(index)}
               className={cn(
-                'flex-1 px-2 py-1.5 text-xs font-medium transition-colors',
+                'flex-1 px-2 py-2 text-xs font-medium transition-colors',
                 activeCategory === index
                   ? 'text-foreground bg-background-surface'
                   : 'text-foreground-muted hover:text-foreground'
@@ -122,12 +129,13 @@ export function ReactionPicker({ onSelect, onClose, position }: ReactionPickerPr
 
       {/* Emoji grid */}
       <div className="max-h-48 overflow-y-auto p-2">
-        <div className="grid grid-cols-8 gap-0.5">
+        <div className="grid grid-cols-7 gap-0.5">
           {filteredEmojis.map((emoji, index) => (
             <button
               key={`${emoji}-${index}`}
               onClick={() => onSelect(emoji)}
-              className="rounded p-1 text-lg hover:bg-background-surface transition-colors"
+              aria-label={`React with ${emoji}`}
+              className="rounded p-2 text-lg hover:bg-background-surface transition-colors"
             >
               {emoji}
             </button>

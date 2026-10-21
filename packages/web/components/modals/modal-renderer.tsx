@@ -1,17 +1,22 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useUIStore } from '@/stores';
-import { CreateServerModal } from './create-server-modal';
-import { JoinServerModal } from './join-server-modal';
-import { UserProfileModal } from './user-profile-modal';
-import { UserSettingsModal } from './user-settings-modal';
-import { InvitePeopleModal } from './invite-people-modal';
-import { CreateChannelModal } from './create-channel-modal';
-import { CreateCategoryModal } from './create-category-modal';
-import { ServerSettingsModal } from './server-settings';
-import { DeleteServerModal } from './delete-server-modal';
-import { EditChannelModal } from './edit-channel-modal';
-import { DeleteChannelModal } from './delete-channel-modal';
+
+// All modals are code-split: only the opened modal's chunk is fetched.
+// Server-settings is the heavy one (permissions, roles, bans, invites).
+const CreateServerModal = dynamic(() => import('./create-server-modal').then((m) => m.CreateServerModal));
+const JoinServerModal = dynamic(() => import('./join-server-modal').then((m) => m.JoinServerModal));
+const AddFriendModal = dynamic(() => import('./add-friend-modal').then((m) => m.AddFriendModal));
+const UserProfileModal = dynamic(() => import('./user-profile-modal').then((m) => m.UserProfileModal));
+const UserSettingsModal = dynamic(() => import('./user-settings-modal').then((m) => m.UserSettingsModal));
+const InvitePeopleModal = dynamic(() => import('./invite-people-modal').then((m) => m.InvitePeopleModal));
+const CreateChannelModal = dynamic(() => import('./create-channel-modal').then((m) => m.CreateChannelModal));
+const CreateCategoryModal = dynamic(() => import('./create-category-modal').then((m) => m.CreateCategoryModal));
+const ServerSettingsModal = dynamic(() => import('./server-settings').then((m) => m.ServerSettingsModal));
+const DeleteServerModal = dynamic(() => import('./delete-server-modal').then((m) => m.DeleteServerModal));
+const EditChannelModal = dynamic(() => import('./edit-channel-modal').then((m) => m.EditChannelModal));
+const DeleteChannelModal = dynamic(() => import('./delete-channel-modal').then((m) => m.DeleteChannelModal));
 
 export function ModalRenderer() {
   const activeModal = useUIStore((s) => s.activeModal);
@@ -23,6 +28,8 @@ export function ModalRenderer() {
         return <CreateServerModal onClose={closeModal} />;
       case 'join-server':
         return <JoinServerModal onClose={closeModal} />;
+      case 'add-friend':
+        return <AddFriendModal onClose={closeModal} />;
       case 'user-profile':
         return (
           <UserProfileModal

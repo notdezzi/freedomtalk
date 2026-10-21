@@ -2,12 +2,19 @@
 
 import { cn } from '@/lib/utils';
 import { IconList, type IconItem } from '@/components/navigation/icon-list';
-import { ItemList, ChannelCategory } from '@/components/navigation/item-list';
+import {
+  ItemList,
+  ChannelCategory,
+  SortableChannelItem,
+  CategoryDragHandle,
+  ChannelDropZone,
+} from '@/components/navigation/item-list';
 import { UserPanel } from './user-panel';
 import { VoicePanel } from '@/components/voice';
 import { useUIStore, useVoiceStore } from '@/stores';
-import { ContextMenu, useContextMenu, Dropdown, type ContextMenuItem } from '@/components/ui';
-import { Home, Plus, Users, Settings, UserPlus, LogOut, Trash2, Edit2, X, ChevronDown, FolderPlus, Hash, Volume2, VolumeX, GripVertical, MicOff, Copy } from 'lucide-react';
+import { Dropdown } from '@/components/ui';
+import { ContextMenu, useContextMenu, type ContextMenuItem } from '@/components/common/context-menu';
+import { Home, Plus, Users, Settings, UserPlus, LogOut, Trash2, Edit2, X, ChevronDown, FolderPlus, Hash, GripVertical, Copy } from 'lucide-react';
 import { useServers, useServerChannelsAndCategories, useLeaveServer, useUpdateServerPositions, useUpdateChannelPositions, useUpdateCategoryPositions } from '@/features/servers';
 import { useDMChannels, useCloseDM } from '@/features/dms';
 import { useAuthStore } from '@/stores';
@@ -15,14 +22,39 @@ import { useVoiceConnection, useServerVoiceStates, useCan } from '@/hooks';
 import { useDeveloperMode } from '@/hooks/use-developer-mode';
 import { PERMISSION_FLAGS } from '@freedomtalk/shared';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { useMemo, useState, useRef } from 'react';
-import { Avatar } from '@/components/ui';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  rectSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
 
 export function NavigationColumn() {
   const pathname = usePathname();
   const params = useParams();
   const router = useRouter();
   const openModal = useUIStore((s) => s.openModal);
+  const isMobileNavOpen = useUIStore((s) => s.isMobileNavOpen);
+  const setMobileNavOpen = useUIStore((s) => s.setMobileNavOpen);
+
+  // Close the mobile drawer after navigating
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname, setMobileNavOpen]);
 
   // Developer mode for Copy ID
   const isDeveloperMode = useDeveloperMode();
@@ -32,7 +64,12 @@ export function NavigationColumn() {
 
   // Voice connection
   const { joinChannel: joinVoiceChannel } = useVoiceConnection();
-  const voiceStore = useVoiceStore();
+  // Narrow slices only — a wholesale subscription would re-render the whole
+  // column on every voice event (speaking flags, stream changes, etc.)
+  const voiceUsers = useVoiceStore((s) => s.users);
+  const voiceChannelStates = useVoiceStore((s) => s.channelStates);
+  const isVoiceConnected = useVoiceStore((s) => s.isConnected);
+  const currentVoiceChannelId = useVoiceStore((s) => s.currentChannelId);
 
   // Determine current context
   const serverId = params.serverId as string | undefined;
@@ -49,6 +86,10 @@ export function NavigationColumn() {
   const categories = serverData?.categories ?? [];
   const { data: dmChannels = [] } = useDMChannels();
 
+  // Precomputed channel lookup — the render loops below used to call
+  // channels.find() per item, making renders O(n²) on large servers.
+  const channelMap = useMemo(() => new Map(channels.map((c) => [c.id, c])), [channels]);
+
   // Mutations
   const leaveServer = useLeaveServer();
   const closeDM = useCloseDM();
@@ -60,15 +101,20 @@ export function NavigationColumn() {
   const canManageChannels = useCan(serverId, PERMISSION_FLAGS.MANAGE_CHANNELS);
   const canManageServer = useCan(serverId, PERMISSION_FLAGS.MANAGE_SERVER);
 
-  // Drag and drop state for channels
-  const [draggedChannelId, setDraggedChannelId] = useState<string | null>(null);
-  const [dragOverChannelId, setDragOverChannelId] = useState<string | null>(null);
-  const [dragOverPosition, setDragOverPosition] = useState<'before' | 'after'>('before');
-  const [dragOverCategoryId, setDragOverCategoryId] = useState<string | null>(null);
+  // Drag and drop (dnd-kit) — touch and keyboard accessible
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
-  // Category drag and drop state
-  const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
-  const [dragOverCategoryIdForReorder, setDragOverCategoryIdForReorder] = useState<string | null>(null);
+  // Active drag for the overlay: { type, id, name }
+  const [activeDrag, setActiveDrag] = useState<{ type: 'channel' | 'category'; id: string; name: string } | null>(null);
 
   // Collapsed categories state
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
@@ -103,7 +149,7 @@ export function NavigationColumn() {
       name: server.name,
       acronym: server.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 3),
       icon: server.icon,
-      color: '#5865F2',
+      color: 'var(--accent)',
       hasNotification: false,
     }));
   }, [servers]);
@@ -164,16 +210,16 @@ export function NavigationColumn() {
   // Get users in a voice channel (from channelStates which includes all users in server)
   const getUsersInVoiceChannel = (channelId: string) => {
     // Use channelStates (server-wide view) if available
-    if (voiceStore.channelStates[channelId]) {
-      return voiceStore.channelStates[channelId];
+    if (voiceChannelStates[channelId]) {
+      return voiceChannelStates[channelId];
     }
     // Fall back to users (current channel only)
-    return voiceStore.users.filter((u) => u.channelId === channelId);
+    return voiceUsers.filter((u) => u.channelId === channelId);
   };
 
   // Check if current user is in a specific voice channel
   const isInVoiceChannel = (channelId: string) => {
-    return voiceStore.isConnected && voiceStore.currentChannelId === channelId;
+    return isVoiceConnected && currentVoiceChannelId === channelId;
   };
 
   const handleDMClick = (item: { id: string }) => {
@@ -184,75 +230,46 @@ export function NavigationColumn() {
     router.push('/app');
   };
 
-  // Channel drag and drop handlers
-  const handleChannelDragStart = (e: React.DragEvent, channelId: string) => {
-    e.dataTransfer.effectAllowed = 'move';
-    e.stopPropagation(); // Prevent category drag from also triggering
-    setDraggedChannelId(channelId);
-  };
-
-  const handleChannelDragEnd = () => {
-    setDraggedChannelId(null);
-    setDragOverChannelId(null);
-    setDragOverPosition('before');
-    setDragOverCategoryId(null);
-    setDraggedCategoryId(null);
-    setDragOverCategoryIdForReorder(null);
-  };
-
-  const handleChannelDragOver = (e: React.DragEvent, channelId: string, categoryId?: string) => {
-    e.preventDefault();
-    if (draggedChannelId && draggedChannelId !== channelId) {
-      e.stopPropagation(); // Only stop propagation when we're actually handling this
-      setDragOverChannelId(channelId);
-      setDragOverCategoryId(categoryId || null);
-      // Determine if mouse is in top or bottom half of the element
-      const rect = (e.target as HTMLElement).getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
-      setDragOverPosition(e.clientY < midY ? 'before' : 'after');
+  // dnd-kit drag and drop handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    const id = String(event.active.id);
+    if (id.startsWith('channel:')) {
+      const channel = channels.find((c) => c.id === id.slice('channel:'.length));
+      setActiveDrag({ type: 'channel', id, name: channel?.name || '' });
+    } else if (id.startsWith('category:')) {
+      const category = categories.find((c) => c.id === id.slice('category:'.length));
+      setActiveDrag({ type: 'category', id, name: category?.name || '' });
     }
   };
 
-  const handleChannelDragLeave = () => {
-    setDragOverChannelId(null);
-    setDragOverCategoryId(null);
+  const handleDragCancel = () => {
+    setActiveDrag(null);
   };
 
-  // Handle drag over empty space at bottom of category (to allow dropping at end)
-  const handleCategoryDropZoneDragOver = (e: React.DragEvent, categoryId: string | null) => {
-    e.preventDefault();
-    if (draggedChannelId) {
-      setDragOverChannelId(null);
-      setDragOverCategoryId(categoryId);
-      setDragOverPosition('after');
-    }
-  };
-
-  const handleCategoryDropZoneDrop = (e: React.DragEvent, categoryId: string | null) => {
-    e.preventDefault();
-    if (!draggedChannelId) return;
-
-    // Check if user has permission to manage channels
+  // Move a channel into a category (null = uncategorized) at the given index,
+  // persisting positions for ALL channels (same contract as the previous HTML5 drop handlers).
+  const moveChannelToCategory = (channelId: string, targetCatId: string | null, insertIndex: number) => {
     if (!canManageChannels) return;
 
-    // Get the dragged channel
-    const draggedChannel = channels.find(c => c.id === draggedChannelId);
+    const draggedChannel = channels.find((c) => c.id === channelId);
+    if (!draggedChannel) return;
 
-    // Get channels in this category, sorted by position (excluding dragged channel if already here)
+    // Get channels in the target category (excluding dragged channel), sorted by position
     const categoryChannels = channels
-      .filter(c => ((c as any).category_id ?? null) === categoryId && c.id !== draggedChannelId)
+      .filter((c) => ((c as any).category_id ?? null) === targetCatId && c.id !== channelId)
       .sort((a, b) => (a.position || 0) - (b.position || 0));
 
-    // Add dragged channel at the end of this category
-    const newCategoryOrder = [...categoryChannels, draggedChannel!];
+    // Insert the dragged channel at the requested index
+    const newCategoryOrder = [...categoryChannels];
+    const clampedIndex = Math.max(0, Math.min(insertIndex, newCategoryOrder.length));
+    newCategoryOrder.splice(clampedIndex, 0, draggedChannel);
 
-    // Build positions for ALL channels in the server
-    const otherChannels = channels.filter(c => ((c as any).category_id ?? null) !== categoryId && c.id !== draggedChannelId);
+    // Build positions for ALL channels in the server (other categories keep their relative order)
+    const otherChannels = channels.filter((c) => ((c as any).category_id ?? null) !== targetCatId && c.id !== channelId);
     otherChannels.sort((a, b) => (a.position || 0) - (b.position || 0));
 
     const allPositions: { id: string; position: number; categoryId: string | null }[] = [];
 
-    // Add other channels first
     otherChannels.forEach((c, i) => {
       allPositions.push({
         id: c.id,
@@ -261,85 +278,6 @@ export function NavigationColumn() {
       });
     });
 
-    // Add target category channels
-    const startPos = otherChannels.length;
-    newCategoryOrder.forEach((c, i) => {
-      allPositions.push({
-        id: c.id,
-        position: startPos + i,
-        categoryId: categoryId,
-      });
-    });
-
-    updateChannelPositions.mutate(allPositions);
-    handleChannelDragEnd();
-  };
-
-  const handleChannelDrop = (e: React.DragEvent, targetChannelId: string, targetCategoryId?: string) => {
-    e.preventDefault();
-    e.stopPropagation(); // Prevent category drop handler from interfering
-    if (!draggedChannelId || draggedChannelId === targetChannelId) {
-      handleChannelDragEnd();
-      return;
-    }
-
-    // Check if user has permission to manage channels
-    if (!canManageChannels) return;
-
-    // Get the target category
-    const targetChannel = channels.find(c => c.id === targetChannelId);
-    const targetCatId = (targetChannel as any)?.category_id || targetCategoryId || null;
-
-    // Get channels in the target category, sorted by current position
-    const categoryChannels = channels
-      .filter(c => ((c as any).category_id ?? null) === targetCatId)
-      .sort((a, b) => (a.position || 0) - (b.position || 0));
-
-    // Get target index based on drop position
-    const targetIndex = categoryChannels.findIndex(c => c.id === targetChannelId);
-    const insertIndex = dragOverPosition === 'before' ? targetIndex : targetIndex + 1;
-
-    // Check if dragged channel is from same category
-    const draggedChannel = channels.find(c => c.id === draggedChannelId);
-    const isFromSameCategory = ((draggedChannel as any)?.category_id ?? null) === targetCatId;
-
-    // Build the NEW order of channels in the target category
-    let newCategoryOrder;
-    if (isFromSameCategory) {
-      // Reorder within same category
-      const draggedIndex = categoryChannels.findIndex(c => c.id === draggedChannelId);
-      newCategoryOrder = [...categoryChannels];
-      const [draggedItem] = newCategoryOrder.splice(draggedIndex, 1);
-
-      // Adjust insert index if dragging from above
-      const adjustedIndex = draggedIndex < insertIndex ? insertIndex - 1 : insertIndex;
-      newCategoryOrder.splice(adjustedIndex, 0, draggedItem);
-    } else {
-      // Moving from different category - insert into target category
-      newCategoryOrder = [...categoryChannels];
-      newCategoryOrder.splice(insertIndex, 0, draggedChannel!);
-    }
-
-    // Now build positions for ALL channels in the server
-    // Start with channels NOT in the target category (keep their existing positions)
-    const otherChannels = channels.filter(c => ((c as any).category_id ?? null) !== targetCatId && c.id !== draggedChannelId);
-
-    // Sort other channels by their current position
-    otherChannels.sort((a, b) => (a.position || 0) - (b.position || 0));
-
-    // Build final positions array: other channels first, then target category channels
-    const allPositions: { id: string; position: number; categoryId: string | null }[] = [];
-
-    // Add other channels with their existing category and sequential positions
-    otherChannels.forEach((c, i) => {
-      allPositions.push({
-        id: c.id,
-        position: i,
-        categoryId: (c as any).category_id || null,
-      });
-    });
-
-    // Add target category channels with positions continuing from where we left off
     const startPos = otherChannels.length;
     newCategoryOrder.forEach((c, i) => {
       allPositions.push({
@@ -350,64 +288,108 @@ export function NavigationColumn() {
     });
 
     updateChannelPositions.mutate(allPositions);
-    handleChannelDragEnd();
   };
 
-  // Category drag and drop handlers
-  const handleCategoryDragStart = (e: React.DragEvent, categoryId: string) => {
-    e.dataTransfer.effectAllowed = 'move';
-    e.stopPropagation();
-    setDraggedCategoryId(categoryId);
-  };
+  const handleDndDragEnd = (event: DragEndEvent) => {
+    setActiveDrag(null);
+    const { active, over } = event;
+    if (!over) return;
 
-  const handleCategoryDragOver = (e: React.DragEvent, categoryId: string) => {
-    // Allow the event to propagate for channel drags
-    // Only handle category reordering when actually dragging a category
-    if (!draggedCategoryId) {
-      // For channel drags, we need to allow the default behavior to enable dropping
-      // The channel's own dragover handler will call preventDefault
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    // Category reordering
+    if (activeId.startsWith('category:')) {
+      const draggedCatId = activeId.slice('category:'.length);
+      let targetCatId: string | null = null;
+
+      if (overId.startsWith('category:')) {
+        targetCatId = overId.slice('category:'.length);
+      } else if (overId.startsWith('channel:')) {
+        const overChannel = channels.find((c) => c.id === overId.slice('channel:'.length));
+        targetCatId = ((overChannel as any)?.category_id ?? null) || null;
+      } else {
+        return;
+      }
+
+      if (!targetCatId || draggedCatId === targetCatId) return;
+      if (!canManageChannels) return;
+
+      // Reorder categories (same persistence as the previous HTML5 category drop)
+      const sortedCategories = [...categories].sort((a, b) => (a.position || 0) - (b.position || 0));
+      const fromIndex = sortedCategories.findIndex((c) => c.id === draggedCatId);
+      const toIndex = sortedCategories.findIndex((c) => c.id === targetCatId);
+      if (fromIndex === -1 || toIndex === -1) return;
+
+      const newOrder = arrayMove(sortedCategories, fromIndex, toIndex);
+      updateCategoryPositions.mutate(newOrder.map((c, i) => ({ id: c.id, position: i })));
       return;
     }
-    e.preventDefault();
-    if (draggedCategoryId !== categoryId) {
-      setDragOverCategoryIdForReorder(categoryId);
+
+    // Channel moving (within/between categories, or to end of a category)
+    if (activeId.startsWith('channel:')) {
+      const channelId = activeId.slice('channel:'.length);
+      let targetCatId: string | null;
+      let insertIndex: number;
+
+      if (overId.startsWith('channel:')) {
+        const overChannelId = overId.slice('channel:'.length);
+        if (overChannelId === channelId) return;
+
+        const overChannel = channels.find((c) => c.id === overChannelId);
+        targetCatId = ((overChannel as any)?.category_id ?? null) || null;
+
+        const categoryChannels = channels
+          .filter((c) => ((c as any).category_id ?? null) === targetCatId && c.id !== channelId)
+          .sort((a, b) => (a.position || 0) - (b.position || 0));
+        const overIndex = categoryChannels.findIndex((c) => c.id === overChannelId);
+        insertIndex = overIndex === -1 ? categoryChannels.length : overIndex;
+      } else if (overId.startsWith('zone:')) {
+        targetCatId = overId === 'zone:uncategorized' ? null : overId.slice('zone:'.length);
+        const categoryChannels = channels
+          .filter((c) => ((c as any).category_id ?? null) === targetCatId && c.id !== channelId)
+          .sort((a, b) => (a.position || 0) - (b.position || 0));
+        insertIndex = categoryChannels.length;
+      } else if (overId.startsWith('category:')) {
+        targetCatId = overId.slice('category:'.length);
+        const categoryChannels = channels
+          .filter((c) => ((c as any).category_id ?? null) === targetCatId && c.id !== channelId)
+          .sort((a, b) => (a.position || 0) - (b.position || 0));
+        insertIndex = categoryChannels.length;
+      } else {
+        return;
+      }
+
+      moveChannelToCategory(channelId, targetCatId, insertIndex);
     }
   };
 
-  const handleCategoryDragLeave = () => {
-    setDragOverCategoryIdForReorder(null);
-  };
+  // Sortable ids for the categories context
+  const categoryIds = useMemo(
+    () =>
+      categories
+        .slice()
+        .sort((a, b) => (a.position || 0) - (b.position || 0))
+        .map((c) => `category:${c.id}`),
+    [categories]
+  );
 
-  const handleCategoryDrop = (e: React.DragEvent, targetCategoryId: string) => {
-    // Only handle if we're dragging a category, not a channel
-    if (!draggedCategoryId) return;
-    e.preventDefault();
-    if (draggedCategoryId === targetCategoryId) {
-      handleChannelDragEnd();
-      return;
-    }
-
-    // Check if user has permission to manage channels
-    if (!canManageChannels) return;
-
-    // Reorder categories
-    const sortedCategories = [...categories].sort((a, b) => (a.position || 0) - (b.position || 0));
-    const draggedIndex = sortedCategories.findIndex(c => c.id === draggedCategoryId);
-    const targetIndex = sortedCategories.findIndex(c => c.id === targetCategoryId);
-
-    const newOrder = [...sortedCategories];
-    const [draggedItem] = newOrder.splice(draggedIndex, 1);
-    newOrder.splice(targetIndex, 0, draggedItem);
-
-    // Create positions array for API
-    const positions = newOrder.map((c, i) => ({
-      id: c.id,
-      position: i,
-    }));
-
-    updateCategoryPositions.mutate(positions);
-    handleChannelDragEnd();
-  };
+  // Uncategorized (no category) channel ids, sorted by position
+  const uncategorizedItems = useMemo(
+    () =>
+      channelItems
+        .filter((ch) => {
+          const channel = channelMap.get(ch.id);
+          return !(channel as any)?.category_id;
+        })
+        .slice()
+        .sort((a, b) => {
+          const chA = channelMap.get(a.id);
+          const chB = channelMap.get(b.id);
+          return (chA?.position || 0) - (chB?.position || 0);
+        }),
+    [channelItems, channelMap]
+  );
 
   // Server context menu
   const handleServerContextMenu = (e: React.MouseEvent, item: IconItem) => {
@@ -635,7 +617,7 @@ export function NavigationColumn() {
               className={cn(
                 'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left',
                 'transition-colors duration-100',
-                isHomePage ? 'bg-background-surface/80 text-foreground' : 'text-foreground hover:bg-background-surface hover:text-foreground'
+                isHomePage ? 'bg-background-hover text-foreground' : 'text-foreground-muted hover:bg-white/[0.04] hover:text-foreground'
               )}
             >
               <Users className="h-4 w-4" />
@@ -682,7 +664,7 @@ export function NavigationColumn() {
           <Dropdown
             trigger={
               <button
-                className="flex items-center justify-between w-full px-3 py-3 border-b border-border hover:bg-background-surface/50 transition-colors"
+                className="flex items-center justify-between w-full px-4 py-3 border-b border-border hover:bg-white/[0.04] transition-colors"
               >
                 <span className="font-semibold text-foreground truncate">
                   {currentServer?.name || 'Server'}
@@ -694,180 +676,118 @@ export function NavigationColumn() {
             align="start"
           />
 
-          {/* Channel List */}
-          <div className="flex-1 overflow-y-auto scrollbar-hide">
-            {/* Uncategorised channels (no categoryId) */}
-            {channelItems.filter(ch => {
-              const channel = channels.find(c => c.id === ch.id);
-              return !(channel as any)?.category_id;
-            }).length > 0 && (
-              <div className="py-1">
-                {channelItems
-                  .filter(ch => {
-                    const channel = channels.find(c => c.id === ch.id);
-                    return !(channel as any)?.category_id;
-                  })
-                  .sort((a, b) => {
-                    const chA = channels.find(c => c.id === a.id);
-                    const chB = channels.find(c => c.id === b.id);
-                    return (chA?.position || 0) - (chB?.position || 0);
-                  })
-                  .map((item) => {
-                    const voiceUsers = item.type === 'voice' ? getUsersInVoiceChannel(item.id) : [];
-                    const isActiveVoiceChannel = item.type === 'voice' && isInVoiceChannel(item.id);
+          {/* Channel List - dnd-kit context for touch/keyboard reordering */}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDndDragEnd}
+            onDragCancel={handleDragCancel}
+          >
+            <SortableContext items={categoryIds} strategy={rectSortingStrategy}>
+              <div className="flex-1 overflow-y-auto scrollbar-hide">
+                {/* Uncategorised channels (no categoryId) */}
+                {uncategorizedItems.length > 0 && (
+                  <div className="py-1">
+                    <SortableContext
+                      items={uncategorizedItems.map((item) => `channel:${item.id}`)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {uncategorizedItems.map((item) => {
+                        const voiceUsers = item.type === 'voice' ? getUsersInVoiceChannel(item.id) : [];
+                        const isActiveVoiceChannel = item.type === 'voice' && isInVoiceChannel(item.id);
+
+                        return (
+                          <SortableChannelItem
+                            key={item.id}
+                            channel={{ id: item.id, name: item.name, type: item.type }}
+                            isActive={item.id === activeChannelId}
+                            isDraggable={canManageChannels}
+                            onClick={() => handleChannelClick({ id: item.id, type: item.type })}
+                            onContextMenu={(e) => handleChannelContextMenu(e, { id: item.id, name: item.name })}
+                            voiceUsers={voiceUsers}
+                            isActiveVoiceChannel={isActiveVoiceChannel}
+                          />
+                        );
+                      })}
+                    </SortableContext>
+                    {/* Drop zone at end of uncategorized channels */}
+                    {canManageChannels && <ChannelDropZone id="zone:uncategorized" enabled />}
+                  </div>
+                )}
+
+                {/* Categories with their channels */}
+                {categories
+                  .sort((a, b) => (a.position || 0) - (b.position || 0))
+                  .map((category) => {
+                    const categoryChannels = channelItems.filter(ch => {
+                      const channel = channelMap.get(ch.id);
+                      return (channel as any)?.category_id === category.id;
+                    });
+
+                    // Sort channels by position
+                    const sortedChannels = categoryChannels
+                      .map(item => {
+                        const channel = channelMap.get(item.id);
+                        return { ...item, position: channel?.position || 0 };
+                      })
+                      .sort((a, b) => a.position - b.position);
+
+                    // Build voice users map for this category's channels
+                    const voiceUsersMap: Record<string, typeof voiceUsers> = {};
+                    sortedChannels.forEach(item => {
+                      if (item.type === 'voice') {
+                        voiceUsersMap[item.id] = getUsersInVoiceChannel(item.id);
+                      }
+                    });
 
                     return (
-                    <div
-                      key={item.id}
-                      draggable={canManageChannels}
-                      onDragStart={(e) => handleChannelDragStart(e, item.id)}
-                      onDragEnd={handleChannelDragEnd}
-                      onDragOver={(e) => handleChannelDragOver(e, item.id, undefined)}
-                      onDragLeave={handleChannelDragLeave}
-                      onDrop={(e) => handleChannelDrop(e, item.id, undefined)}
-                      className={cn(
-                        'relative mx-1',
-                        dragOverChannelId === item.id && dragOverPosition === 'before' && 'border-t-2 border-white',
-                        dragOverChannelId === item.id && dragOverPosition === 'after' && 'border-b-2 border-white'
-                      )}
-                    >
-                      <button
-                        onClick={() => handleChannelClick({ id: item.id, type: item.type })}
-                        onContextMenu={(e) => handleChannelContextMenu(e, { id: item.id, name: item.name })}
-                        className={cn(
-                          'flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left',
-                          'transition-colors duration-100',
-                          item.id === activeChannelId
-                            ? 'bg-background-surface/80 text-foreground'
-                            : 'text-foreground-muted hover:bg-background-surface hover:text-foreground',
-                          draggedChannelId === item.id && 'opacity-50',
-                          canManageChannels && 'cursor-grab',
-                          isActiveVoiceChannel && 'bg-success/20 text-success hover:bg-success/30'
-                        )}
-                      >
-                        {item.type === 'voice' ? (
-                          <Volume2 className="h-4 w-4" />
-                        ) : (
-                          <Hash className="h-4 w-4" />
-                        )}
-                        <span className="flex-1 truncate text-sm">{item.name}</span>
-                        {canManageChannels && (
-                          <GripVertical className="h-3 w-3 opacity-0 group-hover:opacity-50" />
-                        )}
-                      </button>
-                      {/* Show users in voice channel */}
-                      {item.type === 'voice' && voiceUsers.length > 0 && (
-                        <div className="ml-4 mr-2 mb-1 space-y-0.5">
-                          {voiceUsers.map((voiceUser) => (
-                            <div
-                              key={voiceUser.sessionId}
-                              className={cn(
-                                "flex items-center gap-1.5 rounded px-2 py-0.5 text-xs text-foreground-muted hover:text-foreground",
-                                voiceUser.isSpeaking && "text-success"
-                              )}
-                            >
-                              <div className={cn(
-                                "relative",
-                                voiceUser.isSpeaking && "ring-2 ring-success rounded-full"
-                              )}>
-                                <Avatar
-                                  src={voiceUser.avatar}
-                                  alt={voiceUser.username}
-                                  size="xs"
-                                  isMuted={voiceUser.selfMute || voiceUser.selfDeaf}
-                                />
-                              </div>
-                              <span className="truncate">{voiceUser.username}</span>
-                              {voiceUser.selfDeaf && <VolumeX className="h-3 w-3 text-error" />}
-                              {!voiceUser.selfDeaf && voiceUser.selfMute && <MicOff className="h-3 w-3 text-error" />}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
+                      <ChannelCategory
+                        key={category.id}
+                        name={category.name}
+                        channels={sortedChannels.map(item => ({
+                          id: item.id,
+                          name: item.name || '',
+                          type: (item.type === 'voice' ? 'voice' : 'text') as 'voice' | 'text',
+                        }))}
+                        activeChannelId={activeChannelId}
+                        onChannelClick={(channel) => handleChannelClick({ id: channel.id, type: channel.type as 'text' | 'voice' | undefined })}
+                        onChannelContextMenu={(e, channel) => handleChannelContextMenu(e, { id: channel.id, name: channel.name })}
+                        onAddClick={() => openModal('create-channel', { serverId, categoryId: category.id })}
+                        isCollapsed={collapsedCategories.has(category.id)}
+                        onToggleCollapse={() => toggleCategoryCollapse(category.id)}
+                        categoryId={category.id}
+                        voiceUsersByChannel={voiceUsersMap}
+                        activeVoiceChannelId={currentVoiceChannelId}
+                        isDraggable={canManageChannels}
+                        isCategoryDraggable={canManageChannels}
+                      />
+                    );
                   })}
-                {/* Drop zone at end of uncategorized channels */}
-                {draggedChannelId && (
-                  <div
-                    onDragOver={(e) => handleCategoryDropZoneDragOver(e, null)}
-                    onDrop={(e) => handleCategoryDropZoneDrop(e, null)}
-                    className={cn(
-                      'h-8 mx-1 rounded transition-colors',
-                      dragOverCategoryId === null && !dragOverChannelId && 'bg-background-surface/50 border-2 border-dashed border-foreground-subtle'
-                    )}
-                  />
-                )}
               </div>
-            )}
+            </SortableContext>
 
-            {/* Categories with their channels */}
-            {categories
-              .sort((a, b) => (a.position || 0) - (b.position || 0))
-              .map((category) => {
-                const categoryChannels = channelItems.filter(ch => {
-                  const channel = channels.find(c => c.id === ch.id);
-                  return (channel as any)?.category_id === category.id;
-                });
-
-                // Sort channels by position
-                const sortedChannels = categoryChannels
-                  .map(item => {
-                    const channel = channels.find(c => c.id === item.id);
-                    return { ...item, position: channel?.position || 0 };
-                  })
-                  .sort((a, b) => a.position - b.position);
-
-                // Build voice users map for this category's channels
-                const voiceUsersMap: Record<string, typeof voiceStore.users> = {};
-                sortedChannels.forEach(item => {
-                  if (item.type === 'voice') {
-                    voiceUsersMap[item.id] = getUsersInVoiceChannel(item.id);
-                  }
-                });
-
-                return (
-                  <ChannelCategory
-                    key={category.id}
-                    name={category.name}
-                    channels={sortedChannels.map(item => ({
-                      id: item.id,
-                      name: item.name || '',
-                      type: (item.type === 'voice' ? 'voice' : 'text') as 'voice' | 'text',
-                    }))}
-                    activeChannelId={activeChannelId}
-                    onChannelClick={(channel) => handleChannelClick({ id: channel.id, type: channel.type as 'text' | 'voice' | undefined })}
-                    onChannelContextMenu={(e, channel) => handleChannelContextMenu(e, { id: channel.id, name: channel.name })}
-                    onAddClick={() => openModal('create-channel', { serverId, categoryId: category.id })}
-                    isCollapsed={collapsedCategories.has(category.id)}
-                    onToggleCollapse={() => toggleCategoryCollapse(category.id)}
-                    isDraggable={canManageChannels}
-                    draggedChannelId={draggedChannelId}
-                    dragOverChannelId={dragOverChannelId}
-                    dragOverPosition={dragOverPosition}
-                    onChannelDragStart={handleChannelDragStart}
-                    onChannelDragEnd={handleChannelDragEnd}
-                    onChannelDragOver={handleChannelDragOver}
-                    onChannelDragLeave={handleChannelDragLeave}
-                    onChannelDrop={handleChannelDrop}
-                    categoryId={category.id}
-                    onDropZoneDragOver={handleCategoryDropZoneDragOver}
-                    onDropZoneDrop={handleCategoryDropZoneDrop}
-                    dragOverCategoryId={dragOverCategoryId}
-                    voiceUsersByChannel={voiceUsersMap}
-                    activeVoiceChannelId={voiceStore.currentChannelId}
-                    isCategoryDraggable={canManageChannels}
-                    isCategoryDragging={draggedCategoryId === category.id}
-                    isCategoryDragOver={dragOverCategoryIdForReorder === category.id}
-                    onCategoryDragStart={(e) => handleCategoryDragStart(e, category.id)}
-                    onCategoryDragEnd={handleChannelDragEnd}
-                    onCategoryDragOver={(e) => handleCategoryDragOver(e, category.id)}
-                    onCategoryDragLeave={handleCategoryDragLeave}
-                    onCategoryDrop={(e) => handleCategoryDrop(e, category.id)}
-                  />
-                );
-              })}
-          </div>
+            {/* Drag overlay */}
+            <DragOverlay>
+              {activeDrag && (
+                <div className="flex items-center gap-2 rounded px-2 py-1.5 bg-background-elevated shadow-lg border border-border w-56">
+                  {activeDrag.type === 'category' ? (
+                    <>
+                      <ChevronDown className="h-3 w-3 text-foreground-subtle" />
+                      <span className="text-xs font-semibold uppercase tracking-wide text-foreground truncate">
+                        {activeDrag.name}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <GripVertical className="h-4 w-4 text-foreground-subtle" />
+                      <span className="text-sm text-foreground truncate">{activeDrag.name}</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
         </div>
       );
     }
@@ -883,22 +803,51 @@ export function NavigationColumn() {
   return (
     <nav
       className={cn(
-        'flex w-[30%] min-w-[200px] max-w-[320px] flex-col',
-        'bg-background-elevated border-r border-border'
+        'flex w-[30%] min-w-[240px] max-w-[320px] flex-col',
+        'bg-list border-r border-border',
+        // Mobile/tablet (<lg): slide-over drawer at full width
+        'max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-50',
+        'max-lg:w-full max-lg:min-w-0 max-lg:max-w-none max-lg:shadow-xl',
+        'max-lg:transition-transform max-lg:duration-200',
+        isMobileNavOpen ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full'
       )}
     >
+      {/* Mobile backdrop — portaled to body: inside the nav, its transform would
+          become the backdrop's containing block and the scrim would never leave the drawer */}
+      {isMobileNavOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={() => setMobileNavOpen(false)}
+            aria-hidden="true"
+          />,
+          document.body
+        )}
+
+      {/* Mobile drawer close — the full-width drawer covers the scrim, so it needs its own control */}
+      {isMobileNavOpen && (
+        <button
+          onClick={() => setMobileNavOpen(false)}
+          className="absolute right-12 top-2.5 z-10 rounded p-2 text-foreground-muted transition-colors hover:bg-white/[0.04] hover:text-foreground lg:hidden"
+          aria-label="Close navigation"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      )}
+
       {/* Top section: Server list + Channel/DM list */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Server list - 1/4 width */}
-        <div className="flex w-[22%] min-w-[48px] flex-col items-center gap-2 overflow-y-auto bg-transparent py-2 scrollbar-hide border-r border-border">
+        {/* Server list - fixed 72px rail */}
+        <div className="flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-rail py-3 scrollbar-hide">
           {/* Home/DMs button */}
           <button
             onClick={handleHomeClick}
             className={cn(
-              'flex h-12 w-12 aspect-square items-center justify-center rounded-2xl',
-              'bg-background-surface text-foreground hover:bg-background-surface/80 hover:text-foreground',
-              'transition-all duration-200 hover:rounded-xl',
-              (isHomePage || isDMView) && 'bg-background-surface/80 text-foreground rounded-xl'
+              'flex h-12 w-12 aspect-square items-center justify-center',
+              'transition-all duration-200 rounded-full hover:rounded-[16px]',
+              (isHomePage || isDMView)
+                ? 'bg-accent text-white rounded-[16px]'
+                : 'bg-background-surface text-foreground-muted hover:bg-background-hover hover:text-foreground'
             )}
             aria-label="Home"
           >
@@ -906,7 +855,7 @@ export function NavigationColumn() {
           </button>
 
           {/* Separator */}
-          <div className="h-0.5 w-8  bg-white border border-border rounded-full" />
+          <div className="h-0.5 w-8 rounded-full bg-background-surface" />
 
           {/* Server list */}
           {serversLoading ? (
@@ -934,9 +883,9 @@ export function NavigationColumn() {
       </div>
 
       {/* Voice Panel - Show when connected to voice */}
-      {voiceStore.isConnected && voiceStore.currentChannelId && (
+      {isVoiceConnected && currentVoiceChannelId && (
         <VoicePanel
-          channel={channels.find(c => c.id === voiceStore.currentChannelId) as any}
+          channel={channelMap.get(currentVoiceChannelId) as any}
         />
       )}
 

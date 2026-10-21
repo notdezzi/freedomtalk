@@ -14,6 +14,7 @@ import { serverService } from '../../server/server.service';
 import { serverBanService } from '../../server/server-ban.service';
 import { permissionService } from '../../permission';
 import { dmChannelService } from '../../dm/dm-channel.service';
+import { dmPermissionService } from '../../dm/dm-permission.service';
 import { PERMISSION_FLAGS } from '@freedomtalk/shared';
 
 interface VoiceSession {
@@ -25,6 +26,18 @@ interface VoiceSession {
 
 // Store active voice sessions per socket
 const socketSessions = new Map<string, VoiceSession>();
+
+/**
+ * Shape of a socket event handler. Handlers may take a payload and/or an
+ * acknowledgment callback depending on the event.
+ */
+type VoiceEventHandler = (...args: any[]) => void | Promise<void>;
+
+/**
+ * Optional event wrapper (e.g. rate limiting) applied to every registered
+ * event except `disconnect`.
+ */
+type EventWrapper = (event: string, handler: VoiceEventHandler) => void;
 
 class VoiceHandler {
   private initialized = false;
@@ -39,14 +52,64 @@ class VoiceHandler {
   }
 
   /**
-   * Register voice event handlers for a socket
+   * Tear down a voice session: remove the mediasoup participant (which closes
+   * its transports), delete the voice state row, notify the channel/server
+   * rooms, leave the socket room and drop the session mapping. Best-effort —
+   * media/DB failures are logged, never thrown.
    */
-  registerHandlers(socket: Socket): void {
+  private async cleanupVoiceSession(socket: Socket, session: VoiceSession): Promise<void> {
+    try {
+      await mediasoupService.removeParticipant(session.channelId, session.sessionId);
+      await voiceStateService.deleteVoiceState(session.sessionId);
+
+      // Notify listeners exactly once (server room covers server-channel
+      // participants; dual delivery would duplicate UI entries)
+      if (session.serverId) {
+        socket.to(`server:${session.serverId}`).emit('voice:user_left', {
+          sessionId: session.sessionId,
+          channelId: session.channelId,
+        });
+      } else {
+        socket.to(`voice:${session.channelId}`).emit('voice:user_left', {
+          sessionId: session.sessionId,
+          channelId: session.channelId,
+        });
+        // For DM channels, check if the call has ended (no more participants)
+        const remainingStates = await voiceStateService.getChannelVoiceStates(session.channelId);
+        if (remainingStates.length === 0) {
+          const participantIds = await dmChannelService.getParticipantUserIds(session.channelId);
+          for (const participantId of participantIds) {
+            socket.to(`user:${participantId}`).emit('dm:call_ended', {
+              channelId: session.channelId,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      logger.error({ error }, 'Error cleaning up voice session');
+    }
+
+    socket.leave(`voice:${session.channelId}`);
+    socketSessions.delete(socket.id);
+  }
+
+  /**
+   * Register voice event handlers for a socket.
+   *
+   * @param socket - Socket instance
+   * @param wrapEvent - Optional wrapper applied to each event registration
+   *   (used by the WebSocket layer to rate limit events)
+   */
+  registerHandlers(socket: Socket, wrapEvent?: EventWrapper): void {
     const userId = socket.data.user?.id;
     if (!userId) return;
 
+    const on: EventWrapper = wrapEvent ?? ((event, handler) => {
+      socket.on(event, handler as (...args: any[]) => void);
+    });
+
     // Join voice channel
-    socket.on('voice:join', async (data: { channelId: string }, callback) => {
+    on('voice:join', async (data: { channelId: string }, callback: (response?: any) => void) => {
       try {
         const { channelId } = data;
 
@@ -85,6 +148,26 @@ class VoiceHandler {
           if (!isParticipant) {
             return callback?.({ success: false, error: 'You are not a participant of this DM channel' });
           }
+
+          // DM privacy/block check: don't ring participants who have blocked
+          // the caller or whose DM privacy level disallows contact from them
+          const recipientIds = await dmChannelService.getParticipantUserIds(channelId);
+          for (const recipientId of recipientIds) {
+            if (recipientId === userId) continue;
+            const canCall = await dmPermissionService.canSendDM(userId, recipientId);
+            if (!canCall) {
+              socket.emit('dm:call_error', { code: 'DM_BLOCKED', channelId });
+              return callback?.({ success: false, error: 'You cannot call this user' });
+            }
+          }
+        }
+
+        // Tear down any existing session for this socket before creating a
+        // new one (channel switch without an explicit voice:leave) so media
+        // transports and voice state rows don't leak
+        const existingSession = socketSessions.get(socket.id);
+        if (existingSession) {
+          await this.cleanupVoiceSession(socket, existingSession);
         }
 
         // Determine server ID (null for DM channels)
@@ -128,18 +211,14 @@ class VoiceHandler {
             selfDeaf: state.self_deaf,
             selfVideo: state.self_video,
             selfStream: state.self_stream,
+            suppress: state.suppress,
           }));
 
-        // Notify others in the channel with full user info
-        socket.to(`voice:${channelId}`).emit('voice:user_joined', {
-          userId,
-          sessionId,
-          channelId,
-          username: socket.data.user?.username || 'User',
-          avatar: socket.data.user?.avatar || null,
-        });
-
-        // Also broadcast to server room for UI updates (only for server channels)
+        // Notify listeners exactly once. Server-channel participants always
+        // sit in the server room (the web client joins it on every server
+        // page), so the server room is the single broadcast target — emitting
+        // to both `voice:` and `server:` rooms double-delivers to anyone in
+        // both (duplicate participants in the voice UI).
         if (serverId) {
           socket.to(`server:${serverId}`).emit('voice:user_joined', {
             userId,
@@ -149,7 +228,15 @@ class VoiceHandler {
             avatar: socket.data.user?.avatar || null,
           });
         } else {
-          // For DM channels, notify all participants of the call
+          // DM call: no server room exists, so notify the voice room directly
+          socket.to(`voice:${channelId}`).emit('voice:user_joined', {
+            userId,
+            sessionId,
+            channelId,
+            username: socket.data.user?.username || 'User',
+            avatar: socket.data.user?.avatar || null,
+          });
+          // Also notify all participants of the call
           // This allows the recipient to see the incoming call even if not in the voice channel
           const participantIds = await dmChannelService.getParticipantUserIds(channelId);
           for (const participantId of participantIds) {
@@ -183,46 +270,16 @@ class VoiceHandler {
     });
 
     // Leave voice channel
-    socket.on('voice:leave', async (callback) => {
+    on('voice:leave', async (callback: (response?: any) => void) => {
       try {
         const session = socketSessions.get(socket.id);
         if (!session) {
           return callback?.({ success: false, error: 'Not in a voice channel' });
         }
 
-        const { sessionId, channelId, serverId } = session;
+        const { sessionId, channelId } = session;
 
-        // Leave mediasoup room
-        await mediasoupService.removeParticipant(channelId, sessionId);
-
-        // Delete voice state
-        await voiceStateService.deleteVoiceState(sessionId);
-
-        // Leave socket room
-        socket.leave(`voice:${channelId}`);
-
-        // Notify others in voice channel
-        socket.to(`voice:${channelId}`).emit('voice:user_left', { sessionId, channelId });
-
-        // Also broadcast to server room for UI updates (only for server channels)
-        if (serverId) {
-          socket.to(`server:${serverId}`).emit('voice:user_left', { sessionId, channelId });
-        } else {
-          // For DM channels, check if the call has ended (no more participants)
-          const remainingStates = await voiceStateService.getChannelVoiceStates(channelId);
-          if (remainingStates.length === 0) {
-            // Call has ended, notify all participants
-            const participantIds = await dmChannelService.getParticipantUserIds(channelId);
-            for (const participantId of participantIds) {
-              socket.to(`user:${participantId}`).emit('dm:call_ended', {
-                channelId,
-              });
-            }
-          }
-        }
-
-        // Cleanup
-        socketSessions.delete(socket.id);
+        await this.cleanupVoiceSession(socket, session);
 
         callback?.({ success: true });
 
@@ -233,8 +290,37 @@ class VoiceHandler {
       }
     });
 
+    // Decline an incoming DM call. Unlike voice:leave this works for a
+    // callee who never joined, so the caller's ringing UI stops
+    // immediately instead of waiting out its 30s auto-dismiss.
+    on('dm:call_reject', async (data: { channelId?: string }) => {
+      try {
+        const channelId = data?.channelId;
+        if (!channelId || typeof channelId !== 'string') {
+          return;
+        }
+
+        // Only DM participants may reject a call in that channel
+        const isParticipant = await dmChannelService.isParticipant(channelId, userId);
+        if (!isParticipant) {
+          return;
+        }
+
+        const participantIds = await dmChannelService.getParticipantUserIds(channelId);
+        for (const participantId of participantIds) {
+          if (participantId === userId) continue;
+          socket.to(`user:${participantId}`).emit('dm:call_reject', {
+            channelId,
+            userId,
+          });
+        }
+      } catch (error: any) {
+        logger.error({ error, userId }, 'Error handling dm:call_reject');
+      }
+    });
+
     // Create WebRTC transport
-    socket.on('voice:create_transport', async (data: { direction: 'send' | 'recv' }, callback) => {
+    on('voice:create_transport', async (data: { direction: 'send' | 'recv' }, callback: (response?: any) => void) => {
       try {
         const session = socketSessions.get(socket.id);
         if (!session) {
@@ -255,7 +341,7 @@ class VoiceHandler {
     });
 
     // Connect WebRTC transport
-    socket.on('voice:connect_transport', async (data: { transportId: string; dtlsParameters: any }, callback) => {
+    on('voice:connect_transport', async (data: { transportId: string; dtlsParameters: any }, callback: (response?: any) => void) => {
       try {
         const session = socketSessions.get(socket.id);
         if (!session) {
@@ -277,7 +363,7 @@ class VoiceHandler {
     });
 
     // Produce media
-    socket.on('voice:produce', async (data: { kind: 'audio' | 'video'; rtpParameters: any; appData?: any }, callback) => {
+    on('voice:produce', async (data: { kind: 'audio' | 'video'; rtpParameters: any; appData?: any }, callback: (response?: any) => void) => {
       try {
         const session = socketSessions.get(socket.id);
         if (!session) {
@@ -300,22 +386,18 @@ class VoiceHandler {
             selfStream: isScreen,
           });
 
-          // Notify others in voice channel
-          socket.to(`voice:${session.channelId}`).emit('voice:user_state', {
+          // Notify listeners exactly once (server room covers server-channel
+          // participants; dual delivery would duplicate UI updates)
+          const statePayload = {
             sessionId: session.sessionId,
             channelId: session.channelId,
             selfVideo: !isScreen,
             selfStream: isScreen,
-          });
-
-          // Also broadcast to server room for UI updates (only for server channels)
+          };
           if (session.serverId) {
-            socket.to(`server:${session.serverId}`).emit('voice:user_state', {
-              sessionId: session.sessionId,
-              channelId: session.channelId,
-              selfVideo: !isScreen,
-              selfStream: isScreen,
-            });
+            socket.to(`server:${session.serverId}`).emit('voice:user_state', statePayload);
+          } else {
+            socket.to(`voice:${session.channelId}`).emit('voice:user_state', statePayload);
           }
         }
 
@@ -335,7 +417,7 @@ class VoiceHandler {
     });
 
     // Consume media
-    socket.on('voice:consume', async (data: { producerId: string; rtpCapabilities: any }, callback) => {
+    on('voice:consume', async (data: { producerId: string; rtpCapabilities: any }, callback: (response?: any) => void) => {
       try {
         const session = socketSessions.get(socket.id);
         if (!session) {
@@ -357,7 +439,7 @@ class VoiceHandler {
     });
 
     // Resume consumer
-    socket.on('voice:resume_consumer', async (data: { consumerId: string }, callback) => {
+    on('voice:resume_consumer', async (data: { consumerId: string }, callback: (response?: any) => void) => {
       try {
         const session = socketSessions.get(socket.id);
         if (!session) {
@@ -378,7 +460,7 @@ class VoiceHandler {
     });
 
     // Close producer
-    socket.on('voice:close_producer', async (data: { producerId: string }, callback) => {
+    on('voice:close_producer', async (data: { producerId: string }, callback: (response?: any) => void) => {
       try {
         const session = socketSessions.get(socket.id);
         if (!session) {
@@ -399,7 +481,7 @@ class VoiceHandler {
     });
 
     // Update voice state
-    socket.on('voice:state_update', async (data: { selfMute?: boolean; selfDeaf?: boolean }, callback) => {
+    on('voice:state_update', async (data: { selfMute?: boolean; selfDeaf?: boolean }, callback: (response?: any) => void) => {
       try {
         const session = socketSessions.get(socket.id);
         if (!session) {
@@ -408,20 +490,19 @@ class VoiceHandler {
 
         const updated = await voiceStateService.updateVoiceState(session.sessionId, data);
 
-        // Notify others in voice channel
-        socket.to(`voice:${session.channelId}`).emit('voice:user_state', {
+        // Notify listeners exactly once (include server-level suppress so
+        // clients can render the muted state; dual delivery would duplicate
+        // UI updates for anyone in both rooms)
+        const statePayload = {
           sessionId: session.sessionId,
           channelId: session.channelId,
           ...data,
-        });
-
-        // Also broadcast to server room for UI updates (only for server channels)
+          suppress: updated.suppress,
+        };
         if (session.serverId) {
-          socket.to(`server:${session.serverId}`).emit('voice:user_state', {
-            sessionId: session.sessionId,
-            channelId: session.channelId,
-            ...data,
-          });
+          socket.to(`server:${session.serverId}`).emit('voice:user_state', statePayload);
+        } else {
+          socket.to(`voice:${session.channelId}`).emit('voice:user_state', statePayload);
         }
 
         callback?.({ success: true, data: updated });
@@ -432,41 +513,26 @@ class VoiceHandler {
     });
 
     // Speaking indicator
-    socket.on('voice:speaking', async (data: { speaking: boolean }) => {
+    on('voice:speaking', async (data: { speaking: boolean }) => {
       const session = socketSessions.get(socket.id);
       if (!session) return;
 
-      socket.to(`voice:${session.channelId}`).emit('voice:user_speaking', {
+      const speakingPayload = {
         sessionId: session.sessionId,
         speaking: data.speaking,
-      });
+      };
+      if (session.serverId) {
+        socket.to(`server:${session.serverId}`).emit('voice:user_speaking', speakingPayload);
+      } else {
+        socket.to(`voice:${session.channelId}`).emit('voice:user_speaking', speakingPayload);
+      }
     });
 
-    // Handle disconnect
+    // Handle disconnect (never rate limited)
     socket.on('disconnect', async () => {
       const session = socketSessions.get(socket.id);
       if (session) {
-        try {
-          await mediasoupService.removeParticipant(session.channelId, session.sessionId);
-          await voiceStateService.deleteVoiceState(session.sessionId);
-
-          // Notify others in voice channel
-          socket.to(`voice:${session.channelId}`).emit('voice:user_left', {
-            sessionId: session.sessionId,
-            channelId: session.channelId,
-          });
-
-          // Also broadcast to server room for UI updates (only for server channels)
-          if (session.serverId) {
-            socket.to(`server:${session.serverId}`).emit('voice:user_left', {
-              sessionId: session.sessionId,
-              channelId: session.channelId,
-            });
-          }
-        } catch (error) {
-          logger.error({ error }, 'Error cleaning up voice session on disconnect');
-        }
-        socketSessions.delete(socket.id);
+        await this.cleanupVoiceSession(socket, session);
       }
     });
   }

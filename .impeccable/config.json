@@ -1,0 +1,10 @@
+{
+  "detector": {
+    "ignoreRules": [
+      "side-tab",
+      "bounce-easing"
+    ],
+    "ignoreFiles": [],
+    "ignoreValues": []
+  }
+}

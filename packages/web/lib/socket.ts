@@ -12,6 +12,13 @@ const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
 class SocketService {
   private socket: Socket | null = null;
   private reconnectTimeout: NodeJS.Timeout | null = null;
+  // True between connect() and the socket's connect/disconnect event.
+  // Guards against churning socket instances: useSocket() is mounted by
+  // several components, and each mount calls connect() — without this
+  // guard every call discarded the in-flight socket and created another,
+  // orphaning holders of the previous instance (VoiceClient emits then
+  // vanish without an ack).
+  private connecting = false;
   private listenersSetup: boolean = false;
   private presenceInterval: NodeJS.Timeout | null = null;
   private readonly PRESENCE_INTERVAL_MS = 20000; // Send ping every 20 seconds (before 30s TTL expires)
@@ -22,7 +29,7 @@ class SocketService {
   connect(): void {
     // Check if already connected or connecting
     if (this.socket) {
-      if (this.socket.connected) {
+      if (this.socket.connected || this.connecting) {
         return;
       }
       this.socket.disconnect();
@@ -36,6 +43,7 @@ class SocketService {
     }
 
     useSocketStore.getState().setStatus('connecting');
+    this.connecting = true;
 
     this.socket = io(WS_URL, {
       auth: { token },
@@ -56,6 +64,7 @@ class SocketService {
    */
   disconnect(): void {
     this.stopPresenceRefresh();
+    this.connecting = false;
 
     if (this.socket) {
       this.socket.disconnect();
@@ -103,6 +112,7 @@ class SocketService {
     // Connection events
     this.socket.on('connect', () => {
       console.log('[Socket] Connected');
+      this.connecting = false;
       useSocketStore.getState().setStatus('connected');
       // Start presence refresh interval
       this.startPresenceRefresh();
@@ -110,6 +120,7 @@ class SocketService {
 
     this.socket.on('disconnect', (reason) => {
       console.log('[Socket] Disconnected:', reason);
+      this.connecting = false;
       useSocketStore.getState().setStatus('disconnected');
       this.listenersSetup = false;
       // Stop presence refresh interval

@@ -13,6 +13,7 @@ import { channelService } from '../../services/channel/channel.service';
 import { serverService } from '../../services/server/server.service';
 import { roleService } from '../../services/server/role.service';
 import { PERMISSION_FLAGS, PermissionOverwriteType } from '@freedomtalk/shared';
+import { logger } from '../../config/logger';
 
 // Validation schemas
 const overwriteSchema = z.object({
@@ -56,7 +57,6 @@ export default async function permissionRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
     },
@@ -108,7 +108,6 @@ export default async function permissionRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
       preHandler: validateBody(overwriteSchema),
@@ -243,7 +242,6 @@ export default async function permissionRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
     },
@@ -306,7 +304,7 @@ export default async function permissionRoutes(app: FastifyInstance) {
         serverId
       );
 
-      console.log('Permission breakdown:', JSON.stringify(breakdown, null, 2));
+      logger.info({ breakdown }, 'Permission breakdown');
       return reply.send(successResponse(breakdown));
     }
   );
@@ -341,7 +339,6 @@ export default async function permissionRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
       preHandler: validateBody(permissionCheckSchema),

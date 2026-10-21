@@ -115,6 +115,9 @@ export async function handleDisconnect(socket: Socket): Promise<void> {
 
     logger.info({ socketId: socket.id, userId: user.id }, 'WebSocket disconnection');
 
+    // Release the per-IP rate-limit slot this connection held
+    connectionValidator.releaseIPSlot(socket).catch(() => undefined);
+
     // Leave user's personal room
     socket.leave(`user:${user.id}`);
 

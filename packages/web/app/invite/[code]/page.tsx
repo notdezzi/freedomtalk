@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Loader2, Users, Wifi, Hash, User, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useServers, useJoinServer } from '@/features/servers';
@@ -151,8 +152,8 @@ export default function InvitePage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="bg-background-elevated rounded-xl p-6 max-w-md w-full text-center">
-          <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-red-500" />
+          <div className="w-16 h-16 rounded-full bg-error/20 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-error" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Invalid Invite</h1>
           <p className="text-foreground-muted mb-6">{error}</p>
@@ -174,12 +175,15 @@ export default function InvitePage() {
         {preview?.server && (
           <>
             {/* Banner / Icon */}
-            <div className="relative -m-6 mb-6 h-32 bg-gradient-to-br from-blue-600/30 to-purple-600/30 rounded-t-xl flex items-center justify-center">
-              <div className="w-24 h-24 rounded-2xl bg-background-surface shadow-xl flex items-center justify-center overflow-hidden border-4 border-background">
+            <div className="relative -m-6 mb-6 h-32 bg-accent/20 rounded-t-2xl flex items-center justify-center">
+              <div className="w-24 h-24 rounded-2xl bg-background-surface flex items-center justify-center overflow-hidden border-4 border-background">
                 {preview.server.icon ? (
-                  <img
+                  <Image
                     src={preview.server.icon}
                     alt={preview.server.name}
+                    width={96}
+                    height={96}
+                    loading="lazy"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -199,7 +203,7 @@ export default function InvitePage() {
                   <span>{preview.server.memberCount.toLocaleString()} Members</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Wifi className="w-4 h-4 text-green-500" />
+                  <Wifi className="w-4 h-4 text-success" />
                   <span>{(preview.server.onlineCount ?? 0).toLocaleString()} Online</span>
                 </div>
               </div>
@@ -227,7 +231,7 @@ export default function InvitePage() {
 
             {/* Error message */}
             {error && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2 mb-4">
+              <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-error text-sm flex items-center gap-2 mb-4">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 {error}
               </div>

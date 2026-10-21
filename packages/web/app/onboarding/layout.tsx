@@ -4,10 +4,10 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { BrandLockup } from '@/components/brand/brand';
 
 export default function OnboardingLayout({
-  children,
-}: {
+  children }: {
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -39,12 +39,7 @@ export default function OnboardingLayout({
       {/* Header */}
       <header className="p-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-secondary flex items-center justify-center">
-            <MessageCircle className="w-4 h-4 text-background" />
-          </div>
-          <span className="text-lg font-bold">
-            Freedom<span className="gradient-text">Talk</span>
-          </span>
+          <BrandLockup size={32} wordmarkClassName="text-lg" />
         </div>
       </header>
 

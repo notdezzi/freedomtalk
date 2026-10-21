@@ -11,6 +11,7 @@ import crypto from 'crypto';
 import { db } from '../../config/database';
 import { logger } from '../../config/logger';
 import { passwordService } from './password.service';
+import { getRedisClient } from '../../config/redis';
 
 /**
  * MFA setup result
@@ -27,7 +28,8 @@ export interface MFASetupResult {
 class MFAService {
   private readonly APP_NAME = 'FreedomTalk';
   private readonly BACKUP_CODE_COUNT = 10;
-  private readonly BACKUP_CODE_LENGTH = 8;
+  // 16 hex chars = 64 bits of entropy... doubled: 32 hex chars = 128 bits.
+  private readonly BACKUP_CODE_BYTES = 16;
 
   /**
    * Generate MFA secret for user
@@ -135,7 +137,7 @@ class MFAService {
     try {
       // Get user's MFA secret
       const user = await db('users').where({ id: userId }).first();
-      
+
       if (!user || !user.mfa_enabled || !user.mfa_secret) {
         logger.error({ userId }, 'MFA not enabled for user');
         return false;
@@ -149,13 +151,26 @@ class MFAService {
         window: 1, // ±1 window tolerance (±30 seconds)
       });
 
-      if (verified) {
-        logger.info({ userId }, 'TOTP verified successfully');
-      } else {
+      if (!verified) {
         logger.warn({ userId }, 'Invalid TOTP token');
+        return false;
       }
 
-      return verified;
+      // Replay prevention: a captured code must not verify twice within its
+      // validity window. Track the used timestep in Redis with a TTL longer
+      // than the ±1 step window (~90s).
+      const step = Math.floor(Date.now() / 30000);
+      const redis = await getRedisClient();
+      const key = `mfa-totp-used:${userId}:${step}`;
+      const set = await redis.set(key, '1', { NX: true });
+      if (!set) {
+        logger.warn({ userId }, 'TOTP token replay detected');
+        return false;
+      }
+      await redis.expire(key, 120);
+
+      logger.info({ userId }, 'TOTP verified successfully');
+      return true;
     } catch (error) {
       logger.error({ error, userId }, 'Error verifying TOTP');
       return false;
@@ -292,11 +307,10 @@ class MFAService {
     const codes: string[] = [];
 
     for (let i = 0; i < this.BACKUP_CODE_COUNT; i++) {
-      // Generate random alphanumeric code
+      // 16 random bytes -> 32 hex chars = 128 bits of entropy
       const code = crypto
-        .randomBytes(this.BACKUP_CODE_LENGTH)
+        .randomBytes(this.BACKUP_CODE_BYTES)
         .toString('hex')
-        .substring(0, this.BACKUP_CODE_LENGTH)
         .toUpperCase();
 
       codes.push(code);

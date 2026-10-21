@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { useState, useRef, useEffect, useId, cloneElement, isValidElement, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +21,7 @@ export function Tooltip({
   const [coords, setCoords] = useState({ x: 0, y: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const tooltipId = useId();
 
   const showTooltip = () => {
     timeoutRef.current = setTimeout(() => {
@@ -73,6 +74,17 @@ export function Tooltip({
     right: '-translate-y-1/2',
   };
 
+  // Associate the tooltip with the trigger element for screen readers
+  const describedBy = isValidElement<{ 'aria-describedby'?: string }>(children)
+    ? [children.props['aria-describedby'], tooltipId].filter(Boolean).join(' ')
+    : undefined;
+
+  const trigger = isValidElement(children)
+    ? cloneElement(children as React.ReactElement<{ 'aria-describedby'?: string }>, {
+        'aria-describedby': describedBy,
+      })
+    : children;
+
   return (
     <>
       <div
@@ -83,15 +95,16 @@ export function Tooltip({
         onBlur={hideTooltip}
         className="inline-block"
       >
-        {children}
+        {trigger}
       </div>
 
       {visible &&
         createPortal(
           <div
+            id={tooltipId}
             role="tooltip"
             className={cn(
-              'fixed z-50 px-2.5 py-1.5 text-xs font-medium text-foreground bg-background-elevated border border-border rounded-lg shadow-xl',
+              'fixed z-50 px-2.5 py-1.5 text-xs font-medium text-foreground bg-field border border-border rounded-lg shadow-md',
               'pointer-events-none animate-in fade-in-0 zoom-in-95',
               positionClasses[position],
               className

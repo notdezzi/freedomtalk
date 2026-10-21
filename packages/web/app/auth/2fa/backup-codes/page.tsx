@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { MessageCircle, ArrowLeft, Key, Copy, Check, Download, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Key, Copy, Check, Download, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { BrandLockup } from '@/components/brand/brand';
 
 export default function BackupCodesPage() {
   const router = useRouter();
@@ -91,17 +92,12 @@ ${backupCodes.join('\n')}`;
 
       {/* Logo */}
       <div className="flex items-center gap-2 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-secondary flex items-center justify-center">
-          <MessageCircle className="w-5 h-5 text-background" />
-        </div>
-        <span className="text-xl font-bold">
-          Freedom<span className="gradient-text">Talk</span>
-        </span>
+        <BrandLockup size={40} wordmarkClassName="text-xl" />
       </div>
 
       {/* Header */}
       <div className="mb-8">
-        <div className="w-12 h-12 rounded-xl bg-secondary-muted flex items-center justify-center mb-4">
+        <div className="w-12 h-12 rounded-xl bg-background-surface flex items-center justify-center mb-4">
           <Key className="w-6 h-6 text-secondary" />
         </div>
         <h1 className="text-2xl font-bold mb-2">Your Backup Codes</h1>

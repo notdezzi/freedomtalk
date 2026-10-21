@@ -23,15 +23,15 @@ export interface VoicePanelProps {
 }
 
 export function VoicePanel({ channel, className }: VoicePanelProps) {
-  const {
-    isConnected,
-    currentChannelId,
-    users,
-    selfMute,
-    selfDeaf,
-    selfVideo,
-    selfStream,
-  } = useVoiceStore();
+  // Narrow slices: speaking flags and stream churn must not re-render more
+  // than the panel needs
+  const isConnected = useVoiceStore((s) => s.isConnected);
+  const currentChannelId = useVoiceStore((s) => s.currentChannelId);
+  const users = useVoiceStore((s) => s.users);
+  const selfMute = useVoiceStore((s) => s.selfMute);
+  const selfDeaf = useVoiceStore((s) => s.selfDeaf);
+  const selfVideo = useVoiceStore((s) => s.selfVideo);
+  const selfStream = useVoiceStore((s) => s.selfStream);
 
   const {
     toggleMute,
@@ -50,10 +50,9 @@ export function VoicePanel({ channel, className }: VoicePanelProps) {
   return (
     <div
       className={cn(
-        'flex flex-col border-t border-border bg-background-elevated',
+        'flex flex-col border-t border-border bg-rail',
         className
       )}
-      style={{ backgroundColor: '#1e1f22' }}
     >
       {/* Channel info */}
       <div className="flex items-center justify-between px-3 py-2">
@@ -108,6 +107,7 @@ export function VoicePanel({ channel, className }: VoicePanelProps) {
           activeColor="red"
           onClick={leaveChannel}
           title="Disconnect"
+          isToggle={false}
         />
       </div>
     </div>
@@ -143,23 +143,27 @@ function VoiceControlButton({
   activeColor,
   onClick,
   title,
+  isToggle = true,
 }: {
   icon: React.ReactNode;
   active: boolean;
   activeColor: 'green' | 'red';
   onClick: () => void;
   title: string;
+  isToggle?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
+      aria-label={title}
+      aria-pressed={isToggle ? active : undefined}
       className={cn(
         'rounded-full p-2 transition-colors',
         active
           ? activeColor === 'green'
-            ? 'bg-success text-foreground hover:bg-success/80'
-            : 'bg-error text-foreground hover:bg-error/80'
-          : 'bg-background-elevated text-foreground hover:bg-background-surface hover:text-foreground'
+            ? 'bg-success text-white hover:bg-success/80'
+            : 'bg-error text-white hover:bg-error/80'
+          : 'bg-background-surface text-foreground hover:bg-background-hover hover:text-foreground'
       )}
       title={title}
     >

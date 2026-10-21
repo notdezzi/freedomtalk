@@ -1,0 +1,65 @@
+# API + worker image (npm workspaces monorepo build).
+# Same image serves both processes: the API server (default) and the
+# background worker pipeline, selected via `command` in compose.
+
+FROM node:20-alpine AS build
+WORKDIR /app
+
+# mediasoup compiles its worker from source when the prebuilt download
+# fails (common behind restricted egress) — needs python3/meson toolchain
+# and kernel headers for its liburing dependency
+RUN apk add --no-cache python3 py3-pip make g++ linux-headers
+
+# Install all workspaces (dev deps needed for the TypeScript build)
+COPY package.json package-lock.json tsconfig.json ./
+COPY scripts ./scripts
+COPY packages/shared/package.json packages/shared/
+COPY packages/api/package.json packages/api/
+# Retry: esbuild's postinstall can hit ETXTBSY on overlayfs (flaky)
+RUN npm ci || (sleep 5 && npm ci)
+
+# Build shared first (api imports @freedomtalk/shared), then api.
+# Create the workspace symlink explicitly: npm ci with a partial
+# workspace set does not reliably link @freedomtalk/shared.
+COPY packages/shared packages/shared
+COPY packages/api packages/api
+# Build shared first (api imports @freedomtalk/shared), then api.
+# Reset incremental state before compiling: composite/incremental tsc trusts
+# a leaked host tsconfig.tsbuildinfo and skips emission ("up to date"),
+# leaving a corrupt dist. Belt-and-suspenders for the .dockerignore rule.
+# The explicit symlink replaces the workspace link npm ci doesn't reliably
+# create with a partial workspace set; test -f guards the postcondition.
+RUN cd packages/shared \
+  && rm -rf dist tsconfig.tsbuildinfo \
+  && /app/node_modules/.bin/tsc \
+  && node /app/scripts/fix-esm-ext.mjs dist \
+  && test -f dist/index.js \
+  && rm -rf /app/node_modules/@freedomtalk/shared \
+  && mkdir -p /app/node_modules/@freedomtalk \
+  && ln -s /app/packages/shared /app/node_modules/@freedomtalk/shared \
+  && cd ../api \
+  && rm -rf dist tsconfig.tsbuildinfo \
+  && /app/node_modules/.bin/tsc \
+  && node /app/scripts/fix-esm-ext.mjs dist
+
+# Prune to production dependencies for the runtime layer
+RUN npm prune --omit=dev
+
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist
+COPY --from=build /app/packages/shared/package.json ./packages/shared/package.json
+COPY --from=build /app/packages/api/dist ./packages/api/dist
+COPY --from=build /app/packages/api/package.json ./packages/api/package.json
+
+WORKDIR /app/packages/api
+EXPOSE 3000
+
+# Healthcheck the liveness endpoint (readiness is dependency-aware: /ready)
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
+  CMD wget -qO- http://127.0.0.1:3000/health || exit 1
+
+CMD ["node", "dist/index.js"]

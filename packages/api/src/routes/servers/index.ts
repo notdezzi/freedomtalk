@@ -15,6 +15,7 @@ import { serverMemberService } from '../../services/server/server-member.service
 import { serverBanService } from '../../services/server/server-ban.service';
 import { inviteService } from '../../services/server/invite.service';
 import { VALIDATION, PERMISSION_FLAGS } from '@freedomtalk/shared';
+import { logger } from '../../config/logger';
 
 // Validation schemas
 const createServerSchema = z.object({
@@ -205,7 +206,6 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
       preHandler: validateBody(serverPositionsSchema),
@@ -238,7 +238,6 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
     },
@@ -246,15 +245,17 @@ export default async function serverRoutes(app: FastifyInstance) {
       const { serverId } = request.params;
       const userId = request.user!.id;
 
+      // Check if the server exists first so deleted/unknown servers return
+      // 404 regardless of the caller's membership
+      const server = await serverService.getServer(serverId);
+      if (!server) {
+        return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Server not found' } });
+      }
+
       // Check if user is a member
       const isMember = await serverService.isMember(serverId, userId);
       if (!isMember) {
         return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'Not a member of this server' } });
-      }
-
-      const server = await serverService.getServer(serverId);
-      if (!server) {
-        return reply.code(404).send({ success: false, error: { code: 'NOT_FOUND', message: 'Server not found' } });
       }
 
       // Transform snake_case to camelCase for frontend
@@ -307,7 +308,6 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
       onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_SERVER)],
@@ -376,7 +376,6 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
       onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_SERVER)],
@@ -435,7 +434,6 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
       onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_SERVER)],
@@ -523,6 +521,8 @@ export default async function serverRoutes(app: FastifyInstance) {
   /**
    * GET /api/v1/servers/:serverId/vanity
    * Check vanity URL availability for a server
+   * Requires MANAGE_SERVER — the vanity code is a server-management setting,
+   * not public data.
    */
   app.get(
     '/:serverId/vanity',
@@ -539,7 +539,7 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
       },
-      onRequest: [requireAuth],
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_SERVER)],
     },
     async (request, reply) => {
       const { serverId } = request.params as { serverId: string };
@@ -561,6 +561,7 @@ export default async function serverRoutes(app: FastifyInstance) {
   /**
    * POST /api/v1/servers/:serverId/vanity/check
    * Check if a vanity URL code is available
+   * Requires MANAGE_SERVER (see GET vanity).
    */
   app.post(
     '/:serverId/vanity/check',
@@ -584,7 +585,7 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
       },
-      onRequest: [requireAuth],
+      onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_SERVER)],
     },
     async (request, reply) => {
       const { serverId } = request.params as { serverId: string };
@@ -622,7 +623,12 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
+        },
+      },
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: '1 minute',
         },
       },
       preHandler: validateBody(joinServerSchema),
@@ -631,15 +637,22 @@ export default async function serverRoutes(app: FastifyInstance) {
       const userId = request.user!.id;
       const { inviteCode } = request.body;
 
-      // Use invite
+      // Use invite (atomic max-uses increment)
       const invite = await inviteService.useInvite(inviteCode, userId);
 
-      // Add member
-      const member = await serverMemberService.addMember({
-        serverId: invite.server_id,
-        userId,
-        pending: invite.temporary,
-      });
+      // Add member; if the join is rejected (banned/full/already-member)
+      // give the consumed use back so failures don't burn invite uses.
+      let member;
+      try {
+        member = await serverMemberService.addMember({
+          serverId: invite.server_id,
+          userId,
+          pending: invite.temporary,
+        });
+      } catch (error) {
+        await inviteService.releaseInvite(inviteCode);
+        throw error;
+      }
 
       return reply.send(successResponse({ server: invite.server, member }));
     }
@@ -664,7 +677,6 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
     },
@@ -845,7 +857,6 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
     },
@@ -898,7 +909,6 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
       preHandler: validateBody(updateMemberSchema),
@@ -1010,7 +1020,7 @@ export default async function serverRoutes(app: FastifyInstance) {
       const { serverId, userId } = request.params as { serverId: string; userId: string };
       const { roleIds } = request.body as z.infer<typeof memberRolesSchema>;
 
-      await serverMemberService.setRoles(serverId, userId, roleIds);
+      await serverMemberService.setRoles(serverId, userId, roleIds, request.user!.id);
       return reply.code(204).send();
     }
   );
@@ -1045,7 +1055,6 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
       onRequest: [requireServerPermission(PERMISSION_FLAGS.BAN_MEMBERS)],
@@ -1090,7 +1099,6 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
       onRequest: [requireServerPermission(PERMISSION_FLAGS.BAN_MEMBERS)],
@@ -1363,7 +1371,7 @@ export default async function serverRoutes(app: FastifyInstance) {
 
       const { roleService } = await import('../../services/server/role.service');
       const roles = await roleService.getServerRoles(serverId);
-      console.log('GET roles - raw roles from DB:', roles);
+      logger.info({ roles }, 'GET roles - raw roles from DB');
 
       // Transform snake_case to camelCase for frontend
       const transformedRoles = roles.map(role => ({
@@ -1376,10 +1384,10 @@ export default async function serverRoutes(app: FastifyInstance) {
         hoist: role.hoist,
         mentionable: role.mentionable,
       }));
-      console.log('GET roles - transformed roles:', transformedRoles);
+      logger.info({ transformedRoles }, 'GET roles - transformed roles');
 
       const response = successResponse(transformedRoles);
-      console.log('GET roles - response:', JSON.stringify(response, null, 2));
+      logger.info({ response }, 'GET roles - response');
 
       return reply.send(response);
     }
@@ -1405,7 +1413,6 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
     },
@@ -1478,7 +1485,6 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          201: { type: 'object' },
         },
       },
       onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_ROLES)],
@@ -1555,13 +1561,12 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
       onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_ROLES)],
     },
     async (request, reply) => {
-      const { roleId } = request.params as { serverId: string; roleId: string };
+      const { serverId, roleId } = request.params as { serverId: string; roleId: string };
       const body = request.body as {
         name?: string;
         allowPermissions?: string;
@@ -1573,15 +1578,19 @@ export default async function serverRoutes(app: FastifyInstance) {
       };
 
       const { roleService } = await import('../../services/server/role.service');
-      const role = await roleService.updateRole(roleId, {
-        name: body.name,
-        allowPermissions: body.allowPermissions ? BigInt(body.allowPermissions) : undefined,
-        denyPermissions: body.denyPermissions ? BigInt(body.denyPermissions) : undefined,
-        color: body.color,
-        hoist: body.hoist,
-        icon: body.icon,
-        mentionable: body.mentionable,
-      });
+      const role = await roleService.updateRole(
+        roleId,
+        {
+          name: body.name,
+          allowPermissions: body.allowPermissions ? BigInt(body.allowPermissions) : undefined,
+          denyPermissions: body.denyPermissions ? BigInt(body.denyPermissions) : undefined,
+          color: body.color,
+          hoist: body.hoist,
+          icon: body.icon,
+          mentionable: body.mentionable,
+        },
+        { serverId, userId: request.user!.id }
+      );
 
       // Transform to camelCase for frontend
       const transformedRole = {
@@ -1625,10 +1634,10 @@ export default async function serverRoutes(app: FastifyInstance) {
       onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_ROLES)],
     },
     async (request, reply) => {
-      const { roleId } = request.params as { serverId: string; roleId: string };
+      const { serverId, roleId } = request.params as { serverId: string; roleId: string };
 
       const { roleService } = await import('../../services/server/role.service');
-      await roleService.deleteRole(roleId);
+      await roleService.deleteRole(roleId, { serverId, userId: request.user!.id });
       return reply.code(204).send();
     }
   );
@@ -1669,7 +1678,6 @@ export default async function serverRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
       onRequest: [requireServerPermission(PERMISSION_FLAGS.MANAGE_ROLES)],

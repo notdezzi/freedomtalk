@@ -130,7 +130,7 @@ export function CreateChannelModal({ serverId, onClose }: CreateChannelModalProp
               placeholder={type === 'text' ? 'new-channel' : 'General'}
               className={cn(
                 'w-full bg-background-surface text-foreground rounded pl-8 pr-3 py-2 border',
-                error ? 'border-red-500' : 'border-border'
+                error ? 'border-error' : 'border-border'
               )}
             />
           </div>

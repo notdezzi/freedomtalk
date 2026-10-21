@@ -11,9 +11,12 @@ import { requireAuth } from '../../middleware/auth.middleware';
 import { validateBody } from '../../middleware/validation.middleware';
 import { successResponse } from '../../utils/errors';
 import { voiceStateService } from '../../services/voice/voice-state.service';
+import { mediasoupService } from '../../services/voice/mediasoup.service';
 import { channelService } from '../../services/channel/channel.service';
 import { serverService } from '../../services/server/server.service';
 import { roleService } from '../../services/server/role.service';
+import { permissionService } from '../../services/permission';
+import { wsServer } from '../../services/websocket/websocket.server';
 import { PERMISSION_FLAGS, Permissions } from '@freedomtalk/shared';
 
 // Validation schemas
@@ -39,6 +42,16 @@ async function checkServerPermission(
 
   const permissions = await roleService.calculateMemberPermissions(serverId, userId);
   return Permissions.has(permissions, permission);
+}
+
+// Best-effort WebSocket broadcast helper (no-op if the socket server is down)
+function broadcastVoiceEvent(room: string, event: string, payload: unknown): void {
+  if (!wsServer.isInitialized()) return;
+  try {
+    wsServer.getIO().to(room).emit(event, payload);
+  } catch (error) {
+    // Broadcasting is best-effort; never fail the REST operation for it
+  }
 }
 
 export default async function voiceRoutes(app: FastifyInstance) {
@@ -68,7 +81,6 @@ export default async function voiceRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
     },
@@ -159,7 +171,6 @@ export default async function voiceRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
     },
@@ -260,7 +271,6 @@ export default async function voiceRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
     },
@@ -322,7 +332,6 @@ export default async function voiceRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
       preHandler: validateBody(updateStateSchema),
@@ -373,7 +382,6 @@ export default async function voiceRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
       preHandler: validateBody(moveUserSchema),
@@ -409,7 +417,43 @@ export default async function voiceRoutes(app: FastifyInstance) {
         return reply.code(400).send({ success: false, error: { code: 'INVALID_CHANNEL_TYPE', message: 'Target channel must be a voice channel' } });
       }
 
+      // The moved user must have CONNECT permission on the destination channel
+      const targetHasConnect = await permissionService.hasChannelPermission(
+        state.user_id,
+        targetChannelId,
+        PERMISSION_FLAGS.CONNECT
+      );
+      if (!targetHasConnect) {
+        return reply.code(403).send({ success: false, error: { code: 'FORBIDDEN', message: 'Target user does not have permission to connect to that channel' } });
+      }
+
       const updated = await voiceStateService.moveUser(sessionId, targetChannelId);
+
+      // Tell the moved user's client to switch to the new channel
+      broadcastVoiceEvent(`user:${state.user_id}`, 'voice:move', {
+        sessionId,
+        channelId: targetChannelId,
+        serverId: targetChannel.server_id,
+        previousChannelId: state.channel_id,
+      });
+
+      // Update channel membership views in both rooms
+      broadcastVoiceEvent(`voice:${state.channel_id}`, 'voice:user_left', {
+        sessionId,
+        channelId: state.channel_id,
+      });
+      if (state.server_id) {
+        broadcastVoiceEvent(`server:${state.server_id}`, 'voice:user_left', {
+          sessionId,
+          channelId: state.channel_id,
+        });
+      }
+      broadcastVoiceEvent(`voice:${targetChannelId}`, 'voice:user_joined', {
+        userId: state.user_id,
+        sessionId,
+        channelId: targetChannelId,
+      });
+
       return reply.send(successResponse(updated));
     }
   );
@@ -443,7 +487,6 @@ export default async function voiceRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
     },
@@ -465,6 +508,25 @@ export default async function voiceRoutes(app: FastifyInstance) {
       }
 
       const updated = await voiceStateService.suppressUser(sessionId, suppress);
+
+      // Apply the suppress to the live media session: pause/resume the
+      // participant's audio producer so the mute takes effect immediately
+      await mediasoupService.setParticipantSuppress(state.channel_id, sessionId, suppress);
+
+      // Broadcast the state change so clients render the muted state
+      broadcastVoiceEvent(`voice:${state.channel_id}`, 'voice:user_state', {
+        sessionId,
+        channelId: state.channel_id,
+        suppress,
+      });
+      if (state.server_id) {
+        broadcastVoiceEvent(`server:${state.server_id}`, 'voice:user_state', {
+          sessionId,
+          channelId: state.channel_id,
+          suppress,
+        });
+      }
+
       return reply.send(successResponse(updated));
     }
   );
@@ -494,7 +556,6 @@ export default async function voiceRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
     },
@@ -518,6 +579,26 @@ export default async function voiceRoutes(app: FastifyInstance) {
       // Deafen is implemented as self_deaf at server level
       // For now, we'll use suppress + self_deaf simulation
       const updated = await voiceStateService.updateVoiceState(sessionId, { selfDeaf: deafen });
+
+      // Apply the deafen to the live media session: pause the participant's
+      // audio producers (deafen implies server mute) and their own audio
+      // consumers so they stop hearing the room
+      await mediasoupService.setParticipantSuppress(state.channel_id, sessionId, deafen, { includeConsumers: true });
+
+      // Broadcast the state change so clients render the deafened state
+      broadcastVoiceEvent(`voice:${state.channel_id}`, 'voice:user_state', {
+        sessionId,
+        channelId: state.channel_id,
+        selfDeaf: deafen,
+      });
+      if (state.server_id) {
+        broadcastVoiceEvent(`server:${state.server_id}`, 'voice:user_state', {
+          sessionId,
+          channelId: state.channel_id,
+          selfDeaf: deafen,
+        });
+      }
+
       return reply.send(successResponse(updated));
     }
   );
@@ -562,6 +643,30 @@ export default async function voiceRoutes(app: FastifyInstance) {
       }
 
       await voiceStateService.kickUser(sessionId);
+
+      // Tear down the live media session (closes transports, removes the
+      // participant and the room when empty). No-op when the target is not
+      // in the media layer.
+      await mediasoupService.removeParticipant(state.channel_id, sessionId);
+
+      // Tell the kicked user's client to tear down the call UI
+      broadcastVoiceEvent(`user:${state.user_id}`, 'voice:force_disconnect', {
+        serverId: state.server_id,
+        channelId: state.channel_id,
+      });
+
+      // Notify the remaining members of the channel
+      broadcastVoiceEvent(`voice:${state.channel_id}`, 'voice:user_left', {
+        sessionId,
+        channelId: state.channel_id,
+      });
+      if (state.server_id) {
+        broadcastVoiceEvent(`server:${state.server_id}`, 'voice:user_left', {
+          sessionId,
+          channelId: state.channel_id,
+        });
+      }
+
       return reply.code(204).send();
     }
   );
@@ -589,7 +694,6 @@ export default async function voiceRoutes(app: FastifyInstance) {
           },
         },
         response: {
-          200: { type: 'object' },
         },
       },
     },

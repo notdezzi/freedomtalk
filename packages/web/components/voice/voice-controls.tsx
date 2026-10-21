@@ -20,13 +20,11 @@ export interface VoiceControlsProps {
 }
 
 export function VoiceControls({ className }: VoiceControlsProps) {
-  const {
-    selfMute,
-    selfDeaf,
-    selfVideo,
-    selfStream,
-    isConnected,
-  } = useVoiceStore();
+  const selfMute = useVoiceStore((s) => s.selfMute);
+  const selfDeaf = useVoiceStore((s) => s.selfDeaf);
+  const selfVideo = useVoiceStore((s) => s.selfVideo);
+  const selfStream = useVoiceStore((s) => s.selfStream);
+  const isConnected = useVoiceStore((s) => s.isConnected);
 
   const {
     toggleMute,
@@ -46,7 +44,6 @@ export function VoiceControls({ className }: VoiceControlsProps) {
         'flex items-center justify-center gap-3 border-t border-border bg-background-elevated px-4 py-3',
         className
       )}
-      style={{ backgroundColor: '#1e1f22' }}
     >
       {/* Mute button */}
       <VoiceControlButton
@@ -91,6 +88,7 @@ export function VoiceControls({ className }: VoiceControlsProps) {
         activeColor="red"
         onClick={leaveChannel}
         title="Leave Voice"
+        isToggle={false}
       />
     </div>
   );
@@ -102,6 +100,8 @@ interface VoiceControlButtonProps {
   activeColor: 'green' | 'red';
   onClick: () => void;
   title: string;
+  /** Whether the button toggles a state (gets aria-pressed) */
+  isToggle?: boolean;
 }
 
 function VoiceControlButton({
@@ -110,10 +110,13 @@ function VoiceControlButton({
   activeColor,
   onClick,
   title,
+  isToggle = true,
 }: VoiceControlButtonProps) {
   return (
     <button
       onClick={onClick}
+      aria-label={title}
+      aria-pressed={isToggle ? active : undefined}
       className={cn(
         'rounded-full p-3 transition-colors',
         active

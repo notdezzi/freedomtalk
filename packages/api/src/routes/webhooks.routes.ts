@@ -120,6 +120,23 @@ export default async function webhookRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: z.infer<typeof channelIdParamSchema> }>) => {
       const { channelId } = request.params;
+      const userId = request.user!.id;
+
+      // Resolve the channel's server and gate on webhook management — the
+      // names/creators of webhooks are not readable by regular members.
+      const { db } = await import('../config/database');
+      const channel = await db('channels')
+        .where('id', channelId)
+        .select('server_id')
+        .first();
+      if (!channel) {
+        throw new ApiError(ApiErrorCode.NOT_FOUND, 'Channel not found', 404);
+      }
+
+      const canManage = await canManageWebhooks(channel.server_id, userId);
+      if (!canManage) {
+        throw new ApiError(ApiErrorCode.FORBIDDEN, 'You do not have permission to manage webhooks', 403);
+      }
 
       const webhooks = await webhookService.getChannelWebhooks(channelId);
 

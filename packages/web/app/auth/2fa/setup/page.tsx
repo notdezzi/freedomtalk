@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { MessageCircle, ArrowLeft, Shield, Smartphone, Copy, Check, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Shield, Smartphone, Copy, Check, RefreshCw } from 'lucide-react';
+import { BrandLockup } from '@/components/brand/brand';
 
 export default function TwoFASetupPage() {
   const router = useRouter();
@@ -66,12 +68,7 @@ export default function TwoFASetupPage() {
 
       {/* Logo */}
       <div className="flex items-center gap-2 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-secondary flex items-center justify-center">
-          <MessageCircle className="w-5 h-5 text-background" />
-        </div>
-        <span className="text-xl font-bold">
-          Freedom<span className="gradient-text">Talk</span>
-        </span>
+        <BrandLockup size={40} wordmarkClassName="text-xl" />
       </div>
 
       {step === 'setup' && (
@@ -91,7 +88,7 @@ export default function TwoFASetupPage() {
           <div className="space-y-6 mb-8">
             <div className="card">
               <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-background font-bold text-sm flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                   1
                 </div>
                 <div>
@@ -105,15 +102,14 @@ export default function TwoFASetupPage() {
 
             <div className="card">
               <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-background font-bold text-sm flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                   2
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold mb-3">Scan this QR code</h3>
                   <div className="flex flex-col sm:flex-row items-center gap-4">
                     <div className="p-4 bg-white rounded-xl">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={qrCodeUrl} alt="2FA QR Code" className="w-32 h-32" />
+                      <Image src={qrCodeUrl} alt="2FA QR Code" width={128} height={128} loading="lazy" className="w-32 h-32" unoptimized />
                     </div>
                     <div className="text-center sm:text-left">
                       <p className="text-sm text-foreground-muted mb-2">
@@ -154,7 +150,7 @@ export default function TwoFASetupPage() {
         <>
           {/* Header */}
           <div className="mb-8">
-            <div className="w-12 h-12 rounded-xl bg-secondary-muted flex items-center justify-center mb-4">
+            <div className="w-12 h-12 rounded-xl bg-background-surface flex items-center justify-center mb-4">
               <Smartphone className="w-6 h-6 text-secondary" />
             </div>
             <h1 className="text-2xl font-bold mb-2">Verify 2FA Setup</h1>

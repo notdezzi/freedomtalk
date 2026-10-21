@@ -163,6 +163,7 @@ describe('MessageService', () => {
         await messageService.createMessage({
           content: `Test message ${i}`,
           authorId: testUserId,
+          channelId: testChannelId,
         });
         // Small delay to ensure different timestamps
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -170,15 +171,24 @@ describe('MessageService', () => {
     });
 
     it('should retrieve messages with default pagination', async () => {
-      const result = await messageService.getMessages();
+      const result = await messageService.getMessages({}, { channelId: testChannelId });
 
       expect(result.messages).toBeDefined();
       expect(result.messages.length).toBeGreaterThan(0);
       expect(result.messages.length).toBeLessThanOrEqual(50);
     });
 
+    it('should reject unscoped queries', async () => {
+      // Defense in depth: without a channel/DM scope the query would return
+      // the entire platform's messages.
+      await expect(messageService.getMessages({}, {})).rejects.toMatchObject({
+        statusCode: 400,
+        code: 'UNSCOPED_MESSAGE_QUERY',
+      });
+    });
+
     it('should respect limit parameter', async () => {
-      const result = await messageService.getMessages({ limit: 3 });
+      const result = await messageService.getMessages({ limit: 3 }, { channelId: testChannelId });
 
       expect(result.messages.length).toBeLessThanOrEqual(3);
     });
@@ -187,9 +197,10 @@ describe('MessageService', () => {
       await messageService.createMessage({
         content: 'Message from user 2',
         authorId: testUserId2,
+        channelId: testChannelId,
       });
 
-      const result = await messageService.getMessages({}, { authorId: testUserId });
+      const result = await messageService.getMessages({}, { channelId: testChannelId, authorId: testUserId });
 
       expect(result.messages.every((m) => m.author_id === testUserId)).toBe(true);
     });
@@ -198,9 +209,10 @@ describe('MessageService', () => {
       await messageService.createMessage({
         content: 'Unique search term here',
         authorId: testUserId,
+        channelId: testChannelId,
       });
 
-      const result = await messageService.getMessages({}, { search: 'Unique search term' });
+      const result = await messageService.getMessages({}, { channelId: testChannelId, search: 'Unique search term' });
 
       expect(result.messages.length).toBeGreaterThan(0);
       expect(result.messages.some((m) => m.content.includes('Unique search term'))).toBe(true);
@@ -210,11 +222,12 @@ describe('MessageService', () => {
       const message = await messageService.createMessage({
         content: 'Pinned message',
         authorId: testUserId,
+        channelId: testChannelId,
       });
 
       await messageService.pinMessage(message.id);
 
-      const result = await messageService.getMessages({}, { isPinned: true });
+      const result = await messageService.getMessages({}, { channelId: testChannelId, isPinned: true });
 
       expect(result.messages.every((m) => m.is_pinned === true)).toBe(true);
     });

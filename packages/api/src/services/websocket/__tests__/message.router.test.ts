@@ -17,6 +17,11 @@ vi.mock('../../../config/logger', () => ({
 }));
 vi.mock('../message.broadcaster');
 vi.mock('../subscription.manager');
+vi.mock('../../dm/dm-channel.service', () => ({
+  dmChannelService: {
+    getParticipantUserIds: vi.fn().mockResolvedValue([]),
+  },
+}));
 
 describe('MessageRouter', () => {
   const mockMessage = {
@@ -53,7 +58,10 @@ describe('MessageRouter', () => {
     });
 
     it('should route DM when channelId is null', async () => {
-      const dmMessage = { ...mockMessage, channelId: null };
+      const { dmChannelService } = await import('../../dm/dm-channel.service');
+      vi.mocked(dmChannelService.getParticipantUserIds).mockResolvedValue(['user-1']);
+
+      const dmMessage = { ...mockMessage, channelId: null, dmChannelId: 'dm-123' };
 
       await messageRouter.routeMessage(dmMessage);
 
@@ -118,22 +126,42 @@ describe('MessageRouter', () => {
   // in unit tests. These methods should be tested in integration tests instead.
 
   describe('routeDM', () => {
-    it('should broadcast to author only (placeholder)', async () => {
-      const dmMessage = { ...mockMessage, channelId: null };
+    it('should broadcast to all DM participants', async () => {
+      const { dmChannelService } = await import('../../dm/dm-channel.service');
+      vi.mocked(dmChannelService.getParticipantUserIds).mockResolvedValue(['user-1', 'user-2']);
+
+      const dmMessage = { ...mockMessage, channelId: null, dmChannelId: 'dm-123' };
 
       await messageRouter.routeDM(dmMessage);
 
+      expect(dmChannelService.getParticipantUserIds).toHaveBeenCalledWith('dm-123');
       expect(messageBroadcaster.broadcastToUser).toHaveBeenCalledWith(
         'user-1',
         'message:created',
         dmMessage
       );
+      expect(messageBroadcaster.broadcastToUser).toHaveBeenCalledWith(
+        'user-2',
+        'message:created',
+        dmMessage
+      );
+    });
+
+    it('should skip routing when the DM message has no dmChannelId', async () => {
+      const dmMessage = { ...mockMessage, channelId: null };
+
+      await messageRouter.routeDM(dmMessage);
+
+      expect(messageBroadcaster.broadcastToUser).not.toHaveBeenCalled();
     });
 
     it('should handle broadcast error', async () => {
+      const { dmChannelService } = await import('../../dm/dm-channel.service');
+      vi.mocked(dmChannelService.getParticipantUserIds).mockResolvedValue(['user-1']);
       vi.mocked(messageBroadcaster.broadcastToUser).mockRejectedValue(new Error('Broadcast error'));
 
-      await expect(messageRouter.routeDM(mockMessage)).rejects.toThrow('Broadcast error');
+      const dmMessage = { ...mockMessage, channelId: null, dmChannelId: 'dm-123' };
+      await expect(messageRouter.routeDM(dmMessage)).rejects.toThrow('Broadcast error');
     });
   });
 

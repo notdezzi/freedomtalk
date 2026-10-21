@@ -171,7 +171,7 @@ describe('MessageBroadcaster', () => {
         'channel:channel-123',
         WS_EVENTS.MESSAGE_DELETED,
         expect.objectContaining({
-          messageId: 'msg-123',
+          id: 'msg-123',
           channelId: 'channel-123',
           timestamp: expect.any(String),
         })

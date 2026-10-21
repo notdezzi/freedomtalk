@@ -1,11 +1,83 @@
 import { useEffect, useCallback, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { socketService } from '@/lib/socket';
 import { useSocketStore, useAuthStore, useTypingStore } from '@/stores';
 import { queryKeys } from '@/lib/query-provider';
+import { transformMessage } from '@/features/channels/api';
+import type { Message } from '@/types';
 
 // Track current server room to avoid duplicate joins
 let currentServerRoom: string | null = null;
+
+// Shape of a page in the messages infinite query (see features/channels/api.ts)
+interface MessagesPage {
+  messages: Message[];
+  cursor?: string;
+  hasMore: boolean;
+}
+
+type MessagesCache = InfiniteData<MessagesPage>;
+
+// Build the message-cache query keys affected by a socket payload
+function getMessageQueryKeys(channelId?: string | null, dmChannelId?: string | null) {
+  const keys: (readonly (string | number)[])[] = [];
+  if (channelId) keys.push(queryKeys.channels.messages(channelId));
+  if (dmChannelId) keys.push(queryKeys.dms.messages(dmChannelId));
+  return keys;
+}
+
+// Find a known author object for `authorId` in a cached message list
+// (socket message payloads omit the author object)
+function findAuthorInCache(cache: MessagesCache, authorId: string): Message['author'] | undefined {
+  for (const page of cache.pages) {
+    for (const message of page.messages) {
+      if (message.author?.id === authorId) {
+        return message.author;
+      }
+    }
+  }
+  return undefined;
+}
+
+// Patch a message's reactions array in place (count/me bookkeeping)
+function patchReactions(
+  reactions: Message['reactions'] | undefined,
+  emojiName: string | null,
+  emojiId: string | null,
+  add: boolean,
+  isMe: boolean
+): Message['reactions'] {
+  const next = [...(reactions || [])];
+  const index = next.findIndex((r) => {
+    if (emojiId) return r.emoji?.id === emojiId;
+    const name = r.emoji?.name ?? (r as any).emoji_unicode;
+    return name === emojiName;
+  });
+
+  if (add) {
+    if (index >= 0) {
+      const existing = next[index];
+      next[index] = { ...existing, count: existing.count + 1, me: existing.me || isMe };
+    } else {
+      next.push({
+        emoji: { name: emojiName || emojiId || 'emoji', id: emojiId || undefined },
+        count: 1,
+        me: isMe,
+      });
+    }
+  } else if (index >= 0) {
+    const existing = next[index];
+    const count = Math.max(0, existing.count - 1);
+    const me = isMe ? false : existing.me;
+    if (count === 0) {
+      next.splice(index, 1);
+    } else {
+      next[index] = { ...existing, count, me };
+    }
+  }
+
+  return next;
+}
 
 export function useSocket() {
   const queryClient = useQueryClient();
@@ -19,9 +91,14 @@ export function useSocket() {
   // Track if we've setup listeners to prevent duplicates
   const listenersSetupRef = useRef(false);
 
-  // Connect socket on mount when authenticated
+  // Connect socket on mount when authenticated.
+  // Key on user ID, not the user object: checkSession() replaces the user
+  // object on every /app mount, and re-running connect() on that identity
+  // churn tears down a mid-reconnect socket and orphans holders of the old
+  // instance (e.g. the VoiceClient singleton — voice:join then vanishes
+  // silently after navigating through /invite and back).
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user?.id) {
       socketService.connect();
     } else {
       socketService.disconnect();
@@ -30,7 +107,7 @@ export function useSocket() {
     return () => {
       // Don't disconnect on unmount, let the service manage connection
     };
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user?.id]);
 
   // Set up socket listeners - only once per socket connection
   useEffect(() => {
@@ -81,52 +158,166 @@ export function useSocket() {
         socket.removeAllListeners(eventName);
       });
 
-      // Message events - using correct event names from backend
+      // Message events - surgical cache updates (no full refetch of every page)
+
+      // New message: append to the LAST page of the open channel's cache.
+      // Skipped entirely when there is no cache entry (channel not open).
       socket.on('message:created', (data: any) => {
         console.log('[Socket] New message:', data);
-        // Invalidate messages query to refetch
         const channelId = data.channelId || data.channel_id;
         const dmChannelId = data.dmChannelId || data.dm_channel_id;
-        if (channelId) {
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.channels.messages(channelId)
-          });
-        }
-        if (dmChannelId) {
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.dms.messages(dmChannelId)
+        const keys = getMessageQueryKeys(channelId, dmChannelId);
+        if (keys.length === 0) return;
+
+        const incoming = transformMessage(data);
+
+        for (const key of keys) {
+          const existing = queryClient.getQueryData<MessagesCache>(key);
+          // No cache entry = channel not open; nothing to update
+          if (!existing) continue;
+
+          // Dedupe: merge into an existing entry (e.g. the optimistic message
+          // echoed back over the socket)
+          const alreadyCached = existing.pages.some((page) =>
+            page.messages.some((m) => m.id === incoming.id)
+          );
+
+          if (alreadyCached) {
+            queryClient.setQueryData<MessagesCache>(key, (prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                pages: prev.pages.map((page) => ({
+                  ...page,
+                  messages: page.messages.map((m) =>
+                    m.id === incoming.id
+                      ? {
+                          ...m,
+                          ...incoming,
+                          author:
+                            incoming.author?.username !== 'Unknown'
+                              ? incoming.author
+                              : m.author,
+                        }
+                      : m
+                  ),
+                })),
+              };
+            });
+            continue;
+          }
+
+          // Socket payloads omit the author object - enrich from cached messages
+          if (incoming.author?.username === 'Unknown') {
+            const knownAuthor = findAuthorInCache(existing, incoming.authorId);
+            if (knownAuthor) incoming.author = knownAuthor;
+          }
+
+          // Append to the last page (most recent messages). Drop any optimistic
+          // stand-in (temp id) from the same author with the same content —
+          // the real message supersedes it regardless of arrival order.
+          queryClient.setQueryData<MessagesCache>(key, (prev) => {
+            if (!prev || prev.pages.length === 0) return prev;
+            const pages = [...prev.pages];
+            const last = pages.length - 1;
+            const filtered = pages[last].messages.filter(
+              (m) =>
+                !(
+                  m.id.startsWith('optimistic-') &&
+                  m.authorId === incoming.authorId &&
+                  m.content === incoming.content
+                )
+            );
+            pages[last] = {
+              ...pages[last],
+              messages: [...filtered, incoming],
+            };
+            return { ...prev, pages };
           });
         }
       });
 
+      // Message edit: patch content/edited fields in place
       socket.on('message:updated', (data: any) => {
         console.log('[Socket] Message updated:', data);
         const channelId = data.channelId || data.channel_id;
         const dmChannelId = data.dmChannelId || data.dm_channel_id;
-        if (channelId) {
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.channels.messages(channelId)
-          });
-        }
-        if (dmChannelId) {
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.dms.messages(dmChannelId)
+        const keys = getMessageQueryKeys(channelId, dmChannelId);
+        if (keys.length === 0) return;
+
+        const messageId = data.id || data.messageId || data.message_id;
+        if (!messageId) return;
+
+        for (const key of keys) {
+          const existing = queryClient.getQueryData<MessagesCache>(key);
+          if (!existing) continue;
+
+          queryClient.setQueryData<MessagesCache>(key, (prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              pages: prev.pages.map((page) => ({
+                ...page,
+                messages: page.messages.map((m) => {
+                  if (m.id !== messageId) return m;
+                  return {
+                    ...m,
+                    content: data.content ?? m.content,
+                    editedAt: data.isEdited
+                      ? (data.updatedAt || data.editedAt || m.editedAt)
+                      : (data.editedAt ?? m.editedAt),
+                    editedTimestamp: data.editedTimestamp ?? m.editedTimestamp,
+                  };
+                }),
+              })),
+            };
           });
         }
       });
 
+      // Message deletion: remove by id
       socket.on('message:deleted', (data: any) => {
         console.log('[Socket] Message deleted:', data);
         const channelId = data.channelId || data.channel_id;
         const dmChannelId = data.dmChannelId || data.dm_channel_id;
-        if (channelId) {
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.channels.messages(channelId)
-          });
-        }
-        if (dmChannelId) {
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.dms.messages(dmChannelId)
+        const messageId = data.id || data.messageId || data.message_id;
+        if (!messageId) return;
+
+        // Delete payloads may only carry one of the two id flavors - when
+        // neither key is derivable, scan all message caches for the message
+        const keys = getMessageQueryKeys(channelId, dmChannelId);
+        const targetKeys =
+          keys.length > 0
+            ? keys
+            : queryClient
+                .getQueryCache()
+                .getAll()
+                .filter((query) => {
+                  const k = query.queryKey;
+                  return (
+                    Array.isArray(k) &&
+                    (k[0] === 'channels' || k[0] === 'dms') &&
+                    k[2] === 'messages'
+                  );
+                })
+                .map((query) => query.queryKey);
+
+        for (const key of targetKeys) {
+          const existing = queryClient.getQueryData<MessagesCache>(key);
+          if (!existing) continue;
+          if (!existing.pages.some((page) => page.messages.some((m) => m.id === messageId))) {
+            continue;
+          }
+
+          queryClient.setQueryData<MessagesCache>(key, (prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              pages: prev.pages.map((page) => ({
+                ...page,
+                messages: page.messages.filter((m) => m.id !== messageId),
+              })),
+            };
           });
         }
       });
@@ -314,23 +505,68 @@ export function useSocket() {
         queryClient.invalidateQueries({ queryKey: queryKeys.friends.list() });
       });
 
-      // Reaction events
-      socket.on('reaction:add', (data: any) => {
-        console.log('[Socket] Reaction added:', data);
-        if (data.channelId) {
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.channels.messages(data.channelId)
+      // Reaction events - the payload carries messageId/userId/emoji but no
+      // channel id, so patch every cached message list that contains it.
+      // This also fixes DM reactions, which were previously ignored entirely.
+      const handleReactionEvent = (data: any, add: boolean) => {
+        const messageId = data.messageId || data.message_id;
+        if (!messageId) return;
+
+        const emojiName = data.emojiUnicode || data.emoji_unicode || null;
+        const emojiId = data.emojiId || data.emoji_id || null;
+        const userId = data.userId || data.user_id;
+        const isMe = !!userId && userId === user?.id;
+
+        const messageQueries = queryClient
+          .getQueryCache()
+          .getAll()
+          .filter((query) => {
+            const k = query.queryKey;
+            return (
+              Array.isArray(k) &&
+              (k[0] === 'channels' || k[0] === 'dms') &&
+              k[2] === 'messages'
+            );
+          });
+
+        for (const query of messageQueries) {
+          const key = query.queryKey;
+          const existing = queryClient.getQueryData<MessagesCache>(key);
+          if (!existing) continue;
+
+          const containsMessage = existing.pages.some((page) =>
+            page.messages.some((m) => m.id === messageId)
+          );
+          if (!containsMessage) continue;
+
+          queryClient.setQueryData<MessagesCache>(key, (prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              pages: prev.pages.map((page) => ({
+                ...page,
+                messages: page.messages.map((m) =>
+                  m.id === messageId
+                    ? {
+                        ...m,
+                        reactions: patchReactions(m.reactions, emojiName, emojiId, add, isMe),
+                      }
+                    : m
+                ),
+              })),
+            };
           });
         }
+      };
+
+      socket.on('reaction:add', (data: any) => {
+        console.log('[Socket] Reaction added:', data);
+        handleReactionEvent(data, true);
       });
 
       socket.on('reaction:remove', (data: any) => {
         console.log('[Socket] Reaction removed:', data);
-        if (data.channelId) {
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.channels.messages(data.channelId)
-          });
-        }
+        handleReactionEvent(data, false);
       });
 
       // Mark as setup

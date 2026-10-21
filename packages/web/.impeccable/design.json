@@ -1,0 +1,246 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-07",
+  "title": "Design System: FreedomTalk Client (app-discord-com world)",
+  "world": {
+    "name": "app-discord-com",
+    "scope": "Authenticated client and auth flows — everything served by packages/web/app/globals.css (:root tokens, @theme mapping, @layer components primitives, functional animations). Separate from the landing .ftl world (documented in the repo-root DESIGN.md frontmatter and its section; its sidecar is .impeccable/design.json at the repo root). app/sfu/page.tsx is a deliberate debug-surface exclusion.",
+    "sidecars": {
+      "client": "packages/web/.impeccable/design.json",
+      "landing": ".impeccable/design.json"
+    }
+  },
+  "tokens": {
+    "colors": {
+      "background": { "value": "#121214", "role": "Page and auth ground; darkest step" },
+      "background-elevated": { "value": "#2b2d31", "role": "Modals, cards, menus, drag overlay" },
+      "background-surface": { "value": "#35373c", "role": "Raised rows: composer, hover fills, tile rest fill" },
+      "background-hover": { "value": "#40424b", "role": "Strongest hover step; active list rows" },
+      "rail": { "value": "#1e1f22", "role": "72px server rail, user panel; input fields on panels (bg-field)" },
+      "list": { "value": "#2b2d31", "role": "Channel list, members list, 48px header chrome" },
+      "chat": { "value": "#313338", "role": "The message work surface" },
+      "foreground": { "value": "#efeff1", "role": "Primary ink" },
+      "foreground-muted": { "value": "#b5bac1", "role": "Secondary ink: labels, sub-copy, quiet controls" },
+      "foreground-subtle": { "value": "#949ba4", "role": "Tertiary ink: small labels, icons at rest" },
+      "placeholder": { "value": "#72767d", "role": "Input placeholder" },
+      "accent": { "value": "#5865f2", "role": "The one action color: buttons, active tile, send, caret, focus" },
+      "accent-hover": { "value": "#4752c4", "role": "Accent hover depth; never at rest" },
+      "accent-muted": { "value": "rgba(88, 101, 242, 0.16)", "role": "16% wash: edit-highlight, quiet accent fills" },
+      "secondary": { "value": "#798df9", "role": "Soft blurple: inline text links and brand accent words" },
+      "success": { "value": "#23a559", "role": "Online presence, speaking ring, add-tile green" },
+      "warning": { "value": "#f0b232", "role": "Idle presence, owner crown" },
+      "error": { "value": "#ed4245", "role": "Destructive: danger items/buttons, mute/deafen active" },
+      "border": { "value": "#252527", "role": "1px hairlines between regions" },
+      "border-hover": { "value": "#3f4147", "role": "Hover hairline; auth input resting border" }
+    },
+    "fonts": {
+      "sans": "'gg sans', var(--font-gg), 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+      "display": "'gg sans', var(--font-gg), 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+      "mono": "var(--font-jetbrains-mono), ui-monospace, monospace",
+      "disclosure": "'gg sans' is proprietary; the stack prefers a locally installed copy and ships Noto Sans via next/font as --font-gg. Intentional and disclosed."
+    },
+    "radii": {
+      "standard": "8px (rounded-lg): buttons, inputs, cards, menus, tooltips, composer",
+      "item": "6px (rounded-md): menu items, white pill cap",
+      "badge": "4px (rounded): reaction chips, small badges, edit-highlight",
+      "modal": "16px (rounded-2xl): modals",
+      "squircle": "16px (rounded-[16px]): server tiles on hover/active",
+      "pill": "9999px (rounded-full): avatars, status dots, tiles at rest, rail divider"
+    },
+    "spacing": {
+      "grid": "8px base: 8px control gaps, 16px panel padding, 12/16px rows",
+      "micro": "2px/4px micro-steps for dense rows (message rows: 2px vertical in 16px gutters)",
+      "targets": "44px minimum interactive height (.btn min-height 44px)"
+    },
+    "breakpoints": { "md": "768px", "lg": "1024px" }
+  },
+  "extensions": {
+    "colorMeta": {
+      "background": { "role": "neutral", "displayName": "Ground", "canonical": "#121214", "tonalRamp": ["oklch(15% 0.012 245)", "oklch(20% 0.014 245)", "oklch(25% 0.015 245)", "oklch(32% 0.014 245)", "oklch(42% 0.012 245)", "oklch(56% 0.01 245)", "oklch(72% 0.008 245)", "oklch(90% 0.005 245)"] },
+      "background-elevated": { "role": "neutral", "displayName": "Elevated", "canonical": "#2b2d31", "tonalRamp": ["oklch(15% 0.012 245)", "oklch(20% 0.014 245)", "oklch(25% 0.015 245)", "oklch(32% 0.014 245)", "oklch(42% 0.012 245)", "oklch(56% 0.01 245)", "oklch(72% 0.008 245)", "oklch(90% 0.005 245)"] },
+      "background-surface": { "role": "neutral", "displayName": "Surface", "canonical": "#35373c", "tonalRamp": ["oklch(15% 0.012 245)", "oklch(20% 0.014 245)", "oklch(25% 0.015 245)", "oklch(32% 0.014 245)", "oklch(42% 0.012 245)", "oklch(56% 0.01 245)", "oklch(72% 0.008 245)", "oklch(90% 0.005 245)"] },
+      "background-hover": { "role": "neutral", "displayName": "Hover Step", "canonical": "#40424b", "tonalRamp": ["oklch(15% 0.012 245)", "oklch(20% 0.014 245)", "oklch(25% 0.015 245)", "oklch(32% 0.014 245)", "oklch(42% 0.012 245)", "oklch(56% 0.01 245)", "oklch(72% 0.008 245)", "oklch(90% 0.005 245)"] },
+      "rail": { "role": "neutral", "displayName": "Server Rail / Field", "canonical": "#1e1f22", "tonalRamp": ["oklch(15% 0.012 245)", "oklch(20% 0.014 245)", "oklch(25% 0.015 245)", "oklch(32% 0.014 245)", "oklch(42% 0.012 245)", "oklch(56% 0.01 245)", "oklch(72% 0.008 245)", "oklch(90% 0.005 245)"] },
+      "list": { "role": "neutral", "displayName": "List Chrome", "canonical": "#2b2d31", "tonalRamp": ["oklch(15% 0.012 245)", "oklch(20% 0.014 245)", "oklch(25% 0.015 245)", "oklch(32% 0.014 245)", "oklch(42% 0.012 245)", "oklch(56% 0.01 245)", "oklch(72% 0.008 245)", "oklch(90% 0.005 245)"] },
+      "chat": { "role": "neutral", "displayName": "Chat Work Surface", "canonical": "#313338", "tonalRamp": ["oklch(15% 0.012 245)", "oklch(20% 0.014 245)", "oklch(25% 0.015 245)", "oklch(32% 0.014 245)", "oklch(42% 0.012 245)", "oklch(56% 0.01 245)", "oklch(72% 0.008 245)", "oklch(90% 0.005 245)"] },
+      "border": { "role": "neutral", "displayName": "Hairline", "canonical": "#252527", "tonalRamp": ["oklch(15% 0.012 245)", "oklch(20% 0.014 245)", "oklch(25% 0.015 245)", "oklch(32% 0.014 245)", "oklch(42% 0.012 245)", "oklch(56% 0.01 245)", "oklch(72% 0.008 245)", "oklch(90% 0.005 245)"] },
+      "border-hover": { "role": "neutral", "displayName": "Hairline Hover", "canonical": "#3f4147", "tonalRamp": ["oklch(15% 0.012 245)", "oklch(20% 0.014 245)", "oklch(25% 0.015 245)", "oklch(32% 0.014 245)", "oklch(42% 0.012 245)", "oklch(56% 0.01 245)", "oklch(72% 0.008 245)", "oklch(90% 0.005 245)"] },
+      "foreground": { "role": "neutral", "displayName": "Ink", "canonical": "#efeff1", "tonalRamp": ["oklch(20% 0.008 255)", "oklch(35% 0.008 255)", "oklch(50% 0.008 255)", "oklch(62% 0.008 255)", "oklch(74% 0.008 255)", "oklch(84% 0.006 255)", "oklch(92% 0.005 255)", "oklch(98% 0.003 255)"] },
+      "foreground-muted": { "role": "neutral", "displayName": "Muted Ink", "canonical": "#b5bac1", "tonalRamp": ["oklch(20% 0.008 255)", "oklch(35% 0.008 255)", "oklch(50% 0.008 255)", "oklch(62% 0.008 255)", "oklch(74% 0.008 255)", "oklch(84% 0.006 255)", "oklch(92% 0.005 255)", "oklch(98% 0.003 255)"] },
+      "foreground-subtle": { "role": "neutral", "displayName": "Subtle Ink", "canonical": "#949ba4", "tonalRamp": ["oklch(20% 0.008 255)", "oklch(35% 0.008 255)", "oklch(50% 0.008 255)", "oklch(62% 0.008 255)", "oklch(74% 0.008 255)", "oklch(84% 0.006 255)", "oklch(92% 0.005 255)", "oklch(98% 0.003 255)"] },
+      "placeholder": { "role": "neutral", "displayName": "Placeholder", "canonical": "#72767d", "tonalRamp": ["oklch(20% 0.008 255)", "oklch(35% 0.008 255)", "oklch(50% 0.008 255)", "oklch(62% 0.008 255)", "oklch(74% 0.008 255)", "oklch(84% 0.006 255)", "oklch(92% 0.005 255)", "oklch(98% 0.003 255)"] },
+      "accent": { "role": "primary", "displayName": "Blurple", "canonical": "#5865f2", "tonalRamp": ["oklch(18% 0.08 277)", "oklch(28% 0.13 277)", "oklch(38% 0.17 277)", "oklch(48% 0.2 277)", "oklch(58% 0.2 277)", "oklch(69% 0.17 277)", "oklch(80% 0.12 277)", "oklch(92% 0.06 277)"] },
+      "accent-hover": { "role": "primary", "displayName": "Blurple Hover", "canonical": "#4752c4", "tonalRamp": ["oklch(18% 0.08 277)", "oklch(28% 0.13 277)", "oklch(38% 0.17 277)", "oklch(48% 0.2 277)", "oklch(58% 0.2 277)", "oklch(69% 0.17 277)", "oklch(80% 0.12 277)", "oklch(92% 0.06 277)"] },
+      "accent-muted": { "role": "primary", "displayName": "Blurple Muted (16%)", "canonical": "rgba(88, 101, 242, 0.16)", "tonalRamp": ["oklch(18% 0.08 277)", "oklch(28% 0.13 277)", "oklch(38% 0.17 277)", "oklch(48% 0.2 277)", "oklch(58% 0.2 277)", "oklch(69% 0.17 277)", "oklch(80% 0.12 277)", "oklch(92% 0.06 277)"] },
+      "secondary": { "role": "primary", "displayName": "Soft Blurple (links)", "canonical": "#798df9", "tonalRamp": ["oklch(18% 0.08 277)", "oklch(28% 0.13 277)", "oklch(38% 0.17 277)", "oklch(48% 0.2 277)", "oklch(58% 0.2 277)", "oklch(69% 0.17 277)", "oklch(80% 0.12 277)", "oklch(92% 0.06 277)"] },
+      "success": { "role": "accent", "displayName": "Success / Online", "canonical": "#23a559", "tonalRamp": ["oklch(25% 0.06 152)", "oklch(36% 0.1 152)", "oklch(48% 0.13 152)", "oklch(60% 0.16 152)", "oklch(72% 0.18 152)", "oklch(84% 0.19 152)", "oklch(91% 0.14 152)", "oklch(96% 0.07 152)"] },
+      "warning": { "role": "accent", "displayName": "Warning / Idle", "canonical": "#f0b232", "tonalRamp": ["oklch(25% 0.07 80)", "oklch(38% 0.1 80)", "oklch(50% 0.13 80)", "oklch(62% 0.15 80)", "oklch(72% 0.16 80)", "oklch(80% 0.15 80)", "oklch(88% 0.13 80)", "oklch(95% 0.08 80)"] },
+      "error": { "role": "accent", "displayName": "Error / Destructive", "canonical": "#ed4245", "tonalRamp": ["oklch(20% 0.08 25)", "oklch(30% 0.13 25)", "oklch(41% 0.17 25)", "oklch(52% 0.2 25)", "oklch(63% 0.21 25)", "oklch(74% 0.17 25)", "oklch(84% 0.12 25)", "oklch(94% 0.05 25)"] }
+    },
+    "typographyMeta": {
+      "h1": { "displayName": "H1", "purpose": "Auth page titles: 24px/700, -0.01em. Globals sets all h1-h6 to 700/-0.01em." },
+      "dialogTitle": { "displayName": "Dialog Title", "purpose": "Modal and panel headers: 18px/600." },
+      "body": { "displayName": "Body", "purpose": "Inputs, message bodies, prose: 16px/400." },
+      "ui": { "displayName": "UI", "purpose": "Buttons 15px/600; list rows, member names, menu items 14px." },
+      "label": { "displayName": "Label", "purpose": "Uppercase 12px/600-700 section and category headers; auth field labels 14px/600, 0.5px tracking, muted." },
+      "micro": { "displayName": "Micro", "purpose": "Message timestamps, 10px, revealed on row hover." }
+    },
+    "shadows": [
+      { "name": "menu-shadow", "value": "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)", "purpose": "Dropdowns, context menus, tooltips, message hover toolbar. Floating layers only." },
+      { "name": "drag-overlay-shadow", "value": "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)", "purpose": "The dnd-kit drag overlay ghost." },
+      { "name": "drawer-shadow", "value": "0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)", "purpose": "The below-lg mobile nav slide-over." },
+      { "name": "input-focus-glow", "value": "0 0 0 3px rgba(88,101,242,0.25)", "purpose": "Auth .input focus ring; a state signal, not depth." },
+      { "name": "new-message-pulse-ring", "value": "0 0 0 0 rgba(88,101,242,0.35) -> 0 0 0 8px transparent", "purpose": "Animated unread attention cue (2s ease-in-out infinite)." }
+    ],
+    "motion": [
+      { "name": "hover-transition", "value": "100-200ms ease on background-color/color/border-color", "purpose": "The interaction family: color-swap hovers, squircle morph (200ms), drawer translate (200ms)." },
+      { "name": "entrance", "value": "fade-in 250ms, message-appear 200ms (6px rise), user-join/leave 300ms slides", "purpose": "View and message entrances; forwards fill." },
+      { "name": "message-delete", "value": "300ms ease-out collapse (scale 0.95, max-height to 0)", "purpose": "Message removal." },
+      { "name": "state-flash", "value": "edit-highlight 2s accent-muted fade; reaction-pop 300ms; badge-bounce 300ms", "purpose": "Edited-message flash, reaction and badge feedback." },
+      { "name": "live-loops", "value": "voice-wave 500ms staggered; typing-dot 1.4s bounce; new-message-pulse 2s", "purpose": "Loops carry live state only (voice, typing, unread) — no ambient decoration." },
+      { "name": "reduced-motion-gate", "value": "@media (prefers-reduced-motion: reduce) { animation: none } on every animation class", "purpose": "All motion dies for reduced-motion users; new animations must join the kill list." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "btn-primary",
+      "description": "The one action color: blurple fill, white 15px/600 label, 8px radius, 44px min-height; deepens to #4752c4 on hover.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Log In</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem 1rem; min-height: 44px; font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 600; font-size: 0.9375rem; line-height: 1.25; border-radius: 8px; border: none; cursor: pointer; transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease; } .ds-btn:focus-visible { outline: 2px solid #5865f2; outline-offset: 2px; } .ds-btn:disabled { opacity: 0.5; cursor: not-allowed; } .ds-btn-primary { background: #5865f2; color: #ffffff; } .ds-btn-primary:hover:not(:disabled) { background: #4752c4; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "btn-secondary",
+      "description": "Transparent with a #3f4147 border; 4% white veil and lighter border on hover. The OAuth pair style.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">GitHub</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem 1rem; min-height: 44px; font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 600; font-size: 0.9375rem; line-height: 1.25; border-radius: 8px; cursor: pointer; transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease; } .ds-btn:focus-visible { outline: 2px solid #5865f2; outline-offset: 2px; } .ds-btn-secondary { background: transparent; color: #efeff1; border: 1px solid #3f4147; } .ds-btn-secondary:hover:not(:disabled) { background: rgba(255, 255, 255, 0.04); border-color: #949ba4; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "btn-ghost",
+      "description": "Transparent, muted ink; hover brings full ink over the 4% white veil.",
+      "html": "<button class=\"ds-btn ds-btn-ghost\">Cancel</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem 1rem; min-height: 44px; font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 600; font-size: 0.9375rem; line-height: 1.25; border-radius: 8px; border: none; cursor: pointer; transition: background-color 0.15s ease, color 0.15s ease; } .ds-btn:focus-visible { outline: 2px solid #5865f2; outline-offset: 2px; } .ds-btn-ghost { background: transparent; color: #b5bac1; } .ds-btn-ghost:hover:not(:disabled) { color: #efeff1; background: rgba(255, 255, 255, 0.04); }"
+    },
+    {
+      "name": "Auth Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Transparent field with a #3f4147 border; focus moves the border to blurple with a 3px 25% ring. Labeled above in 14px/600 muted ink.",
+      "html": "<label class=\"ds-field\"><span>Email or Phone Number</span><input class=\"ds-input\" type=\"text\" placeholder=\"you@example.com\"></label>",
+      "css": ".ds-field { display: block; font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; } .ds-field span { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 600; letter-spacing: 0.5px; color: #b5bac1; } .ds-input { width: 100%; padding: 0.625rem 0.75rem; background: transparent; border: 1px solid #3f4147; border-radius: 8px; color: #efeff1; font-size: 1rem; font-family: inherit; line-height: 1.5; caret-color: #5865f2; transition: border-color 0.15s ease, box-shadow 0.15s ease; } .ds-input::placeholder { color: #72767d; } .ds-input:hover:not(:disabled) { border-color: #949ba4; } .ds-input:focus { outline: none; border-color: #5865f2; box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.25); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat elevated panel: #2b2d31 fill, 1px #252527 hairline, 8px radius, 16px padding.",
+      "html": "<div class=\"ds-card\">Card content</div>",
+      "css": ".ds-card { background: #2b2d31; border: 1px solid #252527; border-radius: 8px; padding: 1rem; color: #efeff1; font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; }"
+    },
+    {
+      "name": "Modal",
+      "kind": "custom",
+      "refersTo": "modal",
+      "description": "Portaled dialog: black/70 overlay, 16px-radius #2b2d31 panel with hairline border; Esc and overlay click close.",
+      "html": "<div class=\"ds-modal-overlay\"><div class=\"ds-modal\" role=\"dialog\" aria-modal=\"true\"><div class=\"ds-modal-head\"><h2>Delete Channel</h2><button aria-label=\"Close modal\">&#215;</button></div><div class=\"ds-modal-body\">Are you sure you want to delete <strong># general</strong>?</div></div></div>",
+      "css": ".ds-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; } .ds-modal { position: relative; z-index: 50; width: 100%; max-width: 28rem; background: #2b2d31; border: 1px solid #252527; border-radius: 16px; color: #efeff1; } .ds-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 1rem; } .ds-modal-head h2 { font-size: 1.125rem; font-weight: 600; margin: 0; } .ds-modal-head button { border: none; background: transparent; color: #b5bac1; font-size: 1rem; padding: 0.375rem; border-radius: 8px; cursor: pointer; } .ds-modal-head button:hover { background: #35373c; color: #efeff1; } .ds-modal-body { padding: 0 1rem 1rem; font-size: 0.875rem; color: #b5bac1; }"
+    },
+    {
+      "name": "Dropdown Menu",
+      "kind": "nav",
+      "refersTo": "dropdown",
+      "description": "Floating menu: 8px radius, #2b2d31, hairline border, shadow-md; items hover #40424b; danger items are error text over a 10% error fill.",
+      "html": "<div class=\"ds-menu\" role=\"menu\"><button class=\"ds-menu-item\" role=\"menuitem\">Invite People</button><button class=\"ds-menu-item ds-menu-danger\" role=\"menuitem\">Delete Server</button></div>",
+      "css": ".ds-menu { min-width: 180px; padding: 0.25rem 0; background: #2b2d31; border: 1px solid #252527; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; } .ds-menu-item { display: flex; width: calc(100% - 8px); margin: 0 4px; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border: none; background: transparent; border-radius: 6px; text-align: left; font-size: 0.875rem; color: #efeff1; cursor: pointer; transition: background-color 0.15s ease; } .ds-menu-item:hover { background: #40424b; } .ds-menu-danger { color: #ed4245; } .ds-menu-danger:hover { background: rgba(237, 66, 69, 0.1); }"
+    },
+    {
+      "name": "Tooltip",
+      "kind": "custom",
+      "refersTo": "tooltip",
+      "description": "Field-dark label on a floating layer: bg #1e1f22, hairline border, 8px radius, shadow-md, 12px text.",
+      "html": "<div class=\"ds-tooltip\" role=\"tooltip\">The Crew</div>",
+      "css": ".ds-tooltip { position: fixed; z-index: 50; padding: 0.375rem 0.625rem; background: #1e1f22; border: 1px solid #252527; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); color: #efeff1; font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 0.75rem; font-weight: 500; }"
+    },
+    {
+      "name": "Server Tile (squircle morph + white pill)",
+      "kind": "custom",
+      "refersTo": "icon-list servers",
+      "description": "The signature: a 48px tile that rests as a circle and morphs to a 16px squircle on hover/active; a white pill on the rail's left edge signals active (4x40px) or notification (4x8px); active fill is blurple.",
+      "html": "<div class=\"ds-rail\"><div class=\"ds-tile-wrap\"><div class=\"ds-pill ds-pill-active\"></div><button class=\"ds-tile ds-tile-active\" aria-current=\"page\">TC</button></div><div class=\"ds-tile-wrap\"><button class=\"ds-tile\">FT</button></div></div>",
+      "css": ".ds-rail { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; width: 72px; padding: 0.75rem 0; background: #1e1f22; font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; } .ds-tile-wrap { position: relative; width: 100%; display: flex; justify-content: center; } .ds-pill { position: absolute; left: 0; top: 50%; transform: translate(-4px, -50%); background: #efeff1; border-radius: 0 6px 6px 0; width: 4px; height: 0; transition: all 0.2s; } .ds-pill-active { height: 40px; } .ds-tile { position: relative; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border: none; cursor: pointer; overflow: hidden; border-radius: 9999px; background: #35373c; color: #b5bac1; font-size: 0.875rem; font-weight: 600; transition: all 0.2s; } .ds-tile:hover { border-radius: 16px; background: #40424b; color: #efeff1; } .ds-tile-active { border-radius: 16px; background: #5865f2; color: #ffffff; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The drawn app window, grown up.",
+    "overview": "The client is the tri-rail Discord shell the landing page only drew: a flat, friendly-yet-professional dark app where color does real jobs — one blurple for actions, green/amber/red for presence and state, and a charcoal ramp that tells you where you are. Density is app-tight, muscle-memory placement wins over novelty, and the surface stays matte: the shipped CSS contains no gradients, no backdrop-filter glass, and no glow.\n\nStyling lives in packages/web/app/globals.css: :root tokens, the Tailwind v4 @theme mapping, @layer components primitives, and functional animations. The landing .ftl world and this world share a repository, not a stylesheet — never merge tokens across the two. app/sfu/page.tsx is a developer debug surface left with its own styling deliberately; it is not part of this system.",
+    "keyCharacteristics": [
+      "A region ramp, not just greys: ground #121214, rail #1e1f22, list #2b2d31, chat #313338, raised #35373c, hover #40424b — the region tokens name places and are never interchangeable.",
+      "One action color: blurple #5865f2 (hover #4752c4, 16% muted wash, soft link tint #798df9); state trio success #23a559 / warning #f0b232 / error #ed4245.",
+      "Ink in four steps (#efeff1 / #b5bac1 / #949ba4 / #72767d); pure white appears only on blurple fills.",
+      "8px spacing grid, 8px control radius, 16px modals, pill avatars, 16px squircle server tiles with the white pill indicator.",
+      "One face, gg sans stack (Noto Sans shipped as the disclosed stand-in); hierarchy is size, weight, and case.",
+      "Motion is functional only and dies under prefers-reduced-motion: reduce.",
+      "Tri-rail shell: 72px rail / nav list / chat with a toggleable members column; below lg the nav is a full-width slide-over drawer."
+    ],
+    "rules": [
+      { "name": "The Cascade Rule", "body": "The primitives .btn, .btn-primary/-secondary/-ghost, .input, and .card live in @layer components precisely so Tailwind utilities override them: the password field's pr-12 show/hide button, pl-10 prefix-icon inputs, w-full, and font-bold all win without !important. Future edits must keep these primitives in @layer components — moving them to unlayered CSS would silently break every utility-composed field and button.", "section": "components" },
+      { "name": "The Region Rule", "body": "rail, list, and chat name places in the shell, not shades in a ramp. A new surface picks its region token by where it lives (rail-edge, list, chat) and steps to background-surface/background-hover for raised or active states — it never substitutes a raw grey.", "section": "colors" },
+      { "name": "The Soft-Link Rule", "body": "Inline prose links are soft blurple #798df9 with underline-on-hover; raw #5865f2 is reserved for things you click as an action (buttons, tiles, send).", "section": "colors" },
+      { "name": "The White-Only-On-Blurple Rule", "body": "#ffffff appears only as text or icons on accent fills. UI ink tops out at #efeff1; brighter text is not a way to add emphasis.", "section": "colors" },
+      { "name": "The gg sans Disclosure", "body": "'gg sans' is Discord's proprietary face and cannot be shipped. The stack deliberately prefers a locally installed copy when present and ships Noto Sans via next/font as --font-gg — a free, metrically-similar stand-in. This substitution is intentional and disclosed; do not swap in another display face to fix it.", "section": "typography" },
+      { "name": "The One-Face Rule", "body": "Never introduce a second typeface into the client. Emphasis is weight, case, and the 12px-uppercase section-header signature — not a new font.", "section": "typography" },
+      { "name": "The Resting-Structure Rule", "body": "Resting panels never cast shadows. Separation is a ramp step or a 1px hairline; a shadow appears only when a layer floats above the app (menus, tooltips, drag ghosts, the drawer).", "section": "elevation" },
+      { "name": "The Squircle Morph", "body": "Server tiles rest as circles; hover and active morph them to a 16px squircle over 200ms. A white pill rides the rail's left edge and signals state only: 4x40px for the active server, 4x8px for a notification, nothing at rest.", "section": "shapes" },
+      { "name": "The Hover Ladder", "body": "Use the 4% white veil (bg-white/[0.04]) on list grounds, the next ramp step (hover:bg-background-surface / -hover) on rail and panel surfaces, and 10% black (hover:bg-black/10) on the chat ground.", "section": "components" }
+    ],
+    "dos": [
+      "Do keep .btn/.input/.card in @layer components so utilities keep overriding them — prefix-icon inputs (pr-12) depend on it.",
+      "Do use the hover ladder: the 4% white veil (bg-white/[0.04]) on list grounds, the next ramp step (hover:bg-background-surface / -hover) on rail and panel surfaces, and 10% black (hover:bg-black/10) on the chat ground.",
+      "Do gate every new animation behind prefers-reduced-motion: reduce and add its class to the kill list.",
+      "Do keep interactive targets >=44px (.btn min-height) with 2px accent focus-visible outlines at 2px offset.",
+      "Do keep inline links soft blurple #798df9 and write empty states in product voice.",
+      "Do portal the drawer scrim to document.body and keep drawer, scrim, and close control as three layers (drawer z-50, scrim z-40)."
+    ],
+    "donts": [
+      "Don't merge the landing .ftl tokens into globals.css or leak client tokens into landing.css — two worlds, two stylesheets; and don't restyle app/sfu/page.tsx (deliberate debug exclusion).",
+      "Don't introduce gradients, backdrop-filter glass, or glow — the world is matte by audit.",
+      "Don't put shadows on resting structure; they are for floating layers only.",
+      "Don't use raw #5865f2 for inline text links, and don't use pure white as UI ink.",
+      "Don't add ambient looping animation; loops carry live state only.",
+      "Don't rest server tiles as squircles — at-rest is a circle; the morph belongs to hover and active."
+    ]
+  },
+  "surfaces": [
+    { "slug": "packages-web-app-auth-login-page-tsx", "brief": "packages/web/.impeccable/surfaces/packages-web-app-auth-login-page-tsx.md", "summary": "Auth world: centered 480px column on #121214, labeled inputs, one blurple action, hairline dividers, outline OAuth pair, collapsible QR section (real SVG at public/qr-login.svg)." },
+    { "slug": "packages-web-components-layout-app-shell-tsx", "brief": "packages/web/.impeccable/surfaces/packages-web-components-layout-app-shell-tsx.md", "summary": "Tri-rail shell: 72px rail, nav/members lists #2b2d31, chat #313338; squircle morph + white pill; drawer below lg; members lg-only." },
+    { "slug": "packages-web-app-page-tsx", "brief": "packages/web/.impeccable/surfaces/packages-web-app-page-tsx.md", "summary": "Landing page — belongs to the separate .ftl world; see repo-root DESIGN.md and .impeccable/design.json." }
+  ],
+  "review": {
+    "disposition": "ship",
+    "captures": [
+      "packages/web/.impeccable/review/landing-desktop.png",
+      "packages/web/.impeccable/review/auth-login-desktop.png",
+      "packages/web/.impeccable/review/auth-login-mobile.png",
+      "packages/web/.impeccable/review/auth-login-qr-open.png",
+      "packages/web/.impeccable/review/auth-register-desktop.png",
+      "packages/web/.impeccable/review/app-channel-desktop.png",
+      "packages/web/.impeccable/review/app-channel-mobile.png",
+      "packages/web/.impeccable/review/app-channel-mobile-drawer.png",
+      "packages/web/.impeccable/review/app-friends-desktop.png"
+    ],
+    "result": "9/9 captures passing; two material fixes resolved in review (portaled drawer scrim, product-voice empty state).",
+    "openNotes": [
+      "dnd drag-grips visible at rest on touch — belongs to the parallel dnd-kit rework; nonblocking."
+    ],
+    "scopeCaveat": "Modals and shared primitives were declared in scope but unjudged by stills; their specs come from shipped code, not review."
+  }
+}

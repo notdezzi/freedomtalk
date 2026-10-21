@@ -6,8 +6,10 @@
 import { db } from '../../config/database';
 import { generateSnowflakeId } from '../../utils/snowflake';
 import { AppError } from '../../utils/errors';
+import { logger } from '../../config/logger';
 import { WS_EVENTS } from '@freedomtalk/shared';
 import { wsServer } from '../websocket/websocket.server';
+import { assertCanModerateMember } from './hierarchy';
 
 export interface ServerBanWithUser {
   id: string;
@@ -42,7 +44,7 @@ class ServerBanService {
         io.to(`server:${serverId}`).emit(event, data);
       }
     } catch (error) {
-      console.error('Failed to emit WebSocket event:', error);
+      logger.error({ error }, 'Failed to emit WebSocket event');
     }
   }
 
@@ -56,7 +58,7 @@ class ServerBanService {
         io.to(`user:${userId}`).emit(event, data);
       }
     } catch (error) {
-      console.error('Failed to emit WebSocket event to user:', error);
+      logger.error({ error }, 'Failed to emit WebSocket event to user');
     }
   }
 
@@ -70,8 +72,12 @@ class ServerBanService {
       throw new AppError(404, 'SERVER_NOT_FOUND', 'Server not found');
     }
 
-    // Note: Server owners CAN be banned by other administrators
-    // This allows for full moderation capabilities
+    // Hierarchy: the owner can never be banned, and the banner must
+    // outrank the target.
+    if (input.userId === server.owner_id) {
+      throw new AppError(403, 'FORBIDDEN', 'The server owner cannot be banned');
+    }
+    await assertCanModerateMember(input.serverId, input.bannedBy, input.userId);
 
     // Check if user exists
     const user = await db('users').where('id', input.userId).first();
@@ -146,6 +152,38 @@ class ServerBanService {
     this.emitToUser(input.userId, WS_EVENTS.SERVER_REMOVE, {
       serverId: input.serverId,
     });
+
+    // SECURITY: remove the banned user's live sockets from this server's
+    // rooms so they stop receiving server traffic without reconnecting.
+    try {
+      if (wsServer.isInitialized()) {
+        const io = wsServer.getIO();
+        const { connectionManager } = await import('../websocket/connection.manager');
+        for (const socketId of connectionManager.getUserConnections(input.userId)) {
+          const socket = io.sockets.sockets.get(socketId);
+          if (!socket) {
+            continue;
+          }
+          for (const room of [...socket.rooms]) {
+            let shouldLeave = false;
+            if (room === `server:${input.serverId}`) {
+              shouldLeave = true;
+            } else if (room.startsWith('channel:')) {
+              const channel = await db('channels')
+                .where('id', room.slice('channel:'.length))
+                .where('server_id', input.serverId)
+                .first();
+              shouldLeave = !!channel;
+            }
+            if (shouldLeave) {
+              socket.leave(room);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      logger.error({ error }, 'Failed to remove banned user from server rooms');
+    }
 
     return ban as ServerBanWithUser;
   }

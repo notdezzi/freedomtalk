@@ -1,0 +1,1 @@
+Own your conversations. FreedomTalk is a Discord-style platform you can actually host yourself — real-time chat, DMs, roles, webhooks, audit logs, WebRTC voice via mediasoup. Fastify 5, Socket.io, PostgreSQL, Redis, RabbitMQ, Next.js 16. 181 commits, fully open source. Your infrastructure, your rules.

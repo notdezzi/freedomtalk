@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Phone, PhoneOff, X } from 'lucide-react';
 import { socketService } from '@/lib/socket';
@@ -18,7 +18,8 @@ interface IncomingCall {
 export function IncomingCallNotification() {
   const router = useRouter();
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
-  const { isConnected, currentChannelId } = useVoiceStore();
+  const isConnected = useVoiceStore((s) => s.isConnected);
+  const currentChannelId = useVoiceStore((s) => s.currentChannelId);
   const { joinChannel, leaveChannel } = useVoiceConnection();
 
   useEffect(() => {
@@ -50,12 +51,22 @@ export function IncomingCallNotification() {
       }
     };
 
+    // The callee declined: stop ringing immediately (the server mirrors
+    // dm:call_reject to the other DM participants)
+    const handleCallRejected = (data: { channelId: string }) => {
+      if (incomingCall?.channelId === data.channelId) {
+        setIncomingCall(null);
+      }
+    };
+
     socket.on('dm:call_started', handleCallStarted);
     socket.on('dm:call_ended', handleCallEnded);
+    socket.on('dm:call_reject', handleCallRejected);
 
     return () => {
       socket.off('dm:call_started', handleCallStarted);
       socket.off('dm:call_ended', handleCallEnded);
+      socket.off('dm:call_reject', handleCallRejected);
     };
   }, [isConnected, currentChannelId, incomingCall?.channelId]);
 
@@ -81,12 +92,31 @@ export function IncomingCallNotification() {
   }, [incomingCall, isConnected, leaveChannel, joinChannel, router]);
 
   const handleDecline = useCallback(() => {
+    // Tell the caller the call was rejected. The server re-emits
+    // dm:call_reject to the other DM participants, which clears their
+    // ringing UI — unlike voice:leave, this works without ever joining.
+    const socket = socketService.getSocket();
+    socket?.emit('dm:call_reject', { channelId: incomingCall?.channelId });
     setIncomingCall(null);
-  }, []);
+  }, [incomingCall?.channelId]);
 
   const handleDismiss = useCallback(() => {
     setIncomingCall(null);
   }, []);
+
+  // Focus management: focus the dialog on mount, restore focus on unmount
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!incomingCall) return;
+
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+
+    return () => {
+      previouslyFocused?.focus?.();
+    };
+  }, [incomingCall]);
 
   if (!incomingCall) {
     return null;
@@ -94,13 +124,22 @@ export function IncomingCallNotification() {
 
   return (
     <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-4 duration-300">
-      <div className="bg-background-elevated border border-border rounded-lg shadow-lg p-4 w-80">
+      <div
+        ref={dialogRef}
+        role="alertdialog"
+        aria-modal="false"
+        aria-label="Incoming call"
+        tabIndex={-1}
+        className="bg-background-elevated border border-border rounded-lg shadow-lg p-4 w-80 focus:outline-none"
+      >
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="relative">
               <Phone className="h-5 w-5 text-success animate-pulse" />
-              <span className="absolute -top-1 -right-1 flex h-2 w-2">
+              {/* Ripple overlay — hidden entirely under prefers-reduced-motion
+                  (the global kill-switch would leave a static ghost circle) */}
+              <span className="absolute -top-1 -right-1 flex h-2 w-2 motion-reduce:hidden">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
               </span>
@@ -109,6 +148,7 @@ export function IncomingCallNotification() {
           </div>
           <button
             onClick={handleDismiss}
+            aria-label="Dismiss incoming call"
             className="rounded p-1 text-foreground-muted hover:bg-background-surface hover:text-foreground"
           >
             <X className="h-4 w-4" />

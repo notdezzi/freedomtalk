@@ -4,6 +4,7 @@ import { WS_EVENTS } from '@freedomtalk/shared';
 import { wsServer } from './websocket.server';
 import { dmChannelService } from '../dm/dm-channel.service';
 import { db } from '../../config/database';
+import { publishCrossNode, PRESENCE_CHANNEL } from './cross-node.bus';
 
 // Track last presence broadcast time per user for throttling
 const presenceBroadcastCache = new Map<string, number>();
@@ -306,6 +307,19 @@ class PresenceManager {
       // TODO: Also broadcast to server rooms where user is a member
       // This would require getting user's server memberships and broadcasting to each server room
       // For now, server presence is handled through separate subscription mechanism
+
+      // Fan out to other API nodes: the emits above only reach clients on
+      // this node, so other nodes re-emit to their local clients via Redis.
+      await publishCrossNode(PRESENCE_CHANNEL, {
+        userId,
+        presence,
+        timestamp,
+        dmChannelIds: result.dmChannels.map((dm) => dm.id),
+        friendIds: [
+          ...friends.map((f) => f.connected_user_id),
+          ...inverseFriends.map((f) => f.user_id),
+        ],
+      });
 
       logger.debug({ userId, presence, dmCount: result.dmChannels.length, friendCount: friends.length + inverseFriends.length }, 'Presence update broadcast to relevant users');
     } catch (error) {

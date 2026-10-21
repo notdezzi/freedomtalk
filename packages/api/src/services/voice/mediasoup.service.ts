@@ -324,6 +324,57 @@ class MediasoupService {
   }
 
   /**
+   * Apply (or lift) a server-side suppress (mute/deafen) on a participant.
+   *
+   * Suppressing pauses the participant's audio producer so their microphone
+   * stops being routed to the room; unsuppressing resumes it. When
+   * options.includeConsumers is set (used for deafen), the participant's own
+   * audio consumers are also paused/resumed so they stop hearing the room.
+   *
+   * No-op when the participant is not in the media layer (e.g. joined via the
+   * REST API only), so it is safe to call after every DB state update.
+   */
+  async setParticipantSuppress(
+    channelId: string,
+    sessionId: string,
+    suppress: boolean,
+    options: { includeConsumers?: boolean } = {}
+  ): Promise<void> {
+    const participant = this.getParticipant(channelId, sessionId);
+    if (!participant) return;
+
+    const audioProducer = participant.audioProducer;
+    if (audioProducer) {
+      try {
+        if (suppress && !audioProducer.paused) {
+          await audioProducer.pause();
+        } else if (!suppress && audioProducer.paused) {
+          await audioProducer.resume();
+        }
+      } catch (error) {
+        logger.warn({ error, channelId, sessionId, suppress }, 'Failed to toggle participant audio producer');
+      }
+    }
+
+    if (options.includeConsumers) {
+      for (const consumer of participant.consumers.values()) {
+        if (consumer.kind !== 'audio') continue;
+        try {
+          if (suppress && !consumer.paused) {
+            await consumer.pause();
+          } else if (!suppress && consumer.paused) {
+            await consumer.resume();
+          }
+        } catch (error) {
+          logger.warn({ error, channelId, sessionId, consumerId: consumer.id, suppress }, 'Failed to toggle participant audio consumer');
+        }
+      }
+    }
+
+    logger.info({ channelId, sessionId, suppress, includeConsumers: options.includeConsumers === true }, 'Participant suppress state updated');
+  }
+
+  /**
    * Create WebRTC transport (for sending or receiving)
    */
   async createTransport(channelId: string, sessionId: string, direction: 'send' | 'recv'): Promise<TransportOptions> {

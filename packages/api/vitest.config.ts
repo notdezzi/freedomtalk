@@ -5,16 +5,16 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    globalSetup: ['./vitest.global-setup.ts'],
     setupFiles: ['./src/test-setup.ts'],
     include: ['src/**/*.test.ts', 'src/**/__tests__/**/*.ts'],
     exclude: ['node_modules', 'dist', 'build', '**/*.d.ts'],
-    // Run tests sequentially to avoid database conflicts
-    pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
+    // Run test files sequentially in a single worker: the suites share one
+    // database (Testcontainers-provisioned) and snowflake IDs collide across
+    // workers running in the same millisecond. Files stay isolated from each
+    // other (default) so singletons like wsServer don't bleed across suites.
+    maxWorkers: 1,
+    minWorkers: 1,
     fileParallelism: false,
     coverage: {
       provider: 'v8',

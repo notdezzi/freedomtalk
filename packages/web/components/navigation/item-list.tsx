@@ -2,7 +2,10 @@
 
 import { cn } from '@/lib/utils';
 import { type ReactNode, useState } from 'react';
-import { ChevronDown, Hash, Volume2, VolumeX, Plus, MicOff } from 'lucide-react';
+import { ChevronDown, Hash, Volume2, VolumeX, Plus, MicOff, GripVertical } from 'lucide-react';
+import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useDroppable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import { Avatar } from '@/components/ui';
 import type { ChannelType, DMChannel, VoiceUser } from '@/types';
 
@@ -47,8 +50,8 @@ export function ItemList<T extends { id: string; name?: string }>({
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         {items.length === 0 ? (
           emptyState || (
-            <div className="flex items-center justify-center py-8 text-foreground-subtle">
-              No items
+            <div className="px-4 py-8 text-center text-sm text-foreground-subtle">
+              Nothing here yet — it's quiet for now.
             </div>
           )
         ) : (
@@ -120,8 +123,8 @@ function ItemListItem<T extends { id: string; name?: string }>({
         'flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left',
         'transition-colors duration-100',
         isActive
-          ? 'bg-background-surface/80 text-foreground'
-          : 'text-foreground-muted hover:bg-background-surface hover:text-foreground',
+          ? 'bg-background-hover text-foreground'
+          : 'text-foreground-muted hover:bg-white/[0.04] hover:text-foreground',
         isUnread && 'text-foreground font-medium'
       )}
       aria-current={isActive ? 'page' : undefined}
@@ -163,29 +166,11 @@ export function ChannelCategory({
   onAddClick,
   isCollapsed = false,
   onToggleCollapse,
-  isDraggable = false,
-  draggedChannelId,
-  dragOverChannelId,
-  dragOverPosition = 'before',
-  onChannelDragStart,
-  onChannelDragEnd,
-  onChannelDragOver,
-  onChannelDragLeave,
-  onChannelDrop,
   categoryId,
-  onDropZoneDragOver,
-  onDropZoneDrop,
-  dragOverCategoryId,
   voiceUsersByChannel,
   activeVoiceChannelId,
+  isDraggable = false,
   isCategoryDraggable = false,
-  isCategoryDragging = false,
-  isCategoryDragOver = false,
-  onCategoryDragStart,
-  onCategoryDragEnd,
-  onCategoryDragOver,
-  onCategoryDragLeave,
-  onCategoryDrop,
 }: {
   name: string;
   channels: SimpleChannel[];
@@ -195,120 +180,155 @@ export function ChannelCategory({
   onAddClick?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
-  isDraggable?: boolean;
-  draggedChannelId?: string | null;
-  dragOverChannelId?: string | null;
-  dragOverPosition?: 'before' | 'after';
-  onChannelDragStart?: (e: React.DragEvent, channelId: string) => void;
-  onChannelDragEnd?: () => void;
-  onChannelDragOver?: (e: React.DragEvent, channelId: string, categoryId?: string) => void;
-  onChannelDragLeave?: () => void;
-  onChannelDrop?: (e: React.DragEvent, channelId: string, categoryId?: string) => void;
   categoryId?: string;
-  onDropZoneDragOver?: (e: React.DragEvent, categoryId: string | null) => void;
-  onDropZoneDrop?: (e: React.DragEvent, categoryId: string | null) => void;
-  dragOverCategoryId?: string | null;
   voiceUsersByChannel?: Record<string, VoiceUser[]>;
   activeVoiceChannelId?: string | null;
+  isDraggable?: boolean;
   isCategoryDraggable?: boolean;
-  isCategoryDragging?: boolean;
-  isCategoryDragOver?: boolean;
-  onCategoryDragStart?: (e: React.DragEvent) => void;
-  onCategoryDragEnd?: () => void;
-  onCategoryDragOver?: (e: React.DragEvent) => void;
-  onCategoryDragLeave?: () => void;
-  onCategoryDrop?: (e: React.DragEvent) => void;
 }) {
+  const zoneId = `zone:${categoryId || 'uncategorized'}`;
+
   return (
     <div className="py-1">
       {/* Category header */}
-      <button
-        onClick={onToggleCollapse}
-        draggable={isCategoryDraggable}
-        onDragStart={onCategoryDragStart}
-        onDragEnd={onCategoryDragEnd}
-        onDragOver={onCategoryDragOver}
-        onDragLeave={onCategoryDragLeave}
-        onDrop={onCategoryDrop}
-        className={cn(
-          'flex w-full items-center gap-1 px-1 py-0.5 text-xs font-semibold uppercase tracking-wide',
-          'text-foreground-subtle hover:text-foreground transition-colors',
-          isCategoryDraggable && 'cursor-grab',
-          isCategoryDragging && 'opacity-50',
-          isCategoryDragOver && 'border-t-2 border-white'
-        )}
-      >
-        <ChevronDown
+      <div className="flex items-center group">
+        <button
+          onClick={onToggleCollapse}
+          aria-expanded={!isCollapsed}
           className={cn(
-            'h-3 w-3 transition-transform duration-200',
-            isCollapsed && '-rotate-90'
+            'flex flex-1 min-w-0 items-center gap-1 px-1 py-0.5 text-xs font-semibold uppercase tracking-wide',
+            'text-foreground-subtle hover:text-foreground transition-colors'
           )}
-        />
-        <span className="flex-1 text-left">{name}</span>
-        {onAddClick && (
-          <Plus
-            className="h-3 w-3 opacity-0 group-hover:opacity-100 hover:text-foreground"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddClick();
-            }}
+        >
+          <ChevronDown
+            className={cn(
+              'h-3 w-3 transition-transform duration-200',
+              isCollapsed && '-rotate-90'
+            )}
           />
+          <span className="flex-1 text-left truncate">{name}</span>
+          {onAddClick && (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="Create channel"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddClick();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onAddClick();
+                }
+              }}
+              className="inline-flex items-center justify-center p-1.5 rounded hover:bg-background-surface hover:text-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+            >
+              <Plus className="h-3 w-3" />
+            </span>
+          )}
+        </button>
+        {isCategoryDraggable && (
+          <CategoryDragHandle categoryId={categoryId} name={name} />
         )}
-      </button>
+      </div>
 
       {/* Channels */}
       {!isCollapsed && (
         <>
           <div className="mt-0.5 space-y-0.5">
-            {channels.map((channel) => (
-              <div
-                key={channel.id}
-                draggable={isDraggable}
-                onDragStart={(e) => onChannelDragStart?.(e, channel.id)}
-                onDragEnd={onChannelDragEnd}
-                onDragOver={(e) => onChannelDragOver?.(e, channel.id, categoryId)}
-                onDragLeave={onChannelDragLeave}
-                onDrop={(e) => onChannelDrop?.(e, channel.id, categoryId)}
-                className={cn(
-                  'relative',
-                  dragOverChannelId === channel.id && dragOverPosition === 'before' && 'border-t-2 border-foreground',
-                  dragOverChannelId === channel.id && dragOverPosition === 'after' && 'border-b-2 border-foreground'
-                )}
-              >
-                <ChannelItem
+            <SortableContext
+              items={channels.map((channel) => `channel:${channel.id}`)}
+              strategy={verticalListSortingStrategy}
+            >
+              {channels.map((channel) => (
+                <SortableChannelItem
+                  key={channel.id}
                   channel={channel}
                   isActive={channel.id === activeChannelId}
-                  isDragging={draggedChannelId === channel.id}
                   isDraggable={isDraggable}
                   onClick={() => onChannelClick(channel)}
                   onContextMenu={(e) => onChannelContextMenu?.(e, channel)}
                   voiceUsers={voiceUsersByChannel?.[channel.id]}
                   isActiveVoiceChannel={channel.id === activeVoiceChannelId}
                 />
-              </div>
-            ))}
+              ))}
+            </SortableContext>
           </div>
           {/* Drop zone at end of category */}
-          {draggedChannelId && (
-            <div
-              onDragOver={(e) => onDropZoneDragOver?.(e, categoryId || null)}
-              onDrop={(e) => onDropZoneDrop?.(e, categoryId || null)}
-              className={cn(
-                'h-8 mx-1 rounded transition-colors mt-0.5',
-                dragOverCategoryId === (categoryId || null) && !dragOverChannelId && 'bg-background-surface/50 border-2 border-dashed border-foreground-subtle'
-              )}
-            />
-          )}
+          {isDraggable && <ChannelDropZone id={zoneId} enabled />}
         </>
       )}
     </div>
   );
 }
 
-function ChannelItem({
+/**
+ * Drop target for "drop at end of list". Render inside the relevant
+ * SortableContext area.
+ */
+export function ChannelDropZone({
+  id,
+  enabled = false,
+}: {
+  id: string;
+  enabled?: boolean;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id, disabled: !enabled });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'h-2 mx-1 rounded transition-colors',
+        isOver && 'h-8 bg-background-surface/50 border-2 border-dashed border-foreground-subtle'
+      )}
+    />
+  );
+}
+
+/**
+ * Drag handle for reordering a category. Must be rendered inside the
+ * categories SortableContext (see navigation-column).
+ */
+export function CategoryDragHandle({
+  categoryId,
+  name,
+}: {
+  categoryId?: string;
+  name: string;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    isDragging,
+  } = useSortable({ id: `category:${categoryId}`, disabled: !categoryId });
+
+  return (
+    <span
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      aria-label={`Reorder category ${name}`}
+      className={cn(
+        'touch-none cursor-grab active:cursor-grabbing p-1.5 text-foreground-subtle hover:text-foreground flex-shrink-0',
+        isDragging && 'opacity-50'
+      )}
+    >
+      <GripVertical className="h-3 w-3" />
+    </span>
+  );
+}
+
+/**
+ * Sortable channel row. Must be rendered inside the channels SortableContext
+ * for its category (see navigation-column / ChannelCategory).
+ */
+export function SortableChannelItem({
   channel,
   isActive,
-  isDragging,
   isDraggable,
   onClick,
   onContextMenu,
@@ -317,8 +337,71 @@ function ChannelItem({
 }: {
   channel: SimpleChannel;
   isActive: boolean;
-  isDragging?: boolean;
   isDraggable?: boolean;
+  onClick: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
+  voiceUsers?: VoiceUser[];
+  isActiveVoiceChannel?: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: `channel:${channel.id}`,
+    disabled: !isDraggable,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn('mx-1', isDragging && 'opacity-50')}
+    >
+      <div className="flex items-center">
+        <div className="flex-1 min-w-0">
+          <ChannelItem
+            channel={channel}
+            isActive={isActive}
+            onClick={onClick}
+            onContextMenu={onContextMenu}
+            voiceUsers={voiceUsers}
+            isActiveVoiceChannel={isActiveVoiceChannel}
+          />
+        </div>
+        {isDraggable && (
+          <span
+            {...attributes}
+            {...listeners}
+            aria-label={`Reorder channel ${channel.name}`}
+            className="touch-none cursor-grab active:cursor-grabbing p-1.5 text-foreground-subtle hover:text-foreground flex-shrink-0"
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ChannelItem({
+  channel,
+  isActive,
+  onClick,
+  onContextMenu,
+  voiceUsers,
+  isActiveVoiceChannel,
+}: {
+  channel: SimpleChannel;
+  isActive: boolean;
   onClick: () => void;
   onContextMenu?: (e: React.MouseEvent) => void;
   voiceUsers?: VoiceUser[];
@@ -350,11 +433,9 @@ function ChannelItem({
           'flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left',
           'transition-colors duration-100 group',
           isActive
-            ? 'bg-background-surface/80 text-foreground'
-            : 'text-foreground-muted hover:bg-background-surface hover:text-foreground',
+            ? 'bg-background-hover text-foreground'
+            : 'text-foreground-muted hover:bg-white/[0.04] hover:text-foreground',
           channel.hasNotification && 'text-foreground font-medium',
-          isDragging && 'opacity-50',
-          isDraggable && 'cursor-grab',
           isActiveVoiceChannel && 'bg-success/20 text-success hover:bg-success/30'
         )}
         aria-current={isActive ? 'page' : undefined}

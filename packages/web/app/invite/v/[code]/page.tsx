@@ -105,7 +105,7 @@ export default function VanityInvitePage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-background-elevated rounded-lg overflow-hidden shadow-lg">
         {/* Server Banner/Header */}
-        <div className="h-24 bg-gradient-to-r from-accent/20 to-accent/10 relative">
+        <div className="h-24 bg-accent/10 relative">
           {server.icon && (
             <div className="absolute -bottom-8 left-6">
               <Avatar

@@ -3,7 +3,7 @@
  * Tests registration, login, logout flows for the new FreedomTalk layout
  */
 
-import { test, expect, createTestUser } from '../fixtures';
+import { test, expect, createTestUser, fillRegistrationForm } from '../fixtures';
 
 test.describe('Authentication', () => {
   test.describe('Registration', () => {
@@ -60,30 +60,43 @@ test.describe('Authentication', () => {
     test('should show error for duplicate email', async ({ page }) => {
       const user = createTestUser();
 
-      // First register a user
+      // First register a user (retry loop: cold Turbopack compiles can fully
+      // reload the page after domcontentloaded and wipe unhydrated form state)
       await page.goto('/auth/register');
       await page.waitForLoadState('domcontentloaded');
-      await page.fill('#username', user.username);
-      await page.fill('#email', user.email);
-      await page.fill('#password', user.password);
-      await page.check('#terms');
-      await page.click('button[type="submit"]');
-      await page.waitForURL(/\/auth\/login/, { timeout: 15000 });
+      await fillRegistrationForm(page, user);
+      let firstRegistered = await page
+        .waitForURL(/\/auth\/login/, { timeout: 8000 })
+        .then(() => true)
+        .catch(() => false);
+      for (let attempt = 0; attempt < 2 && !firstRegistered; attempt++) {
+        await page.goto('/auth/register');
+        await page.waitForLoadState('domcontentloaded');
+        await fillRegistrationForm(page, user);
+        firstRegistered = await page
+          .waitForURL(/\/auth\/login/, { timeout: 8000 })
+          .then(() => true)
+          .catch(() => false);
+      }
+      await expect(page).toHaveURL(/\/auth\/login/, { timeout: 15000 });
 
-      // Try to register with same email
+      // Try to register with same email. Fresh pages can fully reload right
+      // after domcontentloaded (Turbopack compile) and wipe unhydrated form
+      // state, so retry until the API error is actually displayed.
       const page2 = await page.context().newPage();
-      await page2.goto('/auth/register');
-      await page2.waitForLoadState('domcontentloaded');
-      await page2.fill('#username', `diff_${user.username}`);
-      await page2.fill('#email', user.email);
-      await page2.fill('#password', user.password);
-      await page2.check('#terms');
-      await page2.click('button[type="submit"]');
-
-      // Should show duplicate error
-      await expect(page2.locator('text=/already.*exists|already.*registered|email.*taken/i')).toBeVisible({
-        timeout: 10000,
-      });
+      const duplicateError = page2.locator('text=/already.*exists|already.*registered|email.*taken/i');
+      let showedError = false;
+      for (let attempt = 0; attempt < 3 && !showedError; attempt++) {
+        await page2.goto('/auth/register');
+        await page2.waitForLoadState('domcontentloaded');
+        await page2.waitForLoadState('networkidle').catch(() => {});
+        await fillRegistrationForm(page2, { ...user, username: `diff_${user.username}` });
+        showedError = await duplicateError
+          .waitFor({ state: 'visible', timeout: 8000 })
+          .then(() => true)
+          .catch(() => false);
+      }
+      await expect(duplicateError).toBeVisible({ timeout: 5000 });
     });
   });
 
@@ -122,17 +135,24 @@ test.describe('Authentication', () => {
     });
 
     test('should show error for invalid credentials', async ({ page }) => {
-      await page.goto('/auth/login');
-      await page.waitForLoadState('domcontentloaded');
-
-      await page.fill('#email', 'nonexistent@example.com');
-      await page.fill('#password', 'WrongPassword123!');
-      await page.click('button[type="submit"]');
-
+      const loginError = page.locator('text=/invalid.*credentials|incorrect|not found/i');
+      // Same hydration-race retry as registration: the form can be wiped by a
+      // full reload before React hydrates
+      let showedError = false;
+      for (let attempt = 0; attempt < 3 && !showedError; attempt++) {
+        await page.goto('/auth/login');
+        await page.waitForLoadState('domcontentloaded');
+        await page.waitForLoadState('networkidle').catch(() => {});
+        await page.fill('#email', 'nonexistent@example.com');
+        await page.fill('#password', 'WrongPassword123!');
+        await page.click('button[type="submit"]');
+        showedError = await loginError
+          .waitFor({ state: 'visible', timeout: 8000 })
+          .then(() => true)
+          .catch(() => false);
+      }
       // Should show error message
-      await expect(page.locator('text=/invalid.*credentials|incorrect|not found/i')).toBeVisible({
-        timeout: 10000,
-      });
+      await expect(loginError).toBeVisible({ timeout: 5000 });
     });
 
     test('should redirect to app if already logged in', async ({ authenticatedPage }) => {

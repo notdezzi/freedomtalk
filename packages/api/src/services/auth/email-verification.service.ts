@@ -40,28 +40,29 @@ class EmailVerificationService {
         return true;
       }
 
-      // Check rate limiting
-      const recentSends = await db('users')
-        .where({ id: userId })
-        .where('verification_token_expires', '>', new Date(Date.now() - this.RATE_LIMIT_WINDOW))
-        .count('* as count')
-        .first();
-
-      if (recentSends && Number(recentSends.count) >= this.MAX_SENDS_PER_WINDOW) {
-        // SECURITY LOGGING: Rate limit exceeded
-        logger.warn({ userId, ipAddress }, 'Email verification rate limit exceeded');
-        return false;
+      // Check rate limiting by comparing against the last send time stored
+      // on the user row (single-row storage can only ever count to 1, so a
+      // count-based window never fires — this per-send spacing check does).
+      if (user.verification_token_expires) {
+        const lastSent = new Date(user.verification_token_expires).getTime() - this.TOKEN_EXPIRY;
+        const minResendInterval = this.RATE_LIMIT_WINDOW / this.MAX_SENDS_PER_WINDOW;
+        if (Date.now() - lastSent < minResendInterval) {
+          logger.warn({ userId, ipAddress }, 'Email verification rate limit exceeded');
+          return false;
+        }
       }
 
       // Generate verification token
       const token = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + this.TOKEN_EXPIRY);
 
-      // Store token in users table
+      // Store the token HASHED (the route-level resend limiter still applies;
+      // a DB leak must not yield usable verification tokens).
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
       await db('users')
         .where({ id: userId })
         .update({
-          verification_token: token,
+          verification_token: tokenHash,
           verification_token_expires: expiresAt,
           updated_at: new Date(),
         });
@@ -90,9 +91,12 @@ class EmailVerificationService {
    */
   async verifyEmail(token: string, ipAddress?: string): Promise<boolean> {
     try {
+      // Hash the incoming token to compare with the stored hash
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
       // Find user with valid token
       const user = await db('users')
-        .where({ verification_token: token })
+        .where({ verification_token: tokenHash })
         .where('verification_token_expires', '>', new Date())
         .first();
 

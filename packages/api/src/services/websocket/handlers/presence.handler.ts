@@ -1,10 +1,29 @@
 import { Socket } from 'socket.io';
 import { z } from 'zod';
 import { logger } from '../../../config/logger';
-import { WS_EVENTS } from '@freedomtalk/shared';
+import { WS_EVENTS, PERMISSION_FLAGS } from '@freedomtalk/shared';
 import { presenceManager } from '../presence.manager';
 import { statusManager, UserStatus } from '../status.manager';
 import { typingManager } from '../typing.manager';
+import { permissionService } from '../../permission';
+import { dmChannelService } from '../../dm/dm-channel.service';
+
+/**
+ * Verify the user may actually see the channel/DM they claim to type in.
+ * Without this, any connected socket could inject typing events into
+ * arbitrary rooms. Fails closed on unexpected errors.
+ */
+async function canTypeIn(userId: string, channelId: string, channelType: 'channel' | 'dm'): Promise<boolean> {
+  try {
+    if (channelType === 'dm') {
+      return await dmChannelService.isParticipant(channelId, userId);
+    }
+    return await permissionService.hasChannelPermission(userId, channelId, PERMISSION_FLAGS.VIEW_CHANNEL);
+  } catch (error) {
+    logger.warn({ error, userId, channelId, channelType }, 'Typing access check failed');
+    return false;
+  }
+}
 
 /**
  * Status change data schema
@@ -133,9 +152,12 @@ export async function handleTypingStart(socket: Socket, data: unknown): Promise<
     const effectiveChannelId = channelId || dmChannelId!;
     const channelType = dmChannelId ? 'dm' : 'channel';
 
+    if (!(await canTypeIn(user.id, effectiveChannelId, channelType))) {
+      logger.warn({ userId: user.id, channelId: effectiveChannelId, channelType }, 'Typing start denied');
+      return;
+    }
+
     // Start typing indicator
-    // Note: We don't check subscription here because typing indicators are broadcast
-    // to the channel room, and room membership provides sufficient access control
     await typingManager.startTyping(user.id, effectiveChannelId, channelType);
 
     logger.debug({ userId: user.id, channelId: effectiveChannelId, channelType }, 'User started typing');
@@ -166,6 +188,10 @@ export async function handleTypingStop(socket: Socket, data: unknown): Promise<v
     const { channelId, dmChannelId } = validation.data;
     const effectiveChannelId = channelId || dmChannelId!;
     const channelType = dmChannelId ? 'dm' : 'channel';
+
+    if (!(await canTypeIn(user.id, effectiveChannelId, channelType))) {
+      return;
+    }
 
     // Stop typing indicator
     await typingManager.stopTyping(user.id, effectiveChannelId, channelType);

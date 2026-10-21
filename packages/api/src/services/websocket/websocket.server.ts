@@ -4,6 +4,13 @@ import { wsConfig, createRedisAdapter } from '../../config/websocket';
 import { logger } from '../../config/logger';
 
 /**
+ * Maximum size of a single Socket.io HTTP packet (1MB).
+ * Bounds the payload a client can send, protecting against oversized
+ * message/embed/attachment payloads exhausting server memory.
+ */
+const MAX_HTTP_BUFFER_SIZE = 1024 * 1024;
+
+/**
  * WebSocket Server class
  * Manages Socket.io server lifecycle and configuration
  */
@@ -29,6 +36,7 @@ class WebSocketServer {
         cors: wsConfig.cors,
         pingInterval: wsConfig.pingInterval,
         pingTimeout: wsConfig.pingTimeout,
+        maxHttpBufferSize: MAX_HTTP_BUFFER_SIZE,
         transports: ['websocket', 'polling'],
       });
 
@@ -44,6 +52,7 @@ class WebSocketServer {
         pingTimeout: wsConfig.pingTimeout,
         maxConnections: wsConfig.maxConnections,
         maxConnectionsPerUser: wsConfig.maxConnectionsPerUser,
+        maxHttpBufferSize: MAX_HTTP_BUFFER_SIZE,
       }, 'WebSocket server initialized successfully');
     } catch (error) {
       logger.error({ error }, 'Failed to initialize WebSocket server');

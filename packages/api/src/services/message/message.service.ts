@@ -13,11 +13,12 @@
 import { db } from '../../config/database';
 import { generateSnowflakeId } from '../../utils/snowflake';
 import { NotFoundError, ConflictError, ApiError, ApiErrorCode } from '../../types/api.types';
+import { AppError } from '../../utils/errors';
 import { logger } from '../../config/logger';
 import { embedService, EmbedData } from '../embed/embed.service';
-import { linkPreviewService } from '../embed/link-preview.service';
 import { mentionService, ParsedMention, MentionType } from '../formatting/mention.service';
 import { GroupedReaction } from '../reaction/reaction.service';
+import { publishEvent } from '../../config/rabbitmq';
 
 /**
  * Message interface matching database schema
@@ -27,6 +28,7 @@ export interface Message {
   content: string;
   author_id: string;
   channel_id: string | null;
+  server_id: string | null;
   dm_channel_id: string | null;
   is_edited: boolean;
   edited_at: Date | null;
@@ -68,11 +70,82 @@ export interface MessageHistory {
 }
 
 /**
+ * Keyset pagination boundary: the (created_at, id) tuple a cursor resolves to.
+ * The id breaks ties between messages that share a created_at timestamp.
+ */
+export interface KeysetCursor {
+  createdAt: Date;
+  id: string;
+}
+
+/**
+ * Sentinel message ID used when a cursor is a legacy plain ISO timestamp.
+ * Snowflake IDs are all-digit strings and the id column is varchar, so this
+ * sentinel compares greater than any real message ID lexicographically —
+ * meaning "all messages at exactly this timestamp are inside the boundary".
+ */
+const TIMESTAMP_CURSOR_ID_SENTINEL = 'z';
+
+/**
+ * Parse a pagination cursor into a keyset boundary.
+ *
+ * Accepts three cursor forms (backward compatible):
+ * 1. Composite cursor "createdAt|id" — the format returned by getMessages.
+ *    `createdAt` is an ISO-8601 UTC timestamp, `id` the message ID of the last
+ *    message on the previous page. This closes the tie-break gap that a
+ *    timestamp-only cursor has when messages share created_at.
+ * 2. Legacy message ID — resolved via a message lookup to (created_at, id).
+ * 3. Legacy plain ISO timestamp — used directly as the created_at boundary
+ *    with the high sentinel ID (all messages at that timestamp included).
+ *
+ * @param cursor - Raw cursor string in any of the supported forms
+ * @returns Keyset boundary
+ * @throws NotFoundError if a message-ID cursor cannot be resolved
+ */
+async function resolveKeysetCursor(cursor: string): Promise<KeysetCursor> {
+  // 1. Composite "createdAt|id" (ISO timestamps never contain '|')
+  const separatorIndex = cursor.indexOf('|');
+  if (separatorIndex > 0) {
+    const createdAt = new Date(cursor.slice(0, separatorIndex));
+    const id = cursor.slice(separatorIndex + 1);
+    if (!Number.isNaN(createdAt.getTime()) && id.length > 0) {
+      return { createdAt, id };
+    }
+  }
+
+  // 2. Legacy message ID (snowflake IDs are all digits)
+  if (/^\d+$/.test(cursor)) {
+    const message = await messageService.getMessage(cursor, false);
+    return { createdAt: message.created_at, id: message.id };
+  }
+
+  // 3. Legacy plain ISO timestamp
+  const timestamp = new Date(cursor);
+  if (!Number.isNaN(timestamp.getTime())) {
+    return { createdAt: timestamp, id: TIMESTAMP_CURSOR_ID_SENTINEL };
+  }
+
+  // Unknown format: fall through to the legacy message-ID lookup so the
+  // caller gets the same NotFoundError an invalid ID cursor always produced
+  const message = await messageService.getMessage(cursor, false);
+  return { createdAt: message.created_at, id: message.id };
+}
+
+/**
+ * Build a composite cursor from a message (see resolveKeysetCursor, form 1)
+ * @param message - Message with created_at and id
+ * @returns Composite cursor string "createdAt|id"
+ */
+function toCompositeCursor(message: { created_at: Date; id: string }): string {
+  return `${message.created_at.toISOString()}|${message.id}`;
+}
+
+/**
  * Pagination cursor interface
  */
 export interface PaginationCursor {
-  before?: string; // Message ID to fetch messages before
-  after?: string;  // Message ID to fetch messages after
+  before?: string; // Composite "createdAt|id" cursor, legacy message ID, or ISO timestamp (see resolveKeysetCursor)
+  after?: string;  // Same accepted forms as `before`
   limit?: number;  // Number of messages to fetch (default: 50, max: 100)
 }
 
@@ -114,7 +187,9 @@ export interface MessageWithAuthor extends Message {
 export interface PaginatedMessages {
   messages: MessageWithAuthor[];
   hasMore: boolean;
+  /** Composite "createdAt|id" cursor for the next older page (see resolveKeysetCursor) */
   nextCursor?: string;
+  /** Composite "createdAt|id" cursor of the first message on this page */
   prevCursor?: string;
 }
 
@@ -142,6 +217,11 @@ class MessageService {
     dmChannelId?: string;
     serverId?: string;
     embeds?: EmbedData[];
+    /**
+     * System/automation callers (webhooks) post with a non-user author id;
+     * the users-table existence check is skipped for those callers only.
+     */
+    bypassAuthorCheck?: boolean;
     attachments?: Array<{
       id: string;
       filename: string;
@@ -152,10 +232,12 @@ class MessageService {
     }>;
   }): Promise<MessageWithEmbeds> {
     try {
-      // Verify author exists
-      const author = await db('users').where({ id: data.authorId }).first();
-      if (!author) {
-        throw new NotFoundError('Author not found');
+      // Verify author exists (skipped for webhook/system authors)
+      if (!data.bypassAuthorCheck) {
+        const author = await db('users').where({ id: data.authorId }).first();
+        if (!author) {
+          throw new NotFoundError('Author not found');
+        }
       }
 
       // Parse and validate mentions
@@ -236,10 +318,19 @@ class MessageService {
 
       logger.info(`Message created: ${messageId} by user ${data.authorId}, embeds: ${message.embeds?.length || 0}, mentions: ${parsedMentions.length}`);
 
-      // Generate link previews asynchronously if message contains URLs and no embeds provided
-      if ((!data.embeds || data.embeds.length === 0) && data.content) {
-        this.generateLinkPreviewsAsync(messageId, data.content);
-      }
+      // Publish domain event for background workers (search indexing, embeds).
+      // Fire-and-forget: a broker outage must never fail message creation.
+      publishEvent({
+        type: 'message.created',
+        payload: {
+          id: messageId,
+          content: data.content,
+          authorId: data.authorId,
+          channelId: data.channelId ?? null,
+          serverId: data.serverId ?? null,
+          createdAt: (message.message.created_at as Date).toISOString(),
+        },
+      }).catch(() => undefined);
 
       // Build mention data for response
       const mentionData: MentionData = {
@@ -256,62 +347,6 @@ class MessageService {
       logger.error({ error }, 'Error creating message');
       throw new ApiError(ApiErrorCode.DATABASE_ERROR, 'Failed to create message', 500);
     }
-  }
-
-  /**
-   * Generate link previews asynchronously for URLs in message content
-   * This runs in the background and adds embeds to existing messages
-   *
-   * @param messageId - Message ID to add embeds to
-   * @param content - Message content to extract URLs from
-   */
-  private async generateLinkPreviewsAsync(messageId: string, content: string): Promise<void> {
-    // Fire and forget - run asynchronously without blocking response
-    setImmediate(async () => {
-      try {
-        const urls = linkPreviewService.extractUrls(content);
-
-        if (urls.length === 0) {
-          return;
-        }
-
-        logger.debug({ messageId, urlCount: urls.length }, 'Generating link previews');
-
-        // Generate preview for first URL only (Discord behavior)
-        const embed = await linkPreviewService.generatePreview(urls[0]!);
-
-        if (embed) {
-          await embedService.createEmbed(messageId, embed);
-          logger.info({ messageId, url: urls[0] }, 'Link preview added to message');
-
-          // Broadcast embed update via WebSocket
-          const { messageBroadcaster } = await import('../websocket/message.broadcaster');
-          const existingMessage = await this.getMessage(messageId);
-          const wsMessage = {
-            id: existingMessage.id,
-            content: existingMessage.content,
-            authorId: existingMessage.author_id,
-            channelId: existingMessage.channel_id,
-            createdAt: existingMessage.created_at.toISOString(),
-            updatedAt: existingMessage.updated_at.toISOString(),
-            isEdited: existingMessage.is_edited,
-            isDeleted: existingMessage.is_deleted,
-            embeds: [{
-              ...embed,
-              timestamp: embed.timestamp instanceof Date ? embed.timestamp.toISOString() : embed.timestamp,
-            }],
-          };
-
-          // Broadcast as an update so clients see the new embed
-          if (existingMessage.channel_id) {
-            await messageBroadcaster.broadcastMessageUpdate(wsMessage);
-          }
-        }
-      } catch (error) {
-        logger.error({ error, messageId }, 'Error generating link previews');
-        // Silently fail - link previews are optional
-      }
-    });
   }
 
   /**
@@ -349,6 +384,12 @@ class MessageService {
   /**
    * Get multiple messages with pagination and filtering
    *
+   * Keyset paginated on (created_at, id): the cursor boundary carries the
+   * timestamp AND the message ID so messages sharing a created_at timestamp
+   * are never skipped or repeated across pages. Cursors are returned in the
+   * composite "createdAt|id" format; legacy message-ID and plain ISO
+   * timestamp cursors are still accepted (see resolveKeysetCursor).
+   *
    * @param cursor - Pagination cursor (before, after, limit)
    * @param filter - Optional filters (authorId, channelId, isPinned, search, dates)
    * @returns Paginated messages with cursor information
@@ -356,6 +397,12 @@ class MessageService {
   async getMessages(cursor: PaginationCursor = {}, filter: MessageFilter = {}): Promise<PaginatedMessages> {
     try {
       const limit = Math.min(cursor.limit || 50, 100); // Default 50, max 100
+
+      // Defense in depth: message queries must be scoped to a channel or DM.
+      // An unscoped query would return the entire platform's messages.
+      if (!filter.channelId && !filter.dmChannelId) {
+        throw new AppError(400, 'UNSCOPED_MESSAGE_QUERY', 'Message queries must be scoped to a channel or DM channel');
+      }
 
       // Build base query
       let query = db('messages').where('messages.is_deleted', false);
@@ -389,15 +436,33 @@ class MessageService {
         query = query.where('messages.created_at', '<=', filter.endDate);
       }
 
-      // Apply cursor-based pagination
+      // Apply keyset pagination on (created_at, id). The id tie-break prevents
+      // messages sharing a created_at timestamp from being skipped or repeated
+      // across pages (a timestamp-only boundary has that gap).
       if (cursor.before) {
-        const beforeMessage = await this.getMessage(cursor.before, false);
-        query = query.where('messages.created_at', '<', beforeMessage.created_at);
+        const before = await resolveKeysetCursor(cursor.before);
+        query = query.where((builder) =>
+          builder
+            .where('messages.created_at', '<', before.createdAt)
+            .orWhere((q) =>
+              q
+                .where('messages.created_at', '=', before.createdAt)
+                .andWhere('messages.id', '<', before.id)
+            )
+        );
       }
 
       if (cursor.after) {
-        const afterMessage = await this.getMessage(cursor.after, false);
-        query = query.where('messages.created_at', '>', afterMessage.created_at);
+        const after = await resolveKeysetCursor(cursor.after);
+        query = query.where((builder) =>
+          builder
+            .where('messages.created_at', '>', after.createdAt)
+            .orWhere((q) =>
+              q
+                .where('messages.created_at', '=', after.createdAt)
+                .andWhere('messages.id', '>', after.id)
+            )
+        );
       }
 
       // Fetch limit + 1 to determine if there are more messages
@@ -411,7 +476,10 @@ class MessageService {
           'user_profiles.display_name as author_display_name',
           'user_profiles.avatar_url as author_avatar'
         )
-        .orderBy('messages.created_at', 'desc')
+        .orderBy([
+          { column: 'messages.created_at', order: 'desc' },
+          { column: 'messages.id', order: 'desc' },
+        ])
         .limit(limit + 1);
 
       // Get role colors for server messages
@@ -419,7 +487,7 @@ class MessageService {
         .filter(m => m.channel_id)
         .map(m => m.channel_id);
 
-      const authorColors = new Map<string, number | null>();
+      const authorColors = new Map<string, number>();
       const channelToServer = new Map<string, string>();
 
       if (serverChannelIds.length > 0) {
@@ -430,33 +498,42 @@ class MessageService {
 
         channels.forEach(c => channelToServer.set(c.id, c.server_id));
 
-        // Get all unique (server_id, user_id) pairs
-        const serverUserPairs: { serverId: string; userId: string }[] = [];
+        // Collect unique (server_id, user_id) pairs for the page
+        const pairs: string[][] = [];
+        const seenPairs = new Set<string>();
         for (const msg of messages) {
-          if (msg.channel_id) {
-            const serverId = channelToServer.get(msg.channel_id);
-            if (serverId) {
-              serverUserPairs.push({ serverId, userId: msg.author_id });
-            }
+          if (!msg.channel_id) {
+            continue;
+          }
+          const serverId = channelToServer.get(msg.channel_id);
+          if (!serverId) {
+            continue;
+          }
+          const key = `${serverId}:${msg.author_id}`;
+          if (!seenPairs.has(key)) {
+            seenPairs.add(key);
+            pairs.push([serverId, msg.author_id]);
           }
         }
 
-        // Get highest role color for each user in each server
-        for (const pair of serverUserPairs) {
-          const key = `${pair.serverId}:${pair.userId}`;
-          if (!authorColors.has(key)) {
-            // Get member's roles sorted by position
-            const roles = await db('member_roles as smr')
-              .join('roles as r', 'smr.role_id', 'r.id')
-              .where('smr.server_id', pair.serverId)
-              .where('smr.user_id', pair.userId)
-              .whereNotNull('r.color')
-              .where('r.color', '>', 0)
-              .orderBy('r.position', 'desc')
-              .select('r.color')
-              .first();
+        // Resolve every author's highest-position colored role in ONE batched
+        // query (rows arrive ordered by role position desc, so the first row
+        // seen per pair wins — same result as the previous per-pair queries,
+        // without the N+1 across large pages)
+        if (pairs.length > 0) {
+          const colorRows = await db('member_roles as smr')
+            .join('roles as r', 'smr.role_id', 'r.id')
+            .whereNotNull('r.color')
+            .where('r.color', '>', 0)
+            .whereIn(['smr.server_id', 'smr.user_id'], pairs)
+            .orderBy('r.position', 'desc')
+            .select('smr.server_id', 'smr.user_id', 'r.color');
 
-            authorColors.set(key, roles?.color || null);
+          for (const row of colorRows) {
+            const key = `${row.server_id}:${row.user_id}`;
+            if (!authorColors.has(key)) {
+              authorColors.set(key, row.color);
+            }
           }
         }
       }
@@ -486,6 +563,7 @@ class MessageService {
           content: msg.content,
           author_id: msg.author_id,
           channel_id: msg.channel_id,
+          server_id: msg.server_id,
           dm_channel_id: msg.dm_channel_id,
           is_edited: msg.is_edited,
           edited_at: msg.edited_at,
@@ -505,13 +583,14 @@ class MessageService {
         };
       });
 
-      // Generate cursors
-      const nextCursor = hasMore && resultMessages.length > 0
-        ? resultMessages[resultMessages.length - 1]?.id
+      // Generate cursors (composite "createdAt|id" format — see
+      // resolveKeysetCursor; legacy message-ID cursors remain accepted)
+      const nextCursor = hasMore && rawMessages.length > 0
+        ? toCompositeCursor(rawMessages[rawMessages.length - 1])
         : undefined;
 
-      const prevCursor = resultMessages.length > 0
-        ? resultMessages[0]?.id
+      const prevCursor = rawMessages.length > 0
+        ? toCompositeCursor(rawMessages[0])
         : undefined;
 
       return {
@@ -521,7 +600,7 @@ class MessageService {
         prevCursor,
       };
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof NotFoundError || error instanceof AppError) {
         throw error;
       }
       logger.error({ error }, 'Error fetching messages');
@@ -618,7 +697,7 @@ class MessageService {
         serverId
       );
 
-      // Store previous content in history
+      // Store previous content in history and update the message atomically
       const historyId = generateSnowflakeId();
       const now = new Date();
 
@@ -631,19 +710,33 @@ class MessageService {
         created_at: now,
       };
 
-      await db('message_history').insert(historyRecord);
+      await db.transaction(async (trx) => {
+        await trx('message_history').insert(historyRecord);
 
-      // Update message
-      await db('messages')
-        .where({ id })
-        .update({
-          content,
-          is_edited: true,
-          edited_at: now,
-          updated_at: now,
-        });
+        await trx('messages')
+          .where({ id })
+          .update({
+            content,
+            is_edited: true,
+            edited_at: now,
+            updated_at: now,
+          });
+      });
 
       logger.info(`Message updated: ${id} by user ${editorId}, mentions: ${parsedMentions.length}`);
+
+      // Publish domain event so workers re-index the edited content.
+      publishEvent({
+        type: 'message.updated',
+        payload: {
+          id,
+          content,
+          authorId: existingMessage.author_id,
+          channelId: existingMessage.channel_id || null,
+          serverId: existingMessage.server_id || null,
+          createdAt: (existingMessage.created_at as Date).toISOString(),
+        },
+      }).catch(() => undefined);
 
       // Build mention data for response
       const mentionData: MentionData = {
@@ -691,6 +784,19 @@ class MessageService {
         });
 
       logger.info(`Message soft deleted: ${id} by user ${deleterId}`);
+
+      // Publish domain event so workers remove the message from search index.
+      publishEvent({
+        type: 'message.deleted',
+        payload: {
+          id,
+          content: '',
+          authorId: message.author_id,
+          channelId: message.channel_id || null,
+          serverId: message.server_id || null,
+          createdAt: (message.created_at as Date).toISOString(),
+        },
+      }).catch(() => undefined);
     } catch (error) {
       if (error instanceof NotFoundError || error instanceof ConflictError) {
         throw error;

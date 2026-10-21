@@ -7,29 +7,28 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { db } from '../../../../config/database';
 import { generateSnowflakeId } from '../../../../utils/snowflake';
 import { embedService, EmbedData } from '../../embed.service';
+import {
+  createTestServerFixture,
+  cleanupTestServerFixture,
+  TestServerFixture,
+} from '../../../../testing/fixtures';
 
 describe('Embed Integration Tests', () => {
   let testMessageId: string;
+  let fixture: TestServerFixture;
 
   beforeAll(async () => {
-    // Create test message
+    // Create server/channel fixture so the message satisfies its FK
+    fixture = await createTestServerFixture('embedtest');
+
+    const testUserId = fixture.ownerId;
+
     testMessageId = generateSnowflakeId();
-    const testUserId = generateSnowflakeId();
-
-    await db('users').insert({
-      id: testUserId,
-      email: 'embedtest@example.com',
-      username: 'embedtestuser',
-      password_hash: 'hash',
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
-
     await db('messages').insert({
       id: testMessageId,
       content: 'Test message for embeds',
       author_id: testUserId,
-      channel_id: generateSnowflakeId(),
+      channel_id: fixture.channelId,
       created_at: new Date(),
       updated_at: new Date(),
     });
@@ -37,11 +36,8 @@ describe('Embed Integration Tests', () => {
 
   afterAll(async () => {
     await db('message_embeds').where('message_id', testMessageId).del();
-    const message = await db('messages').where('id', testMessageId).first();
-    if (message) {
-      await db('messages').where('id', testMessageId).del();
-      await db('users').where('id', message.author_id).del();
-    }
+    await db('messages').where('id', testMessageId).del();
+    await cleanupTestServerFixture(fixture);
   });
 
   describe('createEmbed', () => {

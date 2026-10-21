@@ -6,7 +6,9 @@
 import { db } from '../../config/database';
 import { generateSnowflakeId } from '../../utils/snowflake';
 import { AppError } from '../../utils/errors';
+import { logger } from '../../config/logger';
 import { VALIDATION, DEFAULTS, WS_EVENTS } from '@freedomtalk/shared';
+import { randomBytes } from 'crypto';
 import { wsServer } from '../websocket/websocket.server';
 
 export interface InviteWithDetails {
@@ -60,18 +62,21 @@ class InviteService {
       }
     } catch (error) {
       // WebSocket server might not be initialized
-      console.error('Failed to emit to server room:', error);
+      logger.error({ error }, 'Failed to emit to server room');
     }
   }
 
   /**
    * Generate a random invite code
+   * Uses a CSPRNG: Math.random()'s xorshift128+ state is recoverable from
+   * observed outputs, which would let members predict other servers' codes.
    */
   private generateCode(length: number = VALIDATION.INVITE.CODE_LENGTH): string {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const bytes = randomBytes(length);
     let code = '';
-    for (let i = 0; i < length; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    for (const b of bytes) {
+      code += chars.charAt(b % chars.length);
     }
     return code;
   }
@@ -310,30 +315,49 @@ class InviteService {
 
   /**
    * Use an invite (join server)
+   *
+   * The max-uses check and increment happen in ONE conditional UPDATE so
+   * concurrent joins cannot exceed the cap (the previous read-then-increment
+   * had a race). Callers MUST invoke releaseInvite() if the subsequent join
+   * fails, otherwise a rejected join burns a use.
    */
   async useInvite(code: string, _userId: string): Promise<InviteWithDetails> {
+    // Validate expiry/revocation first for accurate errors
     const invite = await this.getInviteByCode(code);
-
     if (!invite) {
       throw new AppError(404, 'INVITE_NOT_FOUND', 'Invite not found');
     }
-
-    // Check if expired
     if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
       throw new AppError(400, 'INVITE_EXPIRED', 'This invite has expired');
     }
 
-    // Check if max uses reached (0 or null means unlimited)
-    if (invite.max_uses !== null && invite.max_uses > 0 && invite.uses >= invite.max_uses) {
+    // Atomic conditional increment: only succeeds while uses < max_uses
+    const updated = await db('invites')
+      .where('code', code)
+      .whereRaw('(max_uses IS NULL OR max_uses = 0 OR uses < max_uses)')
+      .increment('uses', 1)
+      .returning('*');
+
+    if (!updated || updated.length === 0) {
       throw new AppError(400, 'INVITE_MAX_USES', 'This invite has reached its maximum uses');
     }
 
-    // Increment uses
-    await db('invites')
-      .where('code', code)
-      .increment('uses', 1);
+    return { ...invite, uses: updated[0].uses };
+  }
 
-    return invite;
+  /**
+   * Return a use consumed by useInvite when the join itself failed
+   * (banned, server full, already a member). Best-effort compensation.
+   */
+  async releaseInvite(code: string): Promise<void> {
+    try {
+      await db('invites')
+        .where('code', code)
+        .where('uses', '>', 0)
+        .decrement('uses', 1);
+    } catch (error) {
+      logger.warn({ error, code }, 'Failed to release invite use');
+    }
   }
 
   /**

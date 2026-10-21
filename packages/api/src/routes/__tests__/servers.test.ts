@@ -23,7 +23,7 @@ interface TestUser {
 
 async function createTestUser(app: FastifyInstance, suffix: string): Promise<TestUser> {
   const email = `test-${suffix}@example.com`;
-  const username = `testuser-${suffix}`;
+  const username = `testuser_${suffix}`;
 
   // Register user
   const registerResponse = await app.inject({
@@ -107,8 +107,8 @@ describe('Server Routes', () => {
   beforeEach(async () => {
     // Create fresh test users for each test
     const timestamp = Date.now();
-    testUser = await createTestUser(app, `server-${timestamp}`);
-    secondUser = await createTestUser(app, `server2-${timestamp}`);
+    testUser = await createTestUser(app, `server_${timestamp}`);
+    secondUser = await createTestUser(app, `server2_${timestamp}`);
   });
 
   describe('Server CRUD Operations', () => {
@@ -285,7 +285,6 @@ describe('Server Routes', () => {
       });
 
       await db('member_roles').insert({
-        id: memberRoleId,
         server_id: serverId,
         user_id: secondUser.id,
         role_id: roleId,
@@ -387,7 +386,7 @@ describe('Server Routes', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/api/v1/users/@me/servers',
+        url: '/api/v1/servers',
         headers: {
           authorization: `Bearer ${testUser.accessToken}`,
         },
@@ -431,9 +430,9 @@ describe('Server Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
-      expect(Array.isArray(body.data)).toBe(true);
+      expect(Array.isArray(body.data.members)).toBe(true);
       // Owner should be auto-added
-      expect(body.data.length).toBeGreaterThan(0);
+      expect(body.data.members.length).toBeGreaterThan(0);
     });
 
     it('should update member nickname', async () => {
@@ -463,8 +462,8 @@ describe('Server Routes', () => {
           authorization: `Bearer ${testUser.accessToken}`,
         },
         payload: {
-          max_uses: 10,
-          max_age: 3600,
+          maxUses: 10,
+          maxAge: 3600,
         },
       });
 
@@ -473,22 +472,25 @@ describe('Server Routes', () => {
       // Second user joins
       await app.inject({
         method: 'POST',
-        url: `/api/v1/invites/${inviteCode}`,
+        url: '/api/v1/servers/join',
         headers: {
           authorization: `Bearer ${secondUser.accessToken}`,
+        },
+        payload: {
+          inviteCode,
         },
       });
 
       // Second user leaves
       const response = await app.inject({
-        method: 'DELETE',
-        url: `/api/v1/servers/${serverId}/members/@me`,
+        method: 'POST',
+        url: `/api/v1/servers/${serverId}/leave`,
         headers: {
           authorization: `Bearer ${secondUser.accessToken}`,
         },
       });
 
-      expect(response.statusCode).toBe(204);
+      expect(response.statusCode).toBe(200);
     });
 
     it('should kick member from server', async () => {
@@ -500,8 +502,8 @@ describe('Server Routes', () => {
           authorization: `Bearer ${testUser.accessToken}`,
         },
         payload: {
-          max_uses: 10,
-          max_age: 3600,
+          maxUses: 10,
+          maxAge: 3600,
         },
       });
 
@@ -510,9 +512,12 @@ describe('Server Routes', () => {
       // Second user joins
       await app.inject({
         method: 'POST',
-        url: `/api/v1/invites/${inviteCode}`,
+        url: '/api/v1/servers/join',
         headers: {
           authorization: `Bearer ${secondUser.accessToken}`,
+        },
+        payload: {
+          inviteCode,
         },
       });
 
@@ -555,8 +560,8 @@ describe('Server Routes', () => {
           authorization: `Bearer ${testUser.accessToken}`,
         },
         payload: {
-          max_uses: 10,
-          max_age: 3600,
+          maxUses: 10,
+          maxAge: 3600,
         },
       });
 
@@ -564,7 +569,7 @@ describe('Server Routes', () => {
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
       expect(body.data.code).toBeDefined();
-      expect(body.data.code.length).toBe(8);
+      expect(body.data.code.length).toBe(7);
       expect(body.data.max_uses).toBe(10);
       expect(body.data.max_age).toBe(3600);
     });
@@ -578,8 +583,8 @@ describe('Server Routes', () => {
           authorization: `Bearer ${testUser.accessToken}`,
         },
         payload: {
-          max_uses: 10,
-          max_age: 3600,
+          maxUses: 10,
+          maxAge: 3600,
         },
       });
 
@@ -587,7 +592,7 @@ describe('Server Routes', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: `/api/v1/invites/${inviteCode}`,
+        url: `/api/v1/servers/invite/${inviteCode}/preview`,
         headers: {
           authorization: `Bearer ${testUser.accessToken}`,
         },
@@ -596,7 +601,7 @@ describe('Server Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
-      expect(body.data.code).toBe(inviteCode);
+      expect(body.data.invite.code).toBe(inviteCode);
     });
 
     it('should join server via invite', async () => {
@@ -608,8 +613,8 @@ describe('Server Routes', () => {
           authorization: `Bearer ${testUser.accessToken}`,
         },
         payload: {
-          max_uses: 10,
-          max_age: 3600,
+          maxUses: 10,
+          maxAge: 3600,
         },
       });
 
@@ -618,9 +623,12 @@ describe('Server Routes', () => {
       // Second user joins via invite
       const response = await app.inject({
         method: 'POST',
-        url: `/api/v1/invites/${inviteCode}`,
+        url: '/api/v1/servers/join',
         headers: {
           authorization: `Bearer ${secondUser.accessToken}`,
+        },
+        payload: {
+          inviteCode,
         },
       });
 
@@ -637,7 +645,7 @@ describe('Server Routes', () => {
         },
       });
 
-      const members = JSON.parse(membersResponse.body).data;
+      const members = JSON.parse(membersResponse.body).data.members;
       expect(members.find((m: any) => m.user_id === secondUser.id)).toBeDefined();
     });
 
@@ -650,8 +658,8 @@ describe('Server Routes', () => {
           authorization: `Bearer ${testUser.accessToken}`,
         },
         payload: {
-          max_uses: 10,
-          max_age: 3600,
+          maxUses: 10,
+          maxAge: 3600,
         },
       });
 
@@ -679,8 +687,8 @@ describe('Server Routes', () => {
           authorization: `Bearer ${testUser.accessToken}`,
         },
         payload: {
-          max_uses: 10,
-          max_age: 3600,
+          maxUses: 10,
+          maxAge: 3600,
         },
       });
 
@@ -688,7 +696,7 @@ describe('Server Routes', () => {
 
       const response = await app.inject({
         method: 'DELETE',
-        url: `/api/v1/invites/${inviteCode}`,
+        url: `/api/v1/servers/${serverId}/invites/${inviteCode}`,
         headers: {
           authorization: `Bearer ${testUser.accessToken}`,
         },
@@ -699,7 +707,7 @@ describe('Server Routes', () => {
       // Verify invite is deleted
       const getResponse = await app.inject({
         method: 'GET',
-        url: `/api/v1/invites/${inviteCode}`,
+        url: `/api/v1/servers/invite/${inviteCode}/preview`,
         headers: {
           authorization: `Bearer ${testUser.accessToken}`,
         },
@@ -729,7 +737,7 @@ describe('Server Routes', () => {
 
     it('should ban a user from server', async () => {
       const response = await app.inject({
-        method: 'PUT',
+        method: 'POST',
         url: `/api/v1/servers/${serverId}/bans/${secondUser.id}`,
         headers: {
           authorization: `Bearer ${testUser.accessToken}`,
@@ -739,7 +747,7 @@ describe('Server Routes', () => {
         },
       });
 
-      expect(response.statusCode).toBe(201);
+      expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
       expect(body.data.reason).toBe('Test ban reason');
@@ -748,7 +756,7 @@ describe('Server Routes', () => {
     it('should list server bans', async () => {
       // Ban user first
       await app.inject({
-        method: 'PUT',
+        method: 'POST',
         url: `/api/v1/servers/${serverId}/bans/${secondUser.id}`,
         headers: {
           authorization: `Bearer ${testUser.accessToken}`,
@@ -769,14 +777,14 @@ describe('Server Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
-      expect(Array.isArray(body.data)).toBe(true);
-      expect(body.data.length).toBeGreaterThan(0);
+      expect(Array.isArray(body.data.bans)).toBe(true);
+      expect(body.data.bans.length).toBeGreaterThan(0);
     });
 
     it('should unban a user', async () => {
       // Ban user first
       await app.inject({
-        method: 'PUT',
+        method: 'POST',
         url: `/api/v1/servers/${serverId}/bans/${secondUser.id}`,
         headers: {
           authorization: `Bearer ${testUser.accessToken}`,
@@ -811,7 +819,7 @@ describe('Server Routes', () => {
     it('should prevent banned user from joining', async () => {
       // Ban user
       await app.inject({
-        method: 'PUT',
+        method: 'POST',
         url: `/api/v1/servers/${serverId}/bans/${secondUser.id}`,
         headers: {
           authorization: `Bearer ${testUser.accessToken}`,
@@ -829,8 +837,8 @@ describe('Server Routes', () => {
           authorization: `Bearer ${testUser.accessToken}`,
         },
         payload: {
-          max_uses: 10,
-          max_age: 3600,
+          maxUses: 10,
+          maxAge: 3600,
         },
       });
 
@@ -839,9 +847,12 @@ describe('Server Routes', () => {
       // Try to join with banned user
       const response = await app.inject({
         method: 'POST',
-        url: `/api/v1/invites/${inviteCode}`,
+        url: '/api/v1/servers/join',
         headers: {
           authorization: `Bearer ${secondUser.accessToken}`,
+        },
+        payload: {
+          inviteCode,
         },
       });
 

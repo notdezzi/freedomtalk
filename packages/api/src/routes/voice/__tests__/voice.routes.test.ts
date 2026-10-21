@@ -51,6 +51,7 @@ describe('Voice Routes', () => {
       expect(typeof mediasoupService.connectTransport).toBe('function');
       expect(typeof mediasoupService.produce).toBe('function');
       expect(typeof mediasoupService.consume).toBe('function');
+      expect(typeof mediasoupService.setParticipantSuppress).toBe('function');
       expect(typeof mediasoupService.close).toBe('function');
     });
 

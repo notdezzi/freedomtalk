@@ -6,6 +6,7 @@
 import { db } from '../../config/database';
 import { generateSnowflakeId } from '../../utils/snowflake';
 import { AppError } from '../../utils/errors';
+import { logger } from '../../config/logger';
 import { wsServer } from '../websocket/websocket.server';
 import { WS_EVENTS } from '@freedomtalk/shared';
 
@@ -73,7 +74,7 @@ function emitToUser(userId: string, event: string, data: unknown) {
       io.to(`user:${userId}`).emit(event, data);
     }
   } catch (error) {
-    console.error(`Failed to emit ${event} to user ${userId}:`, error);
+    logger.error({ error, event, userId }, 'Failed to emit to user');
   }
 }
 

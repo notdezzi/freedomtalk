@@ -12,6 +12,7 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { registerMetricsMiddleware } from './middleware/metrics.middleware';
+import { RedisRateLimitStore } from './config/rate-limit-store';
 import { initSentry, sentryMiddleware, captureException } from './config/sentry';
 import routes from './routes';
 
@@ -44,6 +45,10 @@ export async function build(options: { skipRateLimit?: boolean } = {}): Promise<
     requestIdLogLabel: 'reqId',
     disableRequestLogging: false,
     requestIdHeader: 'x-request-id',
+    // Behind a reverse proxy (nginx/caddy) that sets X-Forwarded-For, trust
+    // the proxy so request.ip is the real client IP — without this every
+    // client shares the proxy's IP and rate limits collapse into one bucket.
+    trustProxy: process.env.TRUST_PROXY === 'true',
   });
 
   // Security headers
@@ -57,9 +62,16 @@ export async function build(options: { skipRateLimit?: boolean } = {}): Promise<
     credentials: true,
   });
 
-  // Cookie support
+  // Cookie support — the cookie secret must never silently fall back to the
+  // committed default in production.
+  const cookieSecret =
+    process.env.COOKIE_SECRET ||
+    (isDevelopment ? 'freedomtalk-cookie-secret-change-in-production' : '');
+  if (!cookieSecret) {
+    throw new Error('COOKIE_SECRET must be set in production');
+  }
   await app.register(cookie, {
-    secret: process.env.COOKIE_SECRET || 'freedomtalk-cookie-secret-change-in-production',
+    secret: cookieSecret,
     parseOptions: {
       httpOnly: true,
       secure: !isDevelopment,
@@ -67,49 +79,54 @@ export async function build(options: { skipRateLimit?: boolean } = {}): Promise<
     },
   });
 
-  // Swagger documentation
-  await app.register(swagger, {
-    openapi: {
-      info: {
-        title: 'FreedomTalk API',
-        description: 'REST API for FreedomTalk - A Discord clone',
-        version: '0.1.0',
-      },
-      servers: [
-        {
-          url: 'http://localhost:3000',
-          description: 'Development server',
+  // Swagger documentation — explicit opt-in outside development
+  if (isDevelopment || process.env.SWAGGER_ENABLED === 'true') {
+    await app.register(swagger, {
+      openapi: {
+        info: {
+          title: 'FreedomTalk API',
+          description: 'REST API for FreedomTalk - A Discord clone',
+          version: '0.1.0',
         },
-      ],
-      components: {
-        securitySchemes: {
-          bearerAuth: {
-            type: 'http',
-            scheme: 'bearer',
-            bearerFormat: 'JWT',
+        servers: [
+          {
+            url: 'http://localhost:3000',
+            description: 'Development server',
+          },
+        ],
+        components: {
+          securitySchemes: {
+            bearerAuth: {
+              type: 'http',
+              scheme: 'bearer',
+              bearerFormat: 'JWT',
+            },
           },
         },
       },
-    },
-  });
+    });
 
-  await app.register(swaggerUi, {
-    routePrefix: '/docs',
-    uiConfig: {
-      docExpansion: 'list',
-      deepLinking: true,
-    },
-  });
+    await app.register(swaggerUi, {
+      routePrefix: '/docs',
+      uiConfig: {
+        docExpansion: 'list',
+        deepLinking: true,
+      },
+    });
+  }
 
   // Rate limiting (skip in tests)
-  // Note: Using in-memory store for now. For distributed rate limiting across
-  // multiple instances, consider using ioredis client in future milestone.
+  // Redis-backed store so limits are shared across scaled API instances
+  // (in-memory stores would count separately per process behind the load
+  // balancer). Falls back to in-memory when REDIS is not usable.
   if (!options.skipRateLimit) {
     await app.register(rateLimit, {
       global: true,
       max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
       timeWindow: process.env.RATE_LIMIT_WINDOW || '1 minute',
-      cache: 10000, // Cache size for in-memory store
+      ...(process.env.RATE_LIMIT_STORE === 'redis' && process.env.REDIS_URL
+        ? { store: RedisRateLimitStore }
+        : { cache: 10000 }),
       skipOnError: true,
       // Add rate limiting headers to all responses
       addHeaders: {

@@ -6,8 +6,13 @@
 import { db } from '../../config/database';
 import { generateSnowflakeId } from '../../utils/snowflake';
 import { AppError } from '../../utils/errors';
+import { logger } from '../../config/logger';
 import { VALIDATION, WS_EVENTS } from '@freedomtalk/shared';
 import { wsServer } from '../websocket/websocket.server';
+import {
+  assertCanModerateMember,
+  assertCanAssignRoles,
+} from './hierarchy';
 
 export interface ServerMemberWithUser {
   id: string;
@@ -63,7 +68,7 @@ class ServerMemberService {
       }
     } catch (error) {
       // Don't fail the operation if WebSocket emission fails
-      console.error('Failed to emit WebSocket event:', error);
+      logger.error({ error }, 'Failed to emit WebSocket event');
     }
   }
 
@@ -77,7 +82,7 @@ class ServerMemberService {
         io.to(`user:${userId}`).emit(event, data);
       }
     } catch (error) {
-      console.error('Failed to emit WebSocket event to user:', error);
+      logger.error({ error }, 'Failed to emit WebSocket event to user');
     }
   }
 
@@ -172,35 +177,39 @@ class ServerMemberService {
       throw new AppError(404, 'SERVER_NOT_FOUND', 'Server not found');
     }
 
-    // Note: Server owners CAN be moderated by other administrators
-    // This allows for owner role changes, kicks, and bans if needed
-
-    // Check permissions if kicking someone else
+    // Hierarchy: kicking someone else requires the requester to outrank the
+    // target; the owner can never be kicked.
     if (userId !== requesterId) {
-      // Requester needs KICK_MEMBERS permission (handled at route level)
+      await assertCanModerateMember(serverId, requesterId, userId);
+
       const member = await this.getMember(serverId, userId);
       if (!member) {
         throw new AppError(404, 'MEMBER_NOT_FOUND', 'Member not found');
       }
     }
 
-    const deleted = await db('server_members')
-      .where('server_id', serverId)
-      .where('user_id', userId)
-      .delete();
-
-    if (deleted) {
-      // Clean up member roles
-      await db('member_roles')
+    const deleted = await db.transaction(async (trx) => {
+      const deletedRows = await trx('server_members')
         .where('server_id', serverId)
         .where('user_id', userId)
         .delete();
 
-      // Update member count
-      await db('servers')
-        .where('id', serverId)
-        .decrement('member_count', 1);
+      if (deletedRows) {
+        // Clean up member roles atomically with membership removal
+        await trx('member_roles')
+          .where('server_id', serverId)
+          .where('user_id', userId)
+          .delete();
 
+        await trx('servers')
+          .where('id', serverId)
+          .decrement('member_count', 1);
+      }
+
+      return deletedRows;
+    });
+
+    if (deleted) {
       // Emit SERVER_MEMBER_REMOVE event to server room
       this.emitToServer(serverId, WS_EVENTS.SERVER_MEMBER_REMOVE, {
         serverId,
@@ -211,6 +220,39 @@ class ServerMemberService {
       this.emitToUser(userId, WS_EVENTS.SERVER_REMOVE, {
         serverId,
       });
+
+      // SECURITY: remove the target's live sockets from this server's rooms
+      // so a kicked member stops receiving server traffic immediately.
+      try {
+        if (wsServer.isInitialized()) {
+          const io = wsServer.getIO();
+          const { connectionManager } = await import('../websocket/connection.manager');
+          const socketIds = connectionManager.getUserConnections(userId);
+          for (const socketId of socketIds) {
+            const socket = io.sockets.sockets.get(socketId);
+            if (!socket) {
+              continue;
+            }
+            for (const room of [...socket.rooms]) {
+              let shouldLeave = false;
+              if (room === `server:${serverId}`) {
+                shouldLeave = true;
+              } else if (room.startsWith('channel:')) {
+                const channel = await db('channels')
+                  .where('id', room.slice('channel:'.length))
+                  .where('server_id', serverId)
+                  .first();
+                shouldLeave = !!channel;
+              }
+              if (shouldLeave) {
+                socket.leave(room);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        logger.error({ error }, 'Failed to remove kicked member from server rooms');
+      }
     }
   }
 
@@ -448,8 +490,30 @@ class ServerMemberService {
 
   /**
    * Set member's roles (replace all)
+   *
+   * Enforces: roles belong to this server, the target is not the owner, the
+   * actor outranks the target, and no assigned role sits at/above the
+   * actor's highest position (ADMINISTRATOR roles require actor ADMINISTRATOR).
    */
-  async setRoles(serverId: string, userId: string, roleIds: string[]): Promise<void> {
+  async setRoles(serverId: string, userId: string, roleIds: string[], actorId?: string): Promise<void> {
+    // All roles must exist in this server and satisfy hierarchy rules.
+    // Dedupe to keep the count check in assertCanAssignRoles accurate.
+    const uniqueRoleIds = [...new Set(roleIds)];
+    if (actorId) {
+      await assertCanModerateMember(serverId, actorId, userId);
+      await assertCanAssignRoles(serverId, actorId, uniqueRoleIds);
+    } else {
+      // Legacy callers without an actor: still enforce server binding.
+      const count = await db('roles')
+        .whereIn('id', uniqueRoleIds)
+        .where('server_id', serverId)
+        .count('id as count')
+        .first();
+      if (count && parseInt(count.count as string, 10) !== uniqueRoleIds.length) {
+        throw new AppError(400, 'INVALID_ROLES', 'One or more roles do not belong to this server');
+      }
+    }
+
     await db.transaction(async (trx) => {
       // Remove all existing roles
       await trx('member_roles')
@@ -458,8 +522,8 @@ class ServerMemberService {
         .delete();
 
       // Add new roles
-      if (roleIds.length > 0) {
-        const roleInserts = roleIds.map(roleId => ({
+      if (uniqueRoleIds.length > 0) {
+        const roleInserts = uniqueRoleIds.map(roleId => ({
           server_id: serverId,
           user_id: userId,
           role_id: roleId,

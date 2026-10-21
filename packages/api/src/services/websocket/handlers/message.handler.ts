@@ -5,6 +5,7 @@ import { WS_EVENTS, VALIDATION, PERMISSION_FLAGS } from '@freedomtalk/shared';
 import { messageService } from '../../message/message.service';
 import { messageRouter } from '../message.router';
 import { dmChannelService } from '../../dm/dm-channel.service';
+import { dmPermissionService } from '../../dm/dm-permission.service';
 import { permissionService } from '../../permission';
 
 /**
@@ -85,6 +86,21 @@ export async function handleMessageCreate(socket: Socket, data: unknown): Promis
           message: 'You are not a participant of this DM channel',
         });
         return;
+      }
+
+      // DM privacy/block check: deny when a recipient has blocked the sender
+      // or their privacy level disallows messages from them
+      const recipientIds = await dmChannelService.getParticipantUserIds(dmChannelId);
+      for (const recipientId of recipientIds) {
+        if (recipientId === user.id) continue;
+        const canSend = await dmPermissionService.canSendDM(user.id, recipientId);
+        if (!canSend) {
+          socket.emit(WS_EVENTS.ERROR, {
+            code: 'FORBIDDEN',
+            message: 'You cannot send messages to this user',
+          });
+          return;
+        }
       }
     }
 

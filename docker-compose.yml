@@ -94,6 +94,96 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---------------------------------------------------------------------------
+  # Observability stack (traces + metrics + dashboards)
+  # ---------------------------------------------------------------------------
+  # NOTE: the API itself is not part of this infra-only compose file. To point
+  # a locally running API (packages/api) at this stack, use these env defaults:
+  #   OTEL_ENABLED=true
+  #   OTEL_SERVICE_NAME=freedomtalk-api
+  #   OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318  (otel-collector, traces)
+  #   PORT=3000                                          (matches deploy/prometheus.yml)
+  #   MEILISEARCH_HOST=http://localhost:7700
+  #   RABBITMQ_URL=amqp://rabbitmq:rabbitmq@localhost:5672
+  #
+  # Jaeger UI:  http://localhost:16686
+  # Prometheus: http://localhost:9090
+  # Grafana:    http://localhost:3001 (admin/admin)
+
+  # OpenTelemetry Collector - receives OTLP traces from the API and forwards
+  # to Jaeger; publishes OTLP 4317/4318 on the host
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.162.0
+    container_name: freedomtalk-otel-collector
+    restart: unless-stopped
+    command: ['--config=/etc/otelcol/config.yaml']
+    ports:
+      - '4317:4317' # OTLP gRPC
+      - '4318:4318' # OTLP HTTP
+    volumes:
+      - ./deploy/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      - jaeger
+
+  # Jaeger all-in-one - trace storage + UI. Accepts OTLP from the collector
+  # on 4317/4318 inside the compose network (ports intentionally NOT published
+  # on the host; the collector owns those host ports)
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    container_name: freedomtalk-jaeger
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: 'true'
+    ports:
+      - '16686:16686' # Jaeger UI
+    expose:
+      - '4317' # OTLP gRPC (from collector)
+      - '4318' # OTLP HTTP (from collector)
+
+  # Prometheus - scrapes the API /metrics and the RabbitMQ prometheus plugin
+  prometheus:
+    image: prom/prometheus:v3.13.4
+    container_name: freedomtalk-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    extra_hosts:
+      - 'host-gateway:host-gateway' # resolves host.docker.internal on Linux
+    healthcheck:
+      test: ['CMD', 'promtool', 'query', 'instant', 'http://localhost:9090', 'up']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  # Grafana - dashboards, auto-provisioned with the Prometheus datasource and
+  # the FreedomTalk API dashboard from deploy/
+  grafana:
+    image: grafana/grafana:13.2.3
+    container_name: freedomtalk-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    ports:
+      - '3001:3000'
+    volumes:
+      - ./deploy/grafana-provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana-dashboard.json:/var/lib/grafana/dashboards/freedomtalk-api.json:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_data:
     driver: local
@@ -104,6 +194,10 @@ volumes:
   minio_data:
     driver: local
   meilisearch_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
     driver: local
 
 networks:

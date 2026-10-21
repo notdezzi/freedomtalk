@@ -29,15 +29,16 @@ interface ServerVoiceStatesResponse {
 
 export function useServerVoiceStates(serverId: string | undefined) {
   const queryClient = useQueryClient();
+  // Actions are stable — read without subscribing (see use-voice-connection);
+  // only the session id is selected reactively.
+  const currentSessionId = useVoiceStore((s) => s.sessionId);
   const {
     setChannelStates,
     addUserToChannelState,
     removeUserFromChannelState,
     updateUserInChannelState,
     clearChannelStates,
-    currentChannelId,
-    sessionId: currentSessionId,
-  } = useVoiceStore();
+  } = useVoiceStore.getState();
 
   // Fetch voice states for the server
   const { data, isLoading, error, refetch } = useQuery({

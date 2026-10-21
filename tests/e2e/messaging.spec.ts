@@ -3,21 +3,14 @@
  * Tests for server channel messaging in the new FreedomTalk layout
  */
 
-import { test, expect, createTestMessage, createTestServer } from '../fixtures';
+import { test, expect, createTestMessage, createTestServer, createServerViaUI } from '../fixtures';
 
 test.describe('Messaging', () => {
   test.describe('Message Input', () => {
     test('should display message input in channel view', async ({ authenticatedPage }) => {
       const server = createTestServer();
 
-      await authenticatedPage.goto('/app');
-      await authenticatedPage.click('button[aria-label="Add server"]').catch(() => {});
-      await authenticatedPage.waitForTimeout(500);
-      await authenticatedPage.click('button:has-text("Create My Own")').catch(() => {});
-      await authenticatedPage.waitForTimeout(300);
-      await authenticatedPage.fill('input[placeholder*="server"], input[type="text"]', server.name).catch(() => {});
-      await authenticatedPage.click('button:has-text("Create")').catch(() => {});
-      await expect(authenticatedPage).toHaveURL(/\/servers\//, { timeout: 15000 });
+      await createServerViaUI(authenticatedPage, server.name);
 
       // Message input should be visible at the bottom
       const messageInput = authenticatedPage.locator('textarea[placeholder*="Message"], textarea[placeholder*="message"]').first();
@@ -28,14 +21,7 @@ test.describe('Messaging', () => {
       const server = createTestServer();
       const message = createTestMessage();
 
-      await authenticatedPage.goto('/app');
-      await authenticatedPage.click('button[aria-label="Add server"]').catch(() => {});
-      await authenticatedPage.waitForTimeout(500);
-      await authenticatedPage.click('button:has-text("Create My Own")').catch(() => {});
-      await authenticatedPage.waitForTimeout(300);
-      await authenticatedPage.fill('input[placeholder*="server"], input[type="text"]', server.name).catch(() => {});
-      await authenticatedPage.click('button:has-text("Create")').catch(() => {});
-      await expect(authenticatedPage).toHaveURL(/\/servers\//, { timeout: 15000 });
+      await createServerViaUI(authenticatedPage, server.name);
 
       // Wait for channel to load
       await authenticatedPage.waitForTimeout(1000);
@@ -55,14 +41,7 @@ test.describe('Messaging', () => {
       const server = createTestServer();
       const message = createTestMessage();
 
-      await authenticatedPage.goto('/app');
-      await authenticatedPage.click('button[aria-label="Add server"]').catch(() => {});
-      await authenticatedPage.waitForTimeout(500);
-      await authenticatedPage.click('button:has-text("Create My Own")').catch(() => {});
-      await authenticatedPage.waitForTimeout(300);
-      await authenticatedPage.fill('input[placeholder*="server"], input[type="text"]', server.name).catch(() => {});
-      await authenticatedPage.click('button:has-text("Create")').catch(() => {});
-      await expect(authenticatedPage).toHaveURL(/\/servers\//, { timeout: 15000 });
+      await createServerViaUI(authenticatedPage, server.name);
 
       await authenticatedPage.waitForTimeout(1000);
 
@@ -78,14 +57,7 @@ test.describe('Messaging', () => {
       const server = createTestServer();
       const message = createTestMessage();
 
-      await authenticatedPage.goto('/app');
-      await authenticatedPage.click('button[aria-label="Add server"]').catch(() => {});
-      await authenticatedPage.waitForTimeout(500);
-      await authenticatedPage.click('button:has-text("Create My Own")').catch(() => {});
-      await authenticatedPage.waitForTimeout(300);
-      await authenticatedPage.fill('input[placeholder*="server"], input[type="text"]', server.name).catch(() => {});
-      await authenticatedPage.click('button:has-text("Create")').catch(() => {});
-      await expect(authenticatedPage).toHaveURL(/\/servers\//, { timeout: 15000 });
+      await createServerViaUI(authenticatedPage, server.name);
 
       await authenticatedPage.waitForTimeout(1000);
 
@@ -104,14 +76,7 @@ test.describe('Messaging', () => {
       const message1 = createTestMessage();
       const message2 = createTestMessage();
 
-      await authenticatedPage.goto('/app');
-      await authenticatedPage.click('button[aria-label="Add server"]').catch(() => {});
-      await authenticatedPage.waitForTimeout(500);
-      await authenticatedPage.click('button:has-text("Create My Own")').catch(() => {});
-      await authenticatedPage.waitForTimeout(300);
-      await authenticatedPage.fill('input[placeholder*="server"], input[type="text"]', server.name).catch(() => {});
-      await authenticatedPage.click('button:has-text("Create")').catch(() => {});
-      await expect(authenticatedPage).toHaveURL(/\/servers\//, { timeout: 15000 });
+      await createServerViaUI(authenticatedPage, server.name);
 
       await authenticatedPage.waitForTimeout(1000);
 
@@ -136,14 +101,7 @@ test.describe('Messaging', () => {
     test('should show typing indicator area', async ({ authenticatedPage }) => {
       const server = createTestServer();
 
-      await authenticatedPage.goto('/app');
-      await authenticatedPage.click('button[aria-label="Add server"]').catch(() => {});
-      await authenticatedPage.waitForTimeout(500);
-      await authenticatedPage.click('button:has-text("Create My Own")').catch(() => {});
-      await authenticatedPage.waitForTimeout(300);
-      await authenticatedPage.fill('input[placeholder*="server"], input[type="text"]', server.name).catch(() => {});
-      await authenticatedPage.click('button:has-text("Create")').catch(() => {});
-      await expect(authenticatedPage).toHaveURL(/\/servers\//, { timeout: 15000 });
+      await createServerViaUI(authenticatedPage, server.name);
 
       // Typing indicator area should exist (even if empty)
       await authenticatedPage.waitForTimeout(500);
@@ -155,14 +113,7 @@ test.describe('Messaging', () => {
     test('should show channel name in header', async ({ authenticatedPage }) => {
       const server = createTestServer();
 
-      await authenticatedPage.goto('/app');
-      await authenticatedPage.click('button[aria-label="Add server"]').catch(() => {});
-      await authenticatedPage.waitForTimeout(500);
-      await authenticatedPage.click('button:has-text("Create My Own")').catch(() => {});
-      await authenticatedPage.waitForTimeout(300);
-      await authenticatedPage.fill('input[placeholder*="server"], input[type="text"]', server.name).catch(() => {});
-      await authenticatedPage.click('button:has-text("Create")').catch(() => {});
-      await expect(authenticatedPage).toHaveURL(/\/servers\//, { timeout: 15000 });
+      await createServerViaUI(authenticatedPage, server.name);
 
       // Channel name (like "general") should be visible
       await authenticatedPage.waitForTimeout(1000);
@@ -176,14 +127,7 @@ test.describe('Messaging', () => {
       const server = createTestServer();
       const message = createTestMessage();
 
-      await authenticatedPage.goto('/app');
-      await authenticatedPage.click('button[aria-label="Add server"]').catch(() => {});
-      await authenticatedPage.waitForTimeout(500);
-      await authenticatedPage.click('button:has-text("Create My Own")').catch(() => {});
-      await authenticatedPage.waitForTimeout(300);
-      await authenticatedPage.fill('input[placeholder*="server"], input[type="text"]', server.name).catch(() => {});
-      await authenticatedPage.click('button:has-text("Create")').catch(() => {});
-      await expect(authenticatedPage).toHaveURL(/\/servers\//, { timeout: 15000 });
+      await createServerViaUI(authenticatedPage, server.name);
 
       await authenticatedPage.waitForTimeout(1000);
 

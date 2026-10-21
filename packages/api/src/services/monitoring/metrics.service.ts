@@ -126,6 +126,43 @@ export const messagesDeleted = new Counter({
   registers: [register],
 });
 
+// Message Event Metrics (RabbitMQ domain events: freedomtalk.events)
+export const messageEventsPublished = new Counter({
+  name: 'message_events_published_total',
+  help: 'Total number of message domain events published to RabbitMQ',
+  labelNames: ['event_type', 'outcome'],
+  registers: [register],
+});
+
+export const messageEventsConsumed = new Counter({
+  name: 'message_events_consumed_total',
+  help: 'Total number of message domain events consumed from RabbitMQ',
+  labelNames: ['queue', 'event_type', 'status'],
+  registers: [register],
+});
+
+export const messageConsumeRetries = new Counter({
+  name: 'message_consume_retries_total',
+  help: 'Total number of message event consume retries',
+  labelNames: ['queue'],
+  registers: [register],
+});
+
+export const messageDeadLettered = new Counter({
+  name: 'message_dlq_total',
+  help: 'Total number of message events dead-lettered to freedomtalk.dlq',
+  labelNames: ['queue'],
+  registers: [register],
+});
+
+export const messageAckDuration = new Histogram({
+  name: 'message_ack_duration_seconds',
+  help: 'Time from event receipt to ack for consumed message events',
+  labelNames: ['queue'],
+  buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5],
+  registers: [register],
+});
+
 // Authentication Metrics
 export const authAttempts = new Counter({
   name: 'auth_attempts_total',
@@ -220,6 +257,14 @@ export function trackWebSocketConnection(delta: number): void {
 }
 
 /**
+ * Refresh the WebSocket connection gauge with an absolute count
+ * (e.g. after a reconnect or periodic reconciliation)
+ */
+export function refreshWebSocketConnections(count: number): void {
+  websocketConnections.set(count);
+}
+
+/**
  * Track WebSocket message
  */
 export function trackWebSocketMessage(direction: 'received' | 'sent', eventType: string): void {
@@ -285,6 +330,52 @@ export function trackMessageDeleted(channelType: string): void {
 }
 
 /**
+ * Track a message domain event publish attempt
+ * @param eventType - message.created | message.updated | message.deleted
+ * @param outcome - 'published' | 'dropped' (broker down)
+ */
+export function trackMessageEventPublished(
+  eventType: string,
+  outcome: 'published' | 'dropped'
+): void {
+  messageEventsPublished.labels(eventType, outcome).inc();
+}
+
+/**
+ * Track a consumed message domain event
+ * @param queue - consuming queue name (search.messages, embeds.generate, ...)
+ * @param status - 'ack' | 'retry' | 'dead_letter'
+ */
+export function trackMessageEventConsumed(
+  queue: string,
+  eventType: string,
+  status: 'ack' | 'retry' | 'dead_letter'
+): void {
+  messageEventsConsumed.labels(queue, eventType, status).inc();
+}
+
+/**
+ * Track a consume retry (handler failed, message republished to queue)
+ */
+export function trackMessageConsumeRetry(queue: string): void {
+  messageConsumeRetries.labels(queue).inc();
+}
+
+/**
+ * Track an event dead-lettered to the DLQ
+ */
+export function trackMessageDeadLettered(queue: string): void {
+  messageDeadLettered.labels(queue).inc();
+}
+
+/**
+ * Observe message event ack latency (receipt -> ack)
+ */
+export function trackMessageAckLatency(queue: string, durationSeconds: number): void {
+  messageAckDuration.labels(queue).observe(durationSeconds);
+}
+
+/**
  * Track authentication attempt
  */
 export function trackAuthAttempt(method: string, status: 'success' | 'failure'): void {
@@ -321,6 +412,7 @@ export const metricsService = {
   incrementHttpRequestsInProgress,
   decrementHttpRequestsInProgress,
   trackWebSocketConnection,
+  refreshWebSocketConnections,
   trackWebSocketMessage,
   trackWebSocketError,
   trackDbQuery,
@@ -329,6 +421,11 @@ export const metricsService = {
   trackVoiceCallDuration,
   trackMessageCreated,
   trackMessageDeleted,
+  trackMessageEventPublished,
+  trackMessageEventConsumed,
+  trackMessageConsumeRetry,
+  trackMessageDeadLettered,
+  trackMessageAckLatency,
   trackAuthAttempt,
   updateActiveSessions,
   trackError,

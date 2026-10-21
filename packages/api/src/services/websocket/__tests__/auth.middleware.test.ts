@@ -10,9 +10,10 @@ vi.mock('../../auth/jwt.service');
 vi.mock('../../../config/database');
 vi.mock('../../../config/logger', () => ({
   logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
-    info: vi.fn(),
   },
 }));
 
@@ -60,7 +61,7 @@ describe('AuthMiddleware', () => {
 
       await authenticateSocket(mockSocket as Socket, mockNext);
 
-      expect(jwtService.verifyToken).toHaveBeenCalledWith('valid-token');
+      expect(jwtService.verifyToken).toHaveBeenCalledWith('valid-token', 'access');
       expect(mockNext).toHaveBeenCalledWith();
       expect(mockSocket.data!.user).toBeDefined();
     });
@@ -84,7 +85,7 @@ describe('AuthMiddleware', () => {
 
       await authenticateSocket(mockSocket as Socket, mockNext);
 
-      expect(jwtService.verifyToken).toHaveBeenCalledWith('valid-token');
+      expect(jwtService.verifyToken).toHaveBeenCalledWith('valid-token', 'access');
       expect(mockNext).toHaveBeenCalledWith();
     });
 
@@ -107,7 +108,7 @@ describe('AuthMiddleware', () => {
 
       await authenticateSocket(mockSocket as Socket, mockNext);
 
-      expect(jwtService.verifyToken).toHaveBeenCalledWith('valid-token');
+      expect(jwtService.verifyToken).toHaveBeenCalledWith('valid-token', 'access');
       expect(mockNext).toHaveBeenCalledWith();
     });
 
@@ -234,7 +235,7 @@ describe('AuthMiddleware', () => {
           email: 'test@example.com',
           username: 'testuser',
           email_verified: true,
-          mfa_enabled: true,
+          mfa_enabled: false,
           account_status: 'active',
         }),
       } as any);
@@ -247,7 +248,7 @@ describe('AuthMiddleware', () => {
         email: 'test@example.com',
         username: 'testuser',
         emailVerified: true,
-        mfaEnabled: true,
+        mfaEnabled: false,
         accountStatus: 'active',
       });
     });
@@ -464,7 +465,7 @@ describe('AuthMiddleware', () => {
 
       await authenticateSocket(mockSocket as Socket, mockNext);
 
-      expect(jwtService.verifyToken).toHaveBeenCalledWith('auth-token');
+      expect(jwtService.verifyToken).toHaveBeenCalledWith('auth-token', 'access');
     });
 
     it('should handle empty string token', async () => {
@@ -505,7 +506,7 @@ describe('AuthMiddleware', () => {
           email: 'test@example.com',
           username: 'testuser',
           email_verified: false,
-          mfa_enabled: true,
+          mfa_enabled: false,
           account_status: 'active',
         }),
       } as any);
@@ -518,7 +519,7 @@ describe('AuthMiddleware', () => {
         email: 'test@example.com',
         username: 'testuser',
         emailVerified: false,
-        mfaEnabled: true,
+        mfaEnabled: false,
         accountStatus: 'active',
       });
     });

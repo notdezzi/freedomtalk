@@ -4,6 +4,7 @@ import { WS_EVENTS } from '@freedomtalk/shared';
 import { roomManager, RoomType } from './room.manager';
 import { wsServer } from './websocket.server';
 import { db } from '../../config/database';
+import { publishCrossNode, TYPING_CHANNEL } from './cross-node.bus';
 
 /**
  * Channel type for typing indicators
@@ -75,13 +76,15 @@ class TypingManager {
       // Broadcast typing stop
       await this.broadcastTypingStop(userId, channelId, channelType);
 
-      // Clear timeout
+      // Clear timeout and debounce entry so the maps do not grow
+      // unboundedly with every (user, channel) pair ever seen
       const key = `${userId}:${channelType}:${channelId}`;
       const timeout = this.typingTimeouts.get(key);
       if (timeout) {
         clearTimeout(timeout);
         this.typingTimeouts.delete(key);
       }
+      this.lastTypingTime.delete(key);
 
       logger.debug({ userId, channelId, channelType }, 'User stopped typing');
     } catch (error) {
@@ -126,6 +129,7 @@ class TypingManager {
     const timeout = setTimeout(() => {
       this.stopTyping(userId, channelId, channelType);
       this.typingTimeouts.delete(key);
+      this.lastTypingTime.delete(key);
     }, this.TYPING_TTL * 1000);
 
     this.typingTimeouts.set(key, timeout);
@@ -176,6 +180,16 @@ class TypingManager {
           timestamp,
         });
       }
+
+      // Re-emit on other API nodes via Redis pub/sub
+      await publishCrossNode(TYPING_CHANNEL, {
+        kind: 'start',
+        userId,
+        username,
+        channelId,
+        channelType,
+        timestamp,
+      });
     } catch (error) {
       logger.error({ error, userId, channelId, channelType }, 'Error broadcasting typing start');
     }
@@ -212,6 +226,16 @@ class TypingManager {
           timestamp,
         });
       }
+
+      // Re-emit on other API nodes via Redis pub/sub
+      await publishCrossNode(TYPING_CHANNEL, {
+        kind: 'stop',
+        userId,
+        username,
+        channelId,
+        channelType,
+        timestamp,
+      });
     } catch (error) {
       logger.error({ error, userId, channelId, channelType }, 'Error broadcasting typing stop');
     }

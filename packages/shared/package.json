@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node ../../scripts/fix-esm-ext.mjs dist",
     "dev": "tsc --watch",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist"
@@ -21,4 +21,3 @@
     "node": ">=20.0.0"
   }
 }
-

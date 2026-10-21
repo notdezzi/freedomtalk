@@ -1,0 +1,45 @@
+# Caddy reverse proxy for the FreedomTalk production stack.
+# Mounted read-only into the caddy service by docker-compose.prod.yml.
+#
+# Site address comes from the DOMAIN env var (Caddy container environment).
+#   DOMAIN=chat.example.com  -> automatic Let's Encrypt HTTPS
+#   DOMAIN unset             -> defaults to "localhost" (self-signed local HTTPS)
+#
+# Browser-facing surface (everything goes through here):
+#   /api/*      -> api:3000   (REST under /api/v1/...)
+#   /socket.io* -> api:3000   (Socket.IO, including the mediasoup voice signaling
+#                              websocket — Caddy upgrades automatically)
+#   /health, /ready -> api:3000 (external uptime probes)
+#   /*          -> web:3000   (Next.js client)
+#
+# NOTE: WebRTC media does NOT traverse this proxy — mediasoup audio uses UDP
+# 40000-49999 mapped directly on the api service (see compose file / docs/deploy.md).
+
+{$DOMAIN:localhost} {
+	encode zstd gzip
+
+	# REST API
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	# Liveness/readiness probes exposed through the domain for uptime checks
+	handle /health {
+		reverse_proxy api:3000
+	}
+	handle /ready {
+		reverse_proxy api:3000
+	}
+
+	# Socket.IO (chat + voice signaling). WebSocket upgrade headers are set
+	# automatically by Caddy's reverse_proxy; /socket.io with and without
+	# trailing segments must both match, hence the asterisk with no slash.
+	handle /socket.io* {
+		reverse_proxy api:3000
+	}
+
+	# Everything else: the Next.js client
+	handle {
+		reverse_proxy web:3000
+	}
+}

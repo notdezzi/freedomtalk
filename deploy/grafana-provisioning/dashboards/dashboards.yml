@@ -1,0 +1,14 @@
+# Grafana dashboard auto-provisioning (mounted at /etc/grafana/provisioning/dashboards)
+apiVersion: 1
+
+providers:
+  - name: freedomtalk
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

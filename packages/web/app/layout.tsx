@@ -1,11 +1,13 @@
 import type { Metadata, Viewport } from 'next';
-import { Outfit, JetBrains_Mono, Syne } from 'next/font/google';
+import { JetBrains_Mono, Noto_Sans, Baloo_2, Nunito } from 'next/font/google';
 import "./globals.css";
 
-const outfit = Outfit({
+// Ships the 'gg sans' stack's free stand-in; the stack in globals.css
+// prefers a locally installed gg sans before falling back to this.
+const ggSans = Noto_Sans({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-outfit',
+  variable: '--font-gg',
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -14,15 +16,21 @@ const jetbrainsMono = JetBrains_Mono({
   variable: '--font-jetbrains-mono',
 });
 
-const syne = Syne({
+const baloo = Baloo_2({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-syne',
+  variable: '--font-baloo',
   weight: ['400', '500', '600', '700', '800'],
 });
 
+const nunito = Nunito({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-nunito',
+});
+
 export const viewport: Viewport = {
-  themeColor: '#0A0A0B',
+  themeColor: '#121214',
   width: 'device-width',
   initialScale: 1,
 };
@@ -68,7 +76,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${outfit.variable} ${jetbrainsMono.variable} ${syne.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${ggSans.variable} ${jetbrainsMono.variable} ${baloo.variable} ${nunito.variable}`}
+    >
       <body className="antialiased font-sans">
         {children}
       </body>

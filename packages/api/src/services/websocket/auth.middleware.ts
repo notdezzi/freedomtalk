@@ -106,7 +106,7 @@ export async function authenticateSocket(socket: Socket, next: (err?: Error) => 
     // Verify token
     let payload;
     try {
-      payload = await jwtService.verifyToken(token);
+      payload = await jwtService.verifyToken(token, 'access');
     } catch (error) {
       logger.warn({ socketId: socket.id, error }, 'Invalid WebSocket authentication token');
       socket.emit(WS_EVENTS.AUTHENTICATION_ERROR, {

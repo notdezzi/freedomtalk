@@ -80,9 +80,9 @@ export function PermissionCheckbox({
           // Neutral state - gray outline with empty circle
           state === 'neutral' && 'border-border bg-transparent',
           // Allow state - green with checkmark
-          state === 'allow' && 'border-green-500 bg-success/20',
+          state === 'allow' && 'border-success bg-success/20',
           // Deny state - red with X
-          state === 'deny' && 'border-red-500 bg-error/20'
+          state === 'deny' && 'border-error bg-error/20'
         )}
       >
         {state === 'neutral' && (

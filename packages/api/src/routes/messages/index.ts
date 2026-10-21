@@ -9,6 +9,7 @@ import { validateBody } from '../../middleware/validation.middleware';
 import { requireAuth } from '../../middleware/auth.middleware';
 import { successResponse } from '../../utils/errors';
 import { messageService } from '../../services/message/message.service';
+import { assertMessageReadAccess, assertMessageEditAccess } from '../../services/message/message-access';
 import { messageRouter } from '../../services/websocket/message.router';
 import { permissionService } from '../../services/permission';
 import { dmChannelService } from '../../services/dm/dm-channel.service';
@@ -191,8 +192,10 @@ export default async function messageRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
       const { id } = request.params;
+      const userId = request.user!.id;
 
       const message = await messageService.getMessage(id);
+      await assertMessageReadAccess(userId, message);
 
       return reply.send(successResponse(message));
     }
@@ -200,64 +203,62 @@ export default async function messageRoutes(app: FastifyInstance) {
 
   /**
    * GET /api/v1/messages
-   * Get messages with pagination and filtering
-   * Requires VIEW_CHANNEL and READ_MESSAGE_HISTORY permissions for channel messages
+   * Get messages for a channel with pagination
+   * channelId is REQUIRED — unscoped platform-wide listing is not allowed.
+   * Requires VIEW_CHANNEL and READ_MESSAGE_HISTORY permissions.
    */
   app.get(
     '/',
     {
       schema: {
-        description: 'Get messages with pagination and filtering',
+        description: 'Get messages for a channel with pagination',
         tags: ['Messages'],
         security: [{ bearerAuth: [] }],
         querystring: {
           type: 'object',
+          required: ['channelId'],
           properties: {
             before: { type: 'string' },
             after: { type: 'string' },
             limit: { type: 'integer', minimum: 1, maximum: 100 },
-            authorId: { type: 'string' },
-            channelId: { type: 'string' },
+            channelId: { type: 'string', minLength: 15, maxLength: 25 },
             isPinned: { type: 'boolean' },
-            search: { type: 'string' },
-            startDate: { type: 'string', format: 'date-time' },
-            endDate: { type: 'string', format: 'date-time' },
           },
         },
         // Remove response schema to avoid Fastify stripping properties
       },
     },
     async (request: FastifyRequest<{ Querystring: GetMessagesQuerystring }>, reply: FastifyReply) => {
-      const { before, after, limit, authorId, channelId, isPinned, search, startDate, endDate } = request.query;
+      const { before, after, limit, channelId, isPinned } = request.query;
       const userId = request.user!.id;
 
-      // Check permissions for channel messages
-      if (channelId) {
-        const hasViewChannel = await permissionService.hasChannelPermission(userId, channelId, PERMISSION_FLAGS.VIEW_CHANNEL);
-        if (!hasViewChannel) {
-          return reply.code(403).send({
-            success: false,
-            error: { code: 'FORBIDDEN', message: 'You do not have permission to view this channel' }
-          });
-        }
-        const hasReadHistory = await permissionService.hasChannelPermission(userId, channelId, PERMISSION_FLAGS.READ_MESSAGE_HISTORY);
-        if (!hasReadHistory) {
-          return reply.code(403).send({
-            success: false,
-            error: { code: 'FORBIDDEN', message: 'You do not have permission to read message history in this channel' }
-          });
-        }
+      if (!channelId) {
+        return reply.code(400).send({
+          success: false,
+          error: { code: 'BAD_REQUEST', message: 'channelId is required' }
+        });
+      }
+
+      const hasViewChannel = await permissionService.hasChannelPermission(userId, channelId, PERMISSION_FLAGS.VIEW_CHANNEL);
+      if (!hasViewChannel) {
+        return reply.code(403).send({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'You do not have permission to view this channel' }
+        });
+      }
+      const hasReadHistory = await permissionService.hasChannelPermission(userId, channelId, PERMISSION_FLAGS.READ_MESSAGE_HISTORY);
+      if (!hasReadHistory) {
+        return reply.code(403).send({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'You do not have permission to read message history in this channel' }
+        });
       }
 
       const result = await messageService.getMessages(
         { before, after, limit: limit ? parseInt(limit, 10) : undefined },
         {
-          authorId,
           channelId,
           isPinned: isPinned === 'true' ? true : isPinned === 'false' ? false : undefined,
-          search,
-          startDate: startDate ? new Date(startDate) : undefined,
-          endDate: endDate ? new Date(endDate) : undefined,
         }
       );
 
@@ -323,9 +324,14 @@ export default async function messageRoutes(app: FastifyInstance) {
       const { content } = request.body;
       const userId = request.user!.id;
 
-      const message = await messageService.updateMessage(id, content, userId);
+      // Only the author (or a moderator with MANAGE_MESSAGES for server
+      // channels) may edit a message.
+      const message = await messageService.getMessage(id, true);
+      await assertMessageEditAccess(userId, message);
 
-      return reply.send(successResponse(message));
+      const updated = await messageService.updateMessage(id, content, userId);
+
+      return reply.send(successResponse(updated));
     }
   );
 
@@ -435,6 +441,10 @@ export default async function messageRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
       const { id } = request.params;
+      const userId = request.user!.id;
+
+      const message = await messageService.getMessage(id);
+      await assertMessageReadAccess(userId, message);
 
       const history = await messageService.getMessageHistory(id);
 
@@ -477,8 +487,10 @@ export default async function messageRoutes(app: FastifyInstance) {
       const { id } = request.params;
       const userId = request.user!.id;
 
-      // Get message to check channel permission
+      // Get message and verify the caller can see it (DM participants or
+      // channel viewers). Server channels additionally require PIN_MESSAGES.
       const message = await messageService.getMessage(id, true);
+      await assertMessageReadAccess(userId, message);
       if (message.channel_id) {
         const hasPermission = await permissionService.hasChannelPermission(userId, message.channel_id, PERMISSION_FLAGS.PIN_MESSAGES);
         if (!hasPermission) {
@@ -530,8 +542,10 @@ export default async function messageRoutes(app: FastifyInstance) {
       const { id } = request.params;
       const userId = request.user!.id;
 
-      // Get message to check channel permission
+      // Get message and verify the caller can see it (DM participants or
+      // channel viewers). Server channels additionally require PIN_MESSAGES.
       const message = await messageService.getMessage(id, true);
+      await assertMessageReadAccess(userId, message);
       if (message.channel_id) {
         const hasPermission = await permissionService.hasChannelPermission(userId, message.channel_id, PERMISSION_FLAGS.PIN_MESSAGES);
         if (!hasPermission) {

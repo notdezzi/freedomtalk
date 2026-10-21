@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, memo, type ReactNode } from 'react';
 import { cn, formatRelativeTime, formatTime, formatDate } from '@/lib/utils';
 import { Avatar, Tooltip } from '@/components/ui';
 import { ReactionPicker } from './reaction-picker';
@@ -30,7 +30,7 @@ export interface MessageItemProps {
   context: 'server' | 'dm';
 }
 
-export function MessageItem({
+export function MessageItemBase({
   message,
   variant,
   showHeader,
@@ -43,7 +43,6 @@ export function MessageItem({
   onUserClick,
   context,
 }: MessageItemProps) {
-  const [showActions, setShowActions] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [editingContent, setEditingContent] = useState(message.content);
 
@@ -66,11 +65,10 @@ export function MessageItem({
     return (
       <div
         className={cn(
-          'group relative flex gap-4 px-4 py-0.5 hover:bg-background-elevated/50',
+          'group relative flex gap-4 px-4 py-0.5 hover:bg-black/10',
           message.pinned && 'bg-warning/5'
         )}
-        onMouseEnter={() => setShowActions(true)}
-        onMouseLeave={() => setShowActions(false)}
+        tabIndex={0}
       >
         {/* Timestamp on hover - same width as avatar (w-8) */}
         <div className="w-8 flex-shrink-0 flex items-center justify-center">
@@ -88,25 +86,24 @@ export function MessageItem({
           {/* Reactions */}
           {message.reactions && message.reactions.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
-              {message.reactions.map((reaction, index) => (
-                <ReactionBadge key={index} reaction={reaction} />
-              ))}
+              {message.reactions.map((reaction) => {
+                const emojiName = reaction.emoji?.name || (reaction as any).emoji_unicode || '?';
+                return <ReactionBadge key={emojiName} reaction={reaction} />;
+              })}
             </div>
           )}
         </div>
 
-        {/* Actions */}
-        {showActions && (
-          <MessageActions
-            onReply={onReply}
-            onEdit={() => {}}
-            onDelete={onDelete}
-            onPin={onPin}
-            onCopy={handleCopy}
-            onReaction={() => setShowReactionPicker(true)}
-            isPinned={message.pinned}
-          />
-        )}
+        {/* Actions - always in DOM, revealed on hover/focus for a11y */}
+        <MessageActions
+          onReply={onReply}
+          onEdit={() => {}}
+          onDelete={onDelete}
+          onPin={onPin}
+          onCopy={handleCopy}
+          onReaction={() => setShowReactionPicker(true)}
+          isPinned={message.pinned}
+        />
       </div>
     );
   }
@@ -114,11 +111,10 @@ export function MessageItem({
   return (
     <div
       className={cn(
-        'group relative flex gap-4 px-4 py-2 hover:bg-background-elevated/50',
+        'group relative flex gap-4 px-4 py-2 hover:bg-black/10',
         message.pinned && 'bg-warning/5'
       )}
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
+      tabIndex={0}
     >
       {/* Avatar */}
       {showHeader ? (
@@ -168,20 +164,20 @@ export function MessageItem({
             <textarea
               value={editingContent}
               onChange={(e) => setEditingContent(e.target.value)}
-              className="w-full rounded bg-background-surface p-2 text-foreground text-sm resize-none"
+              className="w-full rounded-lg bg-field border border-border p-2 text-foreground text-sm resize-none focus:border-accent focus:outline-none"
               rows={3}
               autoFocus
             />
             <div className="flex gap-2 mt-2">
               <button
                 onClick={handleEditSubmit}
-                className="px-3 py-1 bg-accent rounded text-sm hover:bg-accent-hover"
+                className="px-3 py-1.5 bg-accent rounded-lg text-sm font-medium text-white hover:bg-accent-hover transition-colors"
               >
                 Save
               </button>
               <button
                 onClick={() => onEdit(message.content)}
-                className="px-3 py-1 bg-background-elevated rounded text-sm hover:bg-background-surface"
+                className="px-3 py-1.5 bg-background-hover rounded-lg text-sm font-medium hover:bg-background-surface transition-colors"
               >
                 Cancel
               </button>
@@ -196,12 +192,12 @@ export function MessageItem({
         {/* Reactions */}
         {message.reactions && message.reactions.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
-            {message.reactions.map((reaction, index) => {
+            {message.reactions.map((reaction) => {
               // Handle both old and new reaction formats
               const emojiName = reaction.emoji?.name || (reaction as any).emoji_unicode || '?';
               return (
                 <ReactionBadge
-                  key={index}
+                  key={emojiName}
                   reaction={reaction}
                   onClick={() => onReaction(emojiName)}
                 />
@@ -212,7 +208,7 @@ export function MessageItem({
 
         {/* Reply reference */}
         {message.referencedMessage && (
-          <div className="mt-2 p-2 bg-background-elevated rounded text-sm text-foreground-muted border-l-2 border-border">
+          <div className="mt-2 p-2 bg-field/60 rounded-lg text-sm text-foreground-muted border-l-2 border-white/10">
             <span className="font-medium text-foreground">
               @{message.referencedMessage.author?.username || 'Unknown'}
             </span>
@@ -221,8 +217,8 @@ export function MessageItem({
         )}
       </div>
 
-      {/* Actions */}
-      {showActions && !isEditing && (
+      {/* Actions - always in DOM, revealed on hover/focus for a11y */}
+      {!isEditing && (
         <MessageActions
           onReply={onReply}
           onEdit={() => onEdit(message.content)}
@@ -274,13 +270,21 @@ function MessageActions({
   ];
 
   return (
-    <div className="absolute right-2 -top-3 flex items-center gap-0.5 rounded bg-background-elevated shadow-lg border border-border">
+    <div
+      className={cn(
+        'absolute right-2 -top-3 z-10 flex items-center gap-0.5 rounded-lg bg-background-elevated shadow-md border border-border',
+        'opacity-0 invisible group-hover:opacity-100 group-hover:visible',
+        'group-focus-within:opacity-100 group-focus-within:visible',
+        'focus-within:opacity-100 focus-within:visible transition-opacity'
+      )}
+    >
       {actions.map((action, index) => (
         <Tooltip key={index} content={action.label}>
           <button
             onClick={action.onClick}
+            aria-label={action.label}
             className={cn(
-              'p-1.5 text-foreground-muted hover:text-foreground transition-colors',
+              'p-3 text-foreground-muted hover:text-foreground transition-colors',
               action.danger && 'hover:text-error'
             )}
           >
@@ -292,7 +296,7 @@ function MessageActions({
   );
 }
 
-function ReactionBadge({
+function ReactionBadgeBase({
   reaction,
   onClick,
 }: {
@@ -318,3 +322,9 @@ function ReactionBadge({
     </button>
   );
 }
+
+// Memoized: cache patches re-render the whole list, but a row only needs to
+// re-render when its message object changes. ReactionBadge re-renders only
+// when its reaction object changes (keyed by emoji upstream).
+const ReactionBadge = memo(ReactionBadgeBase);
+export const MessageItem = memo(MessageItemBase);

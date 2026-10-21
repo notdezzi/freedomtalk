@@ -31,14 +31,12 @@ interface DMCallPanelProps {
 }
 
 export function DMCallPanel({ channelId, recipient, onJoinCall, className }: DMCallPanelProps) {
-  const {
-    isConnected,
-    currentChannelId,
-    users,
-    selfMute,
-    selfDeaf,
-    selfVideo,
-  } = useVoiceStore();
+  const isConnected = useVoiceStore((s) => s.isConnected);
+  const currentChannelId = useVoiceStore((s) => s.currentChannelId);
+  const users = useVoiceStore((s) => s.users);
+  const selfMute = useVoiceStore((s) => s.selfMute);
+  const selfDeaf = useVoiceStore((s) => s.selfDeaf);
+  const selfVideo = useVoiceStore((s) => s.selfVideo);
 
   const {
     toggleMute,
@@ -85,7 +83,6 @@ export function DMCallPanel({ channelId, recipient, onJoinCall, className }: DMC
         'flex flex-col border-b border-border bg-background-elevated',
         className
       )}
-      style={{ backgroundColor: '#1e1f22' }}
     >
       {/* Call info header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border">
@@ -163,6 +160,7 @@ export function DMCallPanel({ channelId, recipient, onJoinCall, className }: DMC
           activeColor="red"
           onClick={leaveChannel}
           title="End Call"
+          isToggle={false}
         />
       </div>
     </div>
@@ -177,11 +175,9 @@ interface DMCallButtonsProps {
 }
 
 export function DMCallButtons({ channelId, recipientId, onJoinCall, className }: DMCallButtonsProps) {
-  const {
-    isConnected,
-    currentChannelId,
-    isConnecting,
-  } = useVoiceStore();
+  const isConnected = useVoiceStore((s) => s.isConnected);
+  const currentChannelId = useVoiceStore((s) => s.currentChannelId);
+  const isConnecting = useVoiceStore((s) => s.isConnecting);
 
   const { joinChannel } = useVoiceConnection();
 
@@ -219,11 +215,12 @@ export function DMCallButtons({ channelId, recipientId, onJoinCall, className }:
       <button
         onClick={startVoiceCall}
         disabled={isConnecting || !!isInOtherCall}
+        aria-label={isInOtherCall ? 'Already in another call' : 'Start Voice Call'}
         className={cn(
           'rounded-full p-2 transition-colors',
           isInOtherCall
             ? 'bg-background-surface text-foreground-subtle cursor-not-allowed'
-            : 'bg-background-surface text-foreground hover:bg-success hover:text-foreground'
+            : 'bg-background-surface text-foreground hover:bg-success hover:text-white'
         )}
         title={isInOtherCall ? 'Already in another call' : 'Start Voice Call'}
       >
@@ -236,6 +233,7 @@ export function DMCallButtons({ channelId, recipientId, onJoinCall, className }:
       <button
         onClick={startVoiceCall}
         disabled={isConnecting || !!isInOtherCall}
+        aria-label={isInOtherCall ? 'Already in another call' : 'Start Video Call'}
         className={cn(
           'rounded-full p-2 transition-colors',
           isInOtherCall
@@ -260,16 +258,20 @@ function VoiceControlButton({
   activeColor,
   onClick,
   title,
+  isToggle = true,
 }: {
   icon: React.ReactNode;
   active: boolean;
   activeColor: 'green' | 'red';
   onClick: () => void;
   title: string;
+  isToggle?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
+      aria-label={title}
+      aria-pressed={isToggle ? active : undefined}
       className={cn(
         'rounded-full p-2 transition-colors',
         active

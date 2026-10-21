@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>FreedomTalk — Brag</title>
+    <script src="assets/vendor/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Syne";
+        src: url("assets/fonts/syne-var.woff2") format("woff2");
+        font-weight: 400 800;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "Outfit";
+        src: url("assets/fonts/outfit-var.woff2") format("woff2");
+        font-weight: 100 900;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url("assets/fonts/jetbrainsmono-var.woff2") format("woff2");
+        font-weight: 100 800;
+        font-display: block;
+      }
+
+      :root {
+        --bg: #0c0b0a;
+        --bg-elevated: #141311;
+        --bg-surface: #1c1a18;
+        --fg: #f5f2ed;
+        --fg-muted: #a8a29e;
+        --fg-soft: #9c958e;
+        --energy: #d4843c;
+        --energy-bright: #f0a04b;
+        --energy-dim: #8b5a2b;
+        --systems: #2d9596;
+        --systems-bright: #4abfbf;
+        --success: #4a9d6b;
+        --border: rgba(245, 242, 237, 0.08);
+        --border-hover: rgba(245, 242, 237, 0.14);
+        --border-energy: rgba(212, 132, 60, 0.3);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: "Outfit", system-ui, sans-serif;
+      }
+
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      /* ---------- persistent background ---------- */
+      .bg {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .glow-wrap { position: absolute; left: 50%; top: -420px; width: 1400px; height: 900px; margin-left: -700px; }
+      .glow {
+        position: absolute; inset: 0;
+        background: radial-gradient(ellipse at center, rgba(212, 132, 60, 0.22) 0%, rgba(212, 132, 60, 0.06) 45%, transparent 70%);
+      }
+      .glow-teal-wrap { position: absolute; right: -260px; bottom: -300px; width: 900px; height: 700px; }
+      .glow-teal {
+        position: absolute; inset: 0;
+        background: radial-gradient(ellipse at center, rgba(45, 149, 150, 0.12) 0%, transparent 70%);
+      }
+      .grid-lines {
+        position: absolute; inset: 0; opacity: 0.05;
+        background-image:
+          linear-gradient(rgba(212, 132, 60, 0.5) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(212, 132, 60, 0.5) 1px, transparent 1px);
+        background-size: 90px 90px;
+      }
+      .noise {
+        position: absolute; inset: 0; opacity: 0.04;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+      .vignette {
+        position: absolute; inset: 0;
+        background: radial-gradient(ellipse at center, transparent 55%, rgba(12, 11, 10, 0.75) 100%);
+      }
+      .gear-wrap { position: absolute; opacity: 0.12; color: var(--energy-dim); }
+      .gear-wrap.teal { color: var(--systems); opacity: 0.09; }
+
+      /* ---------- shared scene bits ---------- */
+      .clip { position: absolute; inset: 0; display: grid; place-items: center; }
+      .inner { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      .rv { opacity: 0; }
+
+      .energy-gradient-text {
+        background: linear-gradient(100deg, var(--energy-bright) 10%, var(--energy) 55%, var(--energy-dim) 95%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .mono-label {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 24px;
+        letter-spacing: 0.28em;
+        color: var(--energy-bright);
+        text-transform: uppercase;
+      }
+      .conduit {
+        height: 3px; width: 760px;
+        background: linear-gradient(90deg, transparent, var(--energy) 18%, var(--energy-bright) 50%, var(--energy) 82%, transparent);
+        transform-origin: left center;
+        box-shadow: 0 0 24px rgba(212, 132, 60, 0.45);
+      }
+
+      /* ---------- scene 2: reveal ---------- */
+      .pill {
+        display: inline-flex; align-items: center; gap: 14px;
+        padding: 14px 30px; border-radius: 999px;
+        background: rgba(20, 19, 17, 0.72); border: 1px solid var(--border-energy);
+      }
+      .pill-dot { position: relative; width: 12px; height: 12px; border-radius: 50%; background: var(--energy); }
+      .pill-ring { position: absolute; inset: 0; border-radius: 50%; background: var(--energy-bright); opacity: 0.6; }
+      .pill span { font-size: 24px; font-weight: 500; letter-spacing: 0.06em; color: var(--fg-muted); }
+      .wordmark {
+        font-family: "Syne", "Outfit", system-ui, sans-serif;
+        font-weight: 800; font-size: 128px; letter-spacing: -0.02em; line-height: 1.05;
+      }
+      .subline { font-size: 42px; font-weight: 300; color: var(--fg-muted); letter-spacing: 0.01em; }
+      .trust-row { display: flex; gap: 70px; align-items: center; }
+      .trust-item { display: flex; align-items: center; gap: 14px; font-size: 27px; font-weight: 400; color: var(--fg); }
+      .trust-item .glyph { color: var(--energy); font-size: 24px; }
+      .trust-item.teal .glyph { color: var(--systems-bright); }
+
+      /* ---------- scene 3: the app ---------- */
+      .scene-label {
+        position: absolute; top: 64px; left: 110px;
+      }
+      .app-window {
+        position: absolute; left: 50%; top: 158px; margin-left: -730px;
+        width: 1460px; height: 790px;
+        display: flex;
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-energy);
+        border-radius: 20px;
+        box-shadow: 0 40px 120px rgba(0, 0, 0, 0.6), 0 0 60px rgba(212, 132, 60, 0.07);
+        overflow: hidden;
+      }
+      .server-rail {
+        width: 96px; background: #0a0908; border-right: 1px solid var(--border);
+        display: flex; flex-direction: column; align-items: center; gap: 20px; padding-top: 26px;
+      }
+      .server-icon {
+        width: 56px; height: 56px; border-radius: 18px;
+        display: grid; place-items: center;
+        font-family: "Syne", sans-serif; font-weight: 800; font-size: 22px;
+        background: var(--bg-surface); color: var(--fg-muted);
+      }
+      .server-icon.active { background: rgba(212, 132, 60, 0.18); color: var(--energy-bright); border: 2px solid var(--border-energy); }
+      .server-icon.add { color: var(--fg-soft); font-size: 30px; font-weight: 300; }
+      .channel-col {
+        width: 300px; background: #100f0d; border-right: 1px solid var(--border);
+        display: flex; flex-direction: column; padding: 22px 0 0;
+      }
+      .server-name { font-family: "Syne", sans-serif; font-weight: 700; font-size: 26px; padding: 0 24px 16px; border-bottom: 1px solid var(--border); }
+      .col-label {
+        font-family: "JetBrains Mono", monospace; font-size: 15px; letter-spacing: 0.22em;
+        color: var(--fg-soft); padding: 22px 24px 10px; text-transform: uppercase;
+      }
+      .channel-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 11px 24px; font-size: 25px; color: var(--fg-muted);
+      }
+      .channel-item .hash { color: var(--energy-dim); font-weight: 600; }
+      .channel-item.active { background: rgba(212, 132, 60, 0.12); color: var(--fg); border-left: 3px solid var(--energy); padding-left: 21px; }
+      .channel-item.active .hash { color: var(--energy-bright); }
+      .user-panel {
+        margin-top: auto; padding: 16px 24px; border-top: 1px solid var(--border);
+        display: flex; align-items: center; gap: 14px;
+      }
+      .user-avatar { width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, var(--energy-dim), var(--energy)); display: grid; place-items: center; font-weight: 700; font-size: 19px; color: #fff; }
+      .user-name { font-size: 23px; font-weight: 600; color: var(--fg); line-height: 1.2; }
+      .user-status { font-size: 17px; color: var(--success); display: flex; align-items: center; gap: 7px; }
+      .status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--success); display: inline-block; }
+      .msg-col { flex: 1; display: flex; flex-direction: column; }
+      .channel-header {
+        height: 74px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px;
+        padding: 0 28px; font-size: 27px; font-weight: 600;
+      }
+      .channel-header .hash { color: var(--energy-bright); }
+      .channel-header .topic { font-size: 20px; color: var(--fg-soft); font-weight: 300; margin-left: 14px; }
+      .msg-list { flex: 1; padding: 26px 28px 10px; display: flex; flex-direction: column; gap: 24px; overflow: hidden; }
+      .msg { display: flex; gap: 18px; align-items: flex-start; }
+      .msg .avatar {
+        width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0;
+        display: grid; place-items: center; font-family: "Syne", sans-serif; font-weight: 700; font-size: 22px; color: #fff;
+      }
+      .av-mira { background: linear-gradient(135deg, var(--energy-dim), var(--energy)); }
+      .av-ana { background: linear-gradient(135deg, #1a6666, var(--systems)); }
+      .av-tomas { background: linear-gradient(135deg, #1a6666, var(--systems-bright)); }
+      .av-you { background: linear-gradient(135deg, #2e5c40, var(--success)); }
+      .msg-head { display: flex; align-items: baseline; gap: 12px; }
+      .msg-name { font-size: 25px; font-weight: 600; }
+      .name-mira { color: var(--energy-bright); }
+      .name-ana { color: var(--systems-bright); }
+      .name-tomas { color: var(--systems-bright); }
+      .name-you { color: #6fbd8b; }
+      .msg-time { font-family: "JetBrains Mono", monospace; font-size: 17px; color: var(--fg-soft); }
+      .msg-text { font-size: 27px; font-weight: 300; color: var(--fg); line-height: 1.35; }
+      .reaction {
+        display: inline-flex; align-items: center; gap: 8px; margin-top: 10px;
+        padding: 5px 14px; border-radius: 999px; border: 1px solid var(--border-energy);
+        background: rgba(212, 132, 60, 0.14); font-size: 22px;
+      }
+      .reaction .count { color: var(--energy-bright); font-weight: 600; }
+      .typing-row { display: flex; align-items: center; gap: 12px; padding: 0 28px 14px; height: 44px; }
+      .typing-row .dots { display: inline-flex; gap: 6px; }
+      .typing-row .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--energy); }
+      .typing-row .who { font-size: 20px; color: var(--fg-muted); }
+      .input-bar {
+        margin: 0 28px 26px; height: 66px; border-radius: 14px;
+        background: var(--bg-surface); border: 1px solid var(--border-hover);
+        display: flex; align-items: center; padding: 0 24px; position: relative;
+      }
+      .input-placeholder { font-size: 25px; color: var(--fg-muted); }
+      .input-typed { font-size: 25px; color: var(--fg); }
+      .caret {
+        width: 2px; height: 32px; background: var(--energy-bright);
+        display: inline-block; margin-left: 3px; vertical-align: middle;
+      }
+      .input-tools { margin-left: auto; display: flex; gap: 18px; color: var(--fg-soft); font-size: 24px; }
+
+      /* ---------- scene 4: stack + punchline ---------- */
+      .stack-label { position: absolute; top: 66px; left: 110px; }
+      .chips {
+        position: absolute; top: 190px; left: 0; right: 0;
+        display: flex; flex-wrap: wrap; justify-content: center; gap: 26px;
+        padding: 0 180px;
+      }
+      .chip {
+        padding: 18px 34px; border-radius: 12px;
+        background: var(--bg-surface); border: 1px solid var(--border-hover);
+        font-family: "JetBrains Mono", monospace; font-size: 30px; font-weight: 500; color: var(--fg);
+      }
+      .chip b { color: var(--energy-bright); font-weight: 500; }
+      .terminal {
+        position: absolute; top: 520px; left: 50%; margin-left: -430px;
+        width: 860px; padding: 24px 32px; border-radius: 14px;
+        background: #0a0908; border: 1px solid var(--border);
+        font-family: "JetBrains Mono", monospace; font-size: 31px;
+      }
+      .terminal .prompt { color: var(--energy-bright); }
+      .terminal .cmd { color: var(--fg); }
+      .terminal .caret { height: 34px; }
+      .punchline {
+        position: absolute; top: 700px; left: 0; right: 0; text-align: center;
+        font-family: "Syne", "Outfit", system-ui, sans-serif;
+        font-weight: 800; font-size: 76px; letter-spacing: -0.015em;
+      }
+
+      /* ---------- scene 5: outro ---------- */
+      .outro-mark {
+        font-family: "Syne", "Outfit", system-ui, sans-serif;
+        font-weight: 800; font-size: 140px; letter-spacing: -0.02em; line-height: 1;
+      }
+      .outro-tag { font-size: 40px; font-weight: 300; color: var(--fg-muted); }
+      .outro-foot { font-family: "JetBrains Mono", monospace; font-size: 23px; letter-spacing: 0.14em; color: var(--fg-soft); text-transform: uppercase; }
+      .outro-foot b { color: var(--energy-bright); font-weight: 500; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="freedomtalk-brag" data-start="0" data-width="1920" data-height="1080" data-duration="21.6">
+      <!-- persistent background -->
+      <div class="bg">
+        <div class="glow-wrap" data-layout-ignore><div id="glow" class="glow"></div></div>
+        <div class="glow-teal-wrap" data-layout-ignore><div class="glow-teal"></div></div>
+        <div class="grid-lines"></div>
+        <div class="gear-wrap" id="gear-a" data-layout-ignore style="right: -140px; top: 130px;">
+          <svg width="360" height="360" viewBox="0 0 100 100" fill="none">
+            <circle cx="50" cy="50" r="30" stroke="currentColor" stroke-width="2" opacity="0.5" />
+            <circle cx="50" cy="50" r="20" stroke="currentColor" stroke-width="1.5" opacity="0.4" />
+            <circle cx="50" cy="50" r="8" fill="currentColor" opacity="0.6" />
+            <g id="gear-a-teeth">
+              <rect x="46" y="5" width="8" height="15" fill="currentColor" opacity="0.45" />
+              <rect x="46" y="5" width="8" height="15" fill="currentColor" opacity="0.45" transform="rotate(45 50 50)" />
+              <rect x="46" y="5" width="8" height="15" fill="currentColor" opacity="0.45" transform="rotate(90 50 50)" />
+              <rect x="46" y="5" width="8" height="15" fill="currentColor" opacity="0.45" transform="rotate(135 50 50)" />
+              <rect x="46" y="5" width="8" height="15" fill="currentColor" opacity="0.45" transform="rotate(180 50 50)" />
+              <rect x="46" y="5" width="8" height="15" fill="currentColor" opacity="0.45" transform="rotate(225 50 50)" />
+              <rect x="46" y="5" width="8" height="15" fill="currentColor" opacity="0.45" transform="rotate(270 50 50)" />
+              <rect x="46" y="5" width="8" height="15" fill="currentColor" opacity="0.45" transform="rotate(315 50 50)" />
+            </g>
+          </svg>
+        </div>
+        <div class="gear-wrap teal" id="gear-b" data-layout-ignore style="left: -170px; bottom: 90px;">
+          <svg width="300" height="300" viewBox="0 0 100 100" fill="none">
+            <circle cx="50" cy="50" r="30" stroke="currentColor" stroke-width="2" opacity="0.5" />
+            <circle cx="50" cy="50" r="8" fill="currentColor" opacity="0.5" />
+            <rect x="46" y="5" width="8" height="15" fill="currentColor" opacity="0.4" />
+            <rect x="46" y="5" width="8" height="15" fill="currentColor" opacity="0.4" transform="rotate(60 50 50)" />
+            <rect x="46" y="5" width="8" height="15" fill="currentColor" opacity="0.4" transform="rotate(120 50 50)" />
+            <rect x="46" y="5" width="8" height="15" fill="currentColor" opacity="0.4" transform="rotate(180 50 50)" />
+            <rect x="46" y="5" width="8" height="15" fill="currentColor" opacity="0.4" transform="rotate(240 50 50)" />
+            <rect x="46" y="5" width="8" height="15" fill="currentColor" opacity="0.4" transform="rotate(300 50 50)" />
+          </svg>
+        </div>
+        <div class="noise"></div>
+        <div class="vignette"></div>
+      </div>
+
+      <!-- Scene 1 — Hook — 2.5s -->
+      <section id="scene-hook" class="clip" data-start="0" data-duration="2.5" data-track-index="1">
+        <div class="inner">
+          <h1 id="hook-line" class="rv" style="margin: 0; font-family: 'Syne', 'Outfit', system-ui, sans-serif; font-weight: 800; font-size: 128px; letter-spacing: -0.02em; line-height: 1.12; text-align: center;">
+            <span style="display: block; color: var(--fg);">Own Your</span>
+            <span class="energy-gradient-text" style="display: block;">Conversations.</span>
+          </h1>
+          <div id="hook-line-under" class="conduit rv" style="margin-top: 44px;"></div>
+        </div>
+      </section>
+
+      <!-- Scene 2 — Reveal — 3.5s -->
+      <section id="scene-reveal" class="clip" data-start="2.5" data-duration="3.5" data-track-index="1">
+        <div class="inner" style="gap: 34px;">
+          <div id="rv-pill" class="pill rv">
+            <span class="pill-dot"><span id="pill-ring" class="pill-ring"></span></span>
+            <span>Open Source Infrastructure</span>
+          </div>
+          <div id="rv-mark" class="wordmark rv energy-gradient-text">FreedomTalk</div>
+          <div id="rv-sub" class="subline rv">Communication Infrastructure for Everyone</div>
+          <div class="trust-row" style="margin-top: 26px;">
+            <div id="trust-1" class="trust-item rv"><span class="glyph">&#9670;</span>End-to-End Encrypted</div>
+            <div id="trust-2" class="trust-item rv"><span class="glyph">&#9671;</span>Self-Hostable</div>
+            <div id="trust-3" class="trust-item teal rv"><span class="glyph">&#9675;</span>Zero Tracking</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scene 3 — The app, alive — 8s -->
+      <section id="scene-app" class="clip" data-start="6" data-duration="8" data-track-index="1">
+        <div class="inner">
+          <div id="app-label" class="scene-label mono-label rv">Real-Time Messaging</div>
+          <div id="app-window" class="app-window rv">
+            <div class="server-rail">
+              <div class="server-icon active">FT</div>
+              <div class="server-icon">D</div>
+              <div class="server-icon">M</div>
+              <div class="server-icon add">+</div>
+            </div>
+            <div class="channel-col">
+              <div class="server-name">FreedomTalk HQ</div>
+              <div class="col-label">Text Channels</div>
+              <div class="channel-item active"><span class="hash">#</span>general</div>
+              <div class="channel-item"><span class="hash">#</span>introductions</div>
+              <div class="channel-item"><span class="hash">#</span>self-hosting</div>
+              <div class="user-panel">
+                <div class="user-avatar">y</div>
+                <div>
+                  <div class="user-name">you</div>
+                  <div class="user-status"><span class="status-dot"></span>online</div>
+                </div>
+              </div>
+            </div>
+            <div class="msg-col">
+              <div class="channel-header"><span class="hash">#</span>general<span class="topic">your infrastructure, your rules</span></div>
+              <div class="msg-list">
+                <div class="msg">
+                  <div class="avatar av-mira">m</div>
+                  <div>
+                    <div class="msg-head"><span class="msg-name name-mira">mira</span><span class="msg-time">10:41</span></div>
+                    <div class="msg-text">just moved the whole community off the big platforms</div>
+                    <div id="reaction" class="reaction rv"><span>&#128293;</span><span class="count">3</span></div>
+                  </div>
+                </div>
+                <div class="msg">
+                  <div class="avatar av-ana">a</div>
+                  <div>
+                    <div class="msg-head"><span class="msg-name name-ana">ana</span><span class="msg-time">10:42</span></div>
+                    <div class="msg-text">and the audit logs are already earning their keep</div>
+                  </div>
+                </div>
+                <div id="msg-you" class="msg rv">
+                  <div class="avatar av-you">y</div>
+                  <div>
+                    <div class="msg-head"><span class="msg-name name-you">you</span><span class="msg-time">10:43</span></div>
+                    <div class="msg-text">welcome to freedom</div>
+                  </div>
+                </div>
+                <div id="msg-tomas" class="msg rv">
+                  <div class="avatar av-tomas">t</div>
+                  <div>
+                    <div class="msg-head"><span class="msg-name name-tomas">tomas</span><span class="msg-time">10:43</span></div>
+                    <div class="msg-text">runs on my hardware. my rules.</div>
+                  </div>
+                </div>
+                <div id="msg-mira2" class="msg rv">
+                  <div class="avatar av-mira">m</div>
+                  <div>
+                    <div class="msg-head"><span class="msg-name name-mira">mira</span><span class="msg-time">10:44</span></div>
+                    <div class="msg-text">fully open source, all 181 commits</div>
+                  </div>
+                </div>
+              </div>
+              <div id="typing-row" class="typing-row rv">
+                <span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+                <span class="who">tomas is typing&hellip;</span>
+              </div>
+              <div class="input-bar">
+                <div id="input-placeholder" class="input-placeholder">Message #general</div>
+                <div id="input-typed" class="input-typed"></div>
+                <div id="input-tools" class="input-tools rv"><span>B</span><span>I</span><span>&lt;/&gt;</span><span>&#128514;</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scene 4 — Stack + punchline — 4.6s -->
+      <section id="scene-stack" class="clip" data-start="14" data-duration="4.6" data-track-index="1">
+        <div class="inner">
+          <div id="stack-label" class="stack-label mono-label rv">Under the Hood</div>
+          <div class="chips">
+            <div id="chip-1" class="chip rv">Fastify <b>5</b></div>
+            <div id="chip-2" class="chip rv">Socket.io</div>
+            <div id="chip-3" class="chip rv">PostgreSQL</div>
+            <div id="chip-4" class="chip rv">Redis</div>
+            <div id="chip-5" class="chip rv">RabbitMQ</div>
+            <div id="chip-6" class="chip rv">mediasoup</div>
+            <div id="chip-7" class="chip rv">Next.js <b>16</b></div>
+          </div>
+          <div id="terminal" class="terminal rv">
+            <span class="prompt">$</span> <span id="term-chars" class="cmd"></span><span id="term-caret" class="caret"></span>
+          </div>
+          <div id="punchline" class="punchline rv energy-gradient-text">Your infrastructure, your rules.</div>
+        </div>
+      </section>
+
+      <!-- Scene 5 — Outro — 3.0s -->
+      <section id="scene-outro" class="clip" data-start="18.6" data-duration="3" data-track-index="1">
+        <div class="inner" style="gap: 30px;">
+          <div id="outro-mark" class="outro-mark rv energy-gradient-text">FreedomTalk</div>
+          <div id="outro-tag" class="outro-tag rv">Because your conversations deserve freedom.</div>
+          <div id="outro-foot" class="outro-foot rv" style="margin-top: 18px;"><b>181 commits</b> &middot; fully open source</div>
+        </div>
+      </section>
+
+      <!-- ======== AUDIO ======== -->
+      <audio id="music" data-start="0" data-duration="21.6" data-track-index="10" data-volume="0.3"
+        data-automation='{"version":1,"lanes":[{"target":"volume","points":[{"t":0,"v":0.3},{"t":7,"v":0.3},{"t":7.5,"v":0.2},{"t":8.4,"v":0.2},{"t":8.9,"v":0.3},{"t":19.4,"v":0.3},{"t":21.4,"v":0}]}]}'
+        src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3"></audio>
+
+      <audio id="sfx-hook" data-start="0.5" data-track-index="11" data-volume="0.7" src="assets/sfx/impact/impactSoft_medium_001.ogg"></audio>
+      <audio id="sfx-trust1" data-start="3.78" data-track-index="12" data-volume="0.45" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-trust2" data-start="4.36" data-track-index="13" data-volume="0.45" src="assets/sfx/interface/drop_002.ogg"></audio>
+      <audio id="sfx-trust3" data-start="4.88" data-track-index="14" data-volume="0.45" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-window" data-start="5.96" data-track-index="15" data-volume="0.5" src="assets/sfx/interface/drop_002.ogg"></audio>
+      <audio id="sfx-key1" data-start="7.1" data-track-index="16" data-volume="0.32" src="assets/sfx/keyboard/keypress-001.wav"></audio>
+      <audio id="sfx-key2" data-start="7.28" data-track-index="17" data-volume="0.32" src="assets/sfx/keyboard/keypress-002.wav"></audio>
+      <audio id="sfx-key3" data-start="7.46" data-track-index="18" data-volume="0.32" src="assets/sfx/keyboard/keypress-003.wav"></audio>
+      <audio id="sfx-key4" data-start="7.64" data-track-index="19" data-volume="0.32" src="assets/sfx/keyboard/keypress-004.wav"></audio>
+      <audio id="sfx-key5" data-start="7.82" data-track-index="20" data-volume="0.32" src="assets/sfx/keyboard/keypress-005.wav"></audio>
+      <audio id="sfx-key6" data-start="8" data-track-index="21" data-volume="0.32" src="assets/sfx/keyboard/keypress-006.wav"></audio>
+      <audio id="sfx-send" data-start="8.3" data-track-index="22" data-volume="0.5" src="assets/sfx/interface/click_002.ogg"></audio>
+      <audio id="sfx-post" data-start="8.45" data-track-index="23" data-volume="0.5" src="assets/sfx/interface/drop_002.ogg"></audio>
+      <audio id="sfx-indicator" data-start="8.74" data-track-index="24" data-volume="0.3" src="assets/sfx/interface/click_003.ogg"></audio>
+      <audio id="sfx-tomas" data-start="9.29" data-track-index="25" data-volume="0.6" src="assets/sfx/impact/impactSoft_medium_004.ogg"></audio>
+      <audio id="sfx-react" data-start="10.37" data-track-index="26" data-volume="0.55" src="assets/sfx/interface/select_008.ogg"></audio>
+      <audio id="sfx-mira2" data-start="10.93" data-track-index="27" data-volume="0.45" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio id="sfx-chip1" data-start="14.2" data-track-index="28" data-volume="0.35" src="assets/sfx/interface/click_003.ogg"></audio>
+      <audio id="sfx-chip2" data-start="14.73" data-track-index="29" data-volume="0.35" src="assets/sfx/interface/click_002.ogg"></audio>
+      <audio id="sfx-chip3" data-start="15.29" data-track-index="30" data-volume="0.35" src="assets/sfx/interface/click_003.ogg"></audio>
+      <audio id="sfx-chip4" data-start="15.84" data-track-index="31" data-volume="0.35" src="assets/sfx/interface/click_002.ogg"></audio>
+      <audio id="sfx-chip5" data-start="16.38" data-track-index="32" data-volume="0.35" src="assets/sfx/interface/click_003.ogg"></audio>
+      <audio id="sfx-chip6" data-start="16.93" data-track-index="33" data-volume="0.35" src="assets/sfx/interface/click_002.ogg"></audio>
+      <audio id="sfx-chip7" data-start="17.15" data-track-index="34" data-volume="0.35" src="assets/sfx/interface/click_003.ogg"></audio>
+      <audio id="sfx-term1" data-start="15.45" data-track-index="35" data-volume="0.28" src="assets/sfx/keyboard/keypress-003.wav"></audio>
+      <audio id="sfx-term2" data-start="15.61" data-track-index="36" data-volume="0.28" src="assets/sfx/keyboard/keypress-004.wav"></audio>
+      <audio id="sfx-term3" data-start="15.77" data-track-index="37" data-volume="0.28" src="assets/sfx/keyboard/keypress-005.wav"></audio>
+      <audio id="sfx-term4" data-start="15.93" data-track-index="38" data-volume="0.28" src="assets/sfx/keyboard/keypress-006.wav"></audio>
+      <audio id="sfx-term5" data-start="16.09" data-track-index="39" data-volume="0.28" src="assets/sfx/keyboard/keypress-007.wav"></audio>
+      <audio id="sfx-term6" data-start="16.25" data-track-index="40" data-volume="0.28" src="assets/sfx/keyboard/keypress-008.wav"></audio>
+      <audio id="sfx-punch" data-start="17.35" data-track-index="41" data-volume="0.75" src="assets/sfx/impact/impactSoft_medium_001.ogg"></audio>
+      <audio id="sfx-outro" data-start="18.56" data-track-index="42" data-volume="0.45" src="assets/sfx/impact/impactSoft_medium_004.ogg"></audio>
+    </div>
+
+    <script src="assets/audio-data-trimmed.js"></script>
+    <script>
+      function buildChars(container, text) {
+        var spans = [];
+        for (var i = 0; i < text.length; i++) {
+          var s = document.createElement("span");
+          s.className = "ch";
+          s.textContent = text[i] === " " ? "\u00a0" : text[i];
+          s.style.opacity = "0";
+          container.appendChild(s);
+          spans.push(s);
+        }
+        return spans;
+      }
+
+      function build() {
+        var typedSpans = buildChars(document.getElementById("input-typed"), "welcome to freedom");
+        var termSpans = buildChars(document.getElementById("term-chars"), "npm run docker:up");
+
+        var tl = gsap.timeline({ paused: true });
+
+        /* ===== persistent background ambience ===== */
+        tl.fromTo("#gear-a", { rotation: 0 }, { rotation: 38, duration: 21.6, ease: "none" }, 0);
+        tl.fromTo("#gear-b", { rotation: 0 }, { rotation: -30, duration: 21.6, ease: "none" }, 0);
+
+        /* ===== Scene 1 — Hook (0 - 2.5) ===== */
+        // beat-locked: 0.56s (hook line lands on the opening beat)
+        tl.fromTo("#hook-line", { y: 64, opacity: 0 }, { y: 0, opacity: 1, duration: 0.32, ease: "power4.out", immediateRender: false }, 0.24);
+        tl.fromTo("#hook-line-under", { scaleX: 0, opacity: 0 }, { scaleX: 1, opacity: 1, duration: 0.6, ease: "power2.inOut", immediateRender: false }, 0.9);
+        tl.to("#scene-hook .inner", { opacity: 0, duration: 0.25, ease: "power1.in" }, 2.2);
+
+        /* ===== Scene 2 — Reveal (2.5 - 6.0) ===== */
+        tl.fromTo("#rv-pill", { y: -26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "power2.out", immediateRender: false }, 2.72);
+        tl.fromTo("#pill-ring", { scale: 1, opacity: 0.6 }, { scale: 2.2, opacity: 0, duration: 0.9, repeat: 3, ease: "power1.out", immediateRender: false }, 2.9);
+        // beat-locked: 2.73s (wordmark)
+        tl.fromTo("#rv-mark", { y: 44, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out", immediateRender: false }, 2.95);
+        tl.fromTo("#rv-sub", { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "power2.out", immediateRender: false }, 3.35);
+        // beat-grid: trust-1 at 3.82s, trust-2 at 4.39s, trust-3 at 4.91s (full set held to scene end)
+        tl.fromTo("#trust-1", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power2.out", immediateRender: false }, 3.82);
+        tl.fromTo("#trust-2", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power2.out", immediateRender: false }, 4.39);
+        tl.fromTo("#trust-3", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power2.out", immediateRender: false }, 4.91);
+        tl.to("#scene-reveal .inner", { opacity: 0, duration: 0.25, ease: "power1.in" }, 5.7);
+
+        /* ===== Scene 3 — The app, alive (6.0 - 14.0) ===== */
+        tl.fromTo("#app-label", { x: -28, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power2.out", immediateRender: false }, 6.1);
+        tl.fromTo("#app-window", { y: 46, scale: 0.965, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.55, ease: "power3.out", immediateRender: false }, 6.0);
+        tl.fromTo("#input-tools", { opacity: 0 }, { opacity: 1, duration: 0.3, immediateRender: false }, 6.5);
+
+        // simulated typing: "welcome to freedom" typed char by char (keypress SFX at 7.10-8.00)
+        typedSpans.forEach(function (s, i) {
+          tl.set(s, { opacity: 1 }, 7.09 + i * 0.062);
+        });
+        tl.to("#input-placeholder", { opacity: 0, duration: 0.12 }, 6.98);
+        tl.to(typedSpans, { opacity: 0, duration: 0.1 }, 8.3); // sent — input clears
+        tl.fromTo("#msg-you", { y: 22, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power2.out", immediateRender: false }, 8.45);
+
+        // tomas typing indicator (beat 8.74) then his message lands
+        tl.fromTo("#typing-row", { opacity: 0 }, { opacity: 1, duration: 0.2, immediateRender: false }, 8.74);
+        tl.fromTo("#typing-row .dot", { y: 0 }, { y: -6, duration: 0.18, repeat: 2, yoyo: true, stagger: 0.08, ease: "power1.inOut", immediateRender: false }, 8.78);
+        tl.to("#typing-row", { opacity: 0, duration: 0.15 }, 9.12);
+        // beat-locked: 9.29s (strong cue — tomas' message lands)
+        tl.fromTo("#msg-tomas", { y: 22, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power2.out", immediateRender: false }, 9.29);
+
+        // reaction pops on mira's message
+        tl.fromTo("#reaction", { scale: 0.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(2.2)", immediateRender: false }, 10.37);
+
+        // beat-locked: 10.93s (strong cue — mira's follow-up)
+        tl.fromTo("#msg-mira2", { y: 22, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: "power2.out", immediateRender: false }, 10.93);
+
+        tl.to("#scene-app .inner", { opacity: 0, duration: 0.25, ease: "power1.in" }, 13.7);
+
+        /* ===== Scene 4 — Stack + punchline (14.0 - 18.6) ===== */
+        tl.fromTo("#stack-label", { x: -28, opacity: 0 }, { x: 0, opacity: 1, duration: 0.35, ease: "power2.out", immediateRender: false }, 14.05);
+        // beat-grid: chips at 14.20 / 14.73 / 15.29 / 15.84 / 16.38 / 16.93; chip-7 natural at 17.15 (held to scene end)
+        var chipTimes = [14.2, 14.73, 15.29, 15.84, 16.38, 16.93, 17.15];
+        chipTimes.forEach(function (t, i) {
+          tl.fromTo("#chip-" + (i + 1), { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.32, ease: "power2.out", immediateRender: false }, t);
+        });
+
+        // simulated terminal typing: "$ npm run docker:up" (keypress SFX at 15.45-16.25)
+        termSpans.forEach(function (s, i) {
+          tl.set(s, { opacity: 1 }, 15.4 + i * 0.047);
+        });
+        tl.fromTo("#term-caret", { opacity: 0 }, { opacity: 1, duration: 0.05, immediateRender: false }, 15.3);
+
+        // beat-locked: 17.47s (strong cue — landed 17.35, within +-0.15s)
+        tl.fromTo("#punchline", { scale: 1.22, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.34, ease: "power3.out", immediateRender: false }, 17.35);
+        tl.to(["#terminal", ".chips"], { opacity: 0.28, duration: 0.3, ease: "power1.inOut" }, 17.35);
+        tl.to("#scene-stack .inner", { opacity: 0, duration: 0.3, ease: "power1.in" }, 18.28);
+
+        /* ===== Scene 5 — Outro (18.6 - 21.6) ===== */
+        // beat-locked: 18.56s (strong cue — wordmark)
+        tl.fromTo("#outro-mark", { scale: 0.94, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.45, ease: "power3.out", immediateRender: false }, 18.56);
+        tl.fromTo("#outro-tag", { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "power2.out", immediateRender: false }, 19.0);
+        tl.fromTo("#outro-foot", { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "power2.out", immediateRender: false }, 19.55);
+        tl.to("#scene-outro .inner", { opacity: 0, duration: 0.5, ease: "power1.in" }, 21.0);
+
+        /* ===== audio-reactive: copper glow breathes with the music (subtle) ===== */
+        var frames = window.AUDIO_DATA.frames;
+        for (var f = 0; f < window.AUDIO_DATA.totalFrames; f++) {
+          tl.call(
+            (function (frame) {
+              return function () {
+                var rms = frame.rms !== undefined ? frame.rms : 0.3;
+                var bass = frame.bands && frame.bands.length ? frame.bands[0] : 0.2;
+                gsap.set("#glow", { opacity: 0.65 + rms * 0.55, scale: 1 + rms * 0.05 + bass * 0.04 });
+              };
+            })(frames[f]),
+            [],
+            f / window.AUDIO_DATA.fps
+          );
+        }
+
+        window.__timelines["freedomtalk-brag"] = tl;
+      }
+
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function () {
+          build();
+        });
+      } else {
+        build();
+      }
+    </script>
+  </body>
+</html>

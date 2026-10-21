@@ -91,7 +91,7 @@ class SessionService {
    * @returns Session ID
    */
   async createSession(userId: string, data: Partial<SessionData> = {}): Promise<string> {
-    console.log('[DEBUG] SessionService.createSession() called for userId:', userId);
+    logger.debug({ userId }, 'SessionService.createSession() called');
 
     const sessionId = snowflake.generate();
     const now = Date.now();
@@ -105,17 +105,17 @@ class SessionService {
 
     const encrypted = this.encryptData(JSON.stringify(sessionData));
 
-    console.log('[DEBUG] About to call getRedisClient().setEx()');
+    logger.debug('About to call getRedisClient().setEx()');
 
     // Store session with idle timeout
     await (await getRedisClient()).setEx(`session:${sessionId}`, this.IDLE_TIMEOUT, encrypted);
 
-    console.log('[DEBUG] Successfully called setEx(), now calling sAdd()');
+    logger.debug('Successfully called setEx(), now calling sAdd()');
 
     // Add to user's session set for multi-device logout
     await (await getRedisClient()).sAdd(`user_sessions:${userId}`, sessionId);
 
-    console.log('[DEBUG] Session created successfully');
+    logger.debug('Session created successfully');
 
     logger.info({ userId, sessionId }, 'Session created');
     return sessionId;

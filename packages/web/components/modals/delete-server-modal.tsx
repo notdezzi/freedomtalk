@@ -81,7 +81,7 @@ export function DeleteServerModal({ serverId, onClose }: DeleteServerModalProps)
               setConfirmName(e.target.value);
               setError('');
             }}
-            className="w-full bg-background-surface text-foreground rounded px-3 py-2 border border-border focus:border-red-500 focus:outline-none"
+            className="w-full bg-background-surface text-foreground rounded px-3 py-2 border border-border focus:border-error focus:outline-none"
             placeholder={server.name}
           />
         </div>

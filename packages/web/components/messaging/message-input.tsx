@@ -155,12 +155,13 @@ export function MessageInput({
           {attachments.map((file, index) => (
             <div
               key={index}
-              className="flex items-center gap-2 rounded bg-background-surface px-2 py-1 text-sm"
+              className="flex items-center gap-2 rounded-lg bg-field border border-border px-2 py-1 text-sm"
             >
               <span className="truncate max-w-[150px]">{file.name}</span>
               <button
                 onClick={() => removeAttachment(index)}
-                className="text-foreground-muted hover:text-foreground"
+                className="text-foreground-muted hover:text-foreground p-1"
+                aria-label={`Remove attachment ${file.name}`}
               >
                 ×
               </button>
@@ -175,8 +176,10 @@ export function MessageInput({
         <div className="flex items-center gap-1">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="rounded p-1.5 text-foreground-muted hover:bg-background-elevated hover:text-foreground"
-            title="Attach file"
+            disabled
+            className="rounded p-2.5 text-foreground-muted opacity-50 cursor-not-allowed"
+            title="Attachments are not supported yet"
+            aria-label="Attach file (not supported yet)"
           >
             <Plus className="h-5 w-5" />
           </button>
@@ -193,7 +196,7 @@ export function MessageInput({
             disabled={disabled}
             rows={1}
             className={cn(
-              'w-full resize-none bg-transparent text-foreground placeholder:text-foreground-muted',
+              'w-full resize-none bg-transparent text-foreground placeholder:text-placeholder',
               'focus:outline-none focus:ring-0 focus:border-0 no-focus-ring',
               'max-h-48 min-h-[24px]'
             )}
@@ -234,17 +237,18 @@ export function MessageInput({
             icon={<Smile className="h-5 w-5" />}
             title="Emoji"
             onClick={() => {}}
-          /> 
-          
+          />
+
 
           <button
             onClick={() => handleSubmit()}
             disabled={disabled || (!content.trim() && attachments.length === 0)}
+            aria-label="Send message"
             className={cn(
-              'rounded p-1.5 transition-colors',
+              'rounded-lg p-2.5 transition-colors',
               content.trim() || attachments.length > 0
-                ? 'bg-accent text-foreground hover:bg-accent-hover'
-                : 'bg-background-elevated text-foreground-muted'
+                ? 'bg-accent text-white hover:bg-accent-hover'
+                : 'bg-background-hover text-foreground-muted'
             )}
             title="Send message"
           >
@@ -278,7 +282,8 @@ function TooltipButton({
   return (
     <button
       onClick={onClick}
-      className="rounded p-1.5 text-foreground-muted hover:bg-background-elevated hover:text-foreground"
+      aria-label={title}
+      className="rounded p-2.5 text-foreground-muted hover:bg-background-hover hover:text-foreground"
       title={title}
     >
       {icon}

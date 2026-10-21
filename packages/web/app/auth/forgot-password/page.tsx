@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { ArrowLeft, MessageCircle, Mail, CheckCircle } from 'lucide-react';
+import { BrandLockup } from '@/components/brand/brand';
 
 export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -60,12 +61,7 @@ export default function ForgotPasswordPage() {
 
       {/* Logo */}
       <div className="flex items-center gap-2 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-secondary flex items-center justify-center">
-          <MessageCircle className="w-5 h-5 text-background" />
-        </div>
-        <span className="text-xl font-bold">
-          Freedom<span className="gradient-text">Talk</span>
-        </span>
+        <BrandLockup size={40} wordmarkClassName="text-xl" />
       </div>
 
       {/* Header */}

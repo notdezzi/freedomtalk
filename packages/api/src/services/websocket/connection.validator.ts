@@ -18,8 +18,9 @@ export interface ValidationResult {
  * Validates connection requests before acceptance
  */
 class ConnectionValidator {
-  private readonly MAX_CONNECTIONS_PER_IP = 10;
-  private readonly RATE_LIMIT_WINDOW = 60; // seconds
+  // Tunable for load tests / NAT'd offices where many users share one IP
+  private readonly MAX_CONNECTIONS_PER_IP = parseInt(process.env.WS_MAX_CONNECTIONS_PER_IP || '10', 10);
+  private readonly RATE_LIMIT_WINDOW = parseInt(process.env.WS_IP_RATE_WINDOW_SEC || '60', 10); // seconds
 
   /**
    * Validate a connection request
@@ -142,6 +143,10 @@ class ConnectionValidator {
 
       // Check if limit exceeded
       if (count > this.MAX_CONNECTIONS_PER_IP) {
+        // Rejected attempts must not consume a slot, otherwise a client in a
+        // reconnect loop keeps its own counter pinned above the limit and can
+        // never get back in (self-DoS)
+        await redis.decr(key).catch(() => undefined);
         logger.warn({ ip, count }, 'Connection rejected: IP rate limit exceeded');
         return {
           success: false,
@@ -149,6 +154,9 @@ class ConnectionValidator {
           code: 'IP_RATE_LIMIT',
         };
       }
+
+      // Accepted: this socket holds a slot until it disconnects
+      socket.data.ipRateLimitSlot = ip;
 
       return { success: true };
     } catch (error) {
@@ -181,6 +189,30 @@ class ConnectionValidator {
     logger.debug({ socketId: socket.id, origin, userAgent }, 'Connection metadata validated');
 
     return { success: true };
+  }
+
+  /**
+   * Release the per-IP slot a connection consumed when it was accepted.
+   * Called from the disconnect handler; without this, page reloads and
+   * reconnects drain the window for up to RATE_LIMIT_WINDOW seconds.
+   * @param socket - Disconnecting socket
+   */
+  async releaseIPSlot(socket: Socket): Promise<void> {
+    const ip = socket.data.ipRateLimitSlot as string | undefined;
+    if (!ip) return;
+    socket.data.ipRateLimitSlot = undefined;
+    try {
+      const redis = await getRedisClient();
+      const key = `ratelimit:ip:${ip}`;
+      const count = await redis.decr(key);
+      // Never let accounting glitches clamp the counter below zero (a
+      // negative count would grant extra slots after the next reset)
+      if (count < 0) {
+        await redis.set(key, 0);
+      }
+    } catch (error) {
+      logger.error({ error }, 'Error releasing IP rate limit slot');
+    }
   }
 
   /**

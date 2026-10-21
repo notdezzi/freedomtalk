@@ -6,6 +6,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { ZodSchema, ZodError } from 'zod';
 import { ValidationError } from '../types/api.types';
+import { logger } from '../config/logger';
 
 /**
  * Validate request body against Zod schema
@@ -15,8 +16,8 @@ import { ValidationError } from '../types/api.types';
 export function validateBody<T>(schema: ZodSchema<T>) {
   return async (request: FastifyRequest, _reply: FastifyReply) => {
     try {
-      // Log the incoming body for debugging
-      console.log('[Validation] Body received:', JSON.stringify(request.body, null, 2));
+      // SECURITY: never log request bodies — login/register/refresh bodies
+      // carry plaintext passwords and refresh tokens.
       request.body = schema.parse(request.body);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -24,9 +25,9 @@ export function validateBody<T>(schema: ZodSchema<T>) {
           field: err.path.join('.'),
           message: err.message,
         }));
-        // Log the validation errors and the body that failed
-        console.log('[Validation] Errors:', JSON.stringify(formattedErrors, null, 2));
-        request.log.error({ errors: formattedErrors, body: request.body }, 'Validation failed');
+        // Log the validation errors only — the body may contain credentials
+        logger.info({ errors: formattedErrors }, 'Validation errors');
+        request.log.error({ errors: formattedErrors }, 'Validation failed');
         throw new ValidationError('Validation failed', formattedErrors);
       }
       throw error;

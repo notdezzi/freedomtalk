@@ -1,0 +1,27 @@
+# OpenTelemetry Collector configuration for FreedomTalk traces.
+# Mounted by the `otel-collector` service in docker-compose.yml.
+# Pipeline: app (OTLP) -> collector -> Jaeger UI + debug logging.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  # Forward traces to the Jaeger all-in-one OTLP ingestion endpoint
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  # Log every batch to collector stdout (set verbosity: detailed to see spans)
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [otlp/jaeger, debug]

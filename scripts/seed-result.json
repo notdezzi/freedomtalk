@@ -1,0 +1,25 @@
+{
+  "apiUrl": "http://localhost:3101/api/v1",
+  "webUrl": "http://localhost:3100",
+  "demo": {
+    "email": "demo@freedomtalk.dev",
+    "password": "DemoPass123!",
+    "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIzNjgzMTA4NjI5NTMzMjA0NDgiLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiMzY4MzE0Mjk0OTQ2NzYyNzUyIiwiaWF0IjoxNzkxODgwMTcwLCJleHAiOjE3OTE4ODEwNzB9.EoI-3tu1APrbUvJb7n4nk21Beran6p1YvW_BWCtc5WEXmqFcSAd4PoILbp8_QcOkdTdVOdJed6TAZDmGaq-PlI28t3L_N7989XY74JwYjMgIRkKhOhvJPnN9MWd65WDAlCuM9-55jDAKAXf5KAO5riI3TZo9Ayx2gB5qm7s7gtbpu3Q6T92hHvu5187Nqdzku2PyBc1nLAJJhOAT2rBEuG5KW1JE3OFuBU8ujmqm8EsaiQ5Pnuw-jPi3JoQXVMA1SRCjcgmjQEuFQoGH9TyYi5dDjZn_EhKr0vrgnbl5wIBciktxI6N7q2407fIFdoSA0CPoCBb55ItWhFreYc7tIg",
+    "userId": "368310862953320448",
+    "username": "demo"
+  },
+  "alice": {
+    "username": "alice_demo",
+    "userId": "368310866195517440",
+    "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIzNjgzMTA4NjYxOTU1MTc0NDAiLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiMzY4MzE0Mjk2MTg4Mjc2NzM2IiwiaWF0IjoxNzkxODgwMTcxLCJleHAiOjE3OTE4ODEwNzF9.nkv2olF_pbK5MkblONfJ2xGiFDcbfeIFfhaDqxK4U0nM2F55nL4-J5KFdhj1-sc-1D4In3SmvrGKnaGmuzNzqS9ecA70yExMIfU1GdBeVXB1_GTcpYNlVqQGF_DlbHtlMy8TkodGn-jvrgj7Zr3x5jkzLBalRW-EUP9RtVDrs9eJxnkCmdrAaAeZdUY4I7cUTI1o_cdljB0o6czo5zcXK4HDRCKJs0CsgVarzDCpfZRH_S3pDVGAien7_QJ1uXUUW-W1ULw-VzFwZlkRyHHIm8Pt2wtPbeYvJbtp9FsjVIhAbSATOiP29h1ZoJcgQ6jRqZOv3ljaGDfl3RXwG9K4kQ"
+  },
+  "serverId": "368310867386699776",
+  "channelId": "368310867386699778",
+  "otherChannels": {
+    "intros": "368311767773745152",
+    "design": "368311767815688192",
+    "voice": "368311767853436928"
+  },
+  "dmChannelId": "368310867323785216",
+  "inviteCode": "usgFaM4"
+}

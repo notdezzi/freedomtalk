@@ -25,10 +25,9 @@ export function UserPanel() {
   return (
     <div
       className={cn(
-        'flex items-center gap-2 px-2 py-0.5',
-        'bg-transparent border border-border mb-4 ml-2 mr-2 rounded-lg'
+        'flex items-center gap-2 px-2 py-2',
+        'bg-rail border-t border-border'
       )}
-      style={{ backgroundColor: '#232428' }}
     >
       {/* User info */}
       <button className="flex flex-1 items-center gap-2 rounded px-1 py-1 transition-colors cursor-pointer">
@@ -56,7 +55,7 @@ export function UserPanel() {
           onClick={toggleMute}
           disabled={!isConnectedToVoice}
           className={cn(
-            'rounded p-1.5 transition-colors',
+            'rounded p-3 transition-colors',
             selfMute && isConnectedToVoice
               ? 'bg-error/20 text-error hover:bg-error/30'
               : 'text-foreground-muted hover:bg-background-surface hover:text-foreground',
@@ -77,7 +76,7 @@ export function UserPanel() {
           onClick={toggleDeafen}
           disabled={!isConnectedToVoice}
           className={cn(
-            'rounded p-1.5 transition-colors',
+            'rounded p-3 transition-colors',
             selfDeaf && isConnectedToVoice
               ? 'bg-error/20 text-error hover:bg-error/30'
               : 'text-foreground-muted hover:bg-background-surface hover:text-foreground',
@@ -96,7 +95,7 @@ export function UserPanel() {
         {/* Settings button - directly opens user settings */}
         <button
           onClick={() => openModal('user-settings')}
-          className="rounded p-1.5 text-foreground-muted hover:bg-background-surface hover:text-foreground transition-colors"
+          className="rounded p-3 text-foreground-muted hover:bg-background-surface hover:text-foreground transition-colors"
           aria-label="User settings"
         >
           <Settings className="h-4 w-4" />

@@ -1,0 +1,24 @@
+# Keep the build context small and clean for Docker builds
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+# Host TypeScript incremental state must never reach the build stage:
+# composite/incremental tsc trusts it and skips emission ("up to date"),
+# producing a corrupt dist with stale mtimes preserved by COPY
+*.tsbuildinfo
+**/*.tsbuildinfo
+.git
+.env
+.env.*
+!.env.example
+coverage
+playwright-report
+test-results
+docs
+load
+tests
+*.log
+.github

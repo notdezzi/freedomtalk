@@ -51,9 +51,9 @@ export function useConfirmDialog() {
 
 const variantConfig: Record<ConfirmVariant, { icon: typeof AlertTriangle; iconColor: string; confirmVariant: 'primary' | 'danger' }> = {
   danger: { icon: XCircle, iconColor: 'text-error', confirmVariant: 'danger' },
-  warning: { icon: AlertTriangle, iconColor: 'text-yellow-500', confirmVariant: 'primary' },
-  info: { icon: Info, iconColor: 'text-blue-500', confirmVariant: 'primary' },
-  success: { icon: CheckCircle, iconColor: 'text-green-500', confirmVariant: 'primary' },
+  warning: { icon: AlertTriangle, iconColor: 'text-warning', confirmVariant: 'primary' },
+  info: { icon: Info, iconColor: 'text-secondary', confirmVariant: 'primary' },
+  success: { icon: CheckCircle, iconColor: 'text-success', confirmVariant: 'primary' },
 };
 
 function ConfirmDialogComponent({
@@ -97,7 +97,7 @@ function ConfirmDialogComponent({
             {isPrompt && (
               <input
                 type="text"
-                className="mt-4 w-full rounded-md border border-border bg-background-surface px-3 py-2 text-sm text-foreground placeholder:text-foreground-subtle focus:outline-none focus:ring-2 focus:ring-primary"
+                className="mt-4 w-full rounded-lg border border-border-hover bg-field px-3 py-2 text-sm text-foreground placeholder:text-foreground-subtle focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
                 placeholder={'inputPlaceholder' in options ? options.inputPlaceholder : undefined}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}

@@ -97,8 +97,9 @@ class SubscriptionManager {
    * This method loads the user's accessible channels from the database
    * and syncs them to Redis.
    *
-   * Current implementation: Users have access to channels in servers they own.
-   * Future enhancement: Add server_members and channel_members tables for granular permissions.
+   * Users have access to every channel in servers they own or are a member
+   * of (the schema has no private-channel concept — server_members gates
+   * access at the server level; room joins still re-check permissions).
    *
    * @param userId - User ID
    */
@@ -109,11 +110,17 @@ class SubscriptionManager {
       const redis = await getRedisClient();
       const userKey = `subscriptions:${userId}`;
 
-      // Get channels from servers owned by the user
-      // In the future, this should also include channels from servers the user is a member of
+      // Get channels from servers the user owns or is a member of
       const channels = await db('channels')
         .join('servers', 'channels.server_id', 'servers.id')
-        .where('servers.owner_id', userId)
+        .where(builder => {
+          builder
+            .where('servers.owner_id', userId)
+            .orWhereIn(
+              'servers.id',
+              db('server_members').select('server_id').where('user_id', userId)
+            );
+        })
         .select('channels.id as channel_id');
 
       // Clear existing subscriptions

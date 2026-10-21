@@ -1,4 +1,5 @@
 import { forwardRef, type HTMLAttributes } from 'react';
+import Image from 'next/image';
 import { cn, getStatusColor, getAcronym } from '@/lib/utils';
 import type { UserStatus } from '@/types';
 
@@ -19,6 +20,15 @@ const sizeClasses = {
   md: 'h-8 w-8',
   lg: 'h-10 w-10',
   xl: 'h-20 w-20',
+};
+
+// Pixel dimensions for next/image (must match sizeClasses)
+const sizePixels = {
+  xs: 16,
+  sm: 24,
+  md: 32,
+  lg: 40,
+  xl: 80,
 };
 
 const statusSizes = {
@@ -59,9 +69,12 @@ const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
           )}
         >
           {src ? (
-            <img
+            <Image
               src={src}
               alt={alt}
+              width={sizePixels[size]}
+              height={sizePixels[size]}
+              loading="lazy"
               className="h-full w-full object-cover"
             />
           ) : (
@@ -93,21 +106,33 @@ const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
 
         {(isMuted || isDeafened) && (
           <div
+            role="img"
+            aria-label={isDeafened ? 'Deafened' : 'Muted'}
             className={cn(
               'absolute bottom-0 right-0 rounded-full bg-background flex items-center justify-center',
               statusSizes[size]
             )}
           >
             {isDeafened ? (
-              <svg className="h-2 w-2 text-error" fill="currentColor" viewBox="0 0 20 20">
+              // Deafened: headphones-style icon with a diagonal strike line
+              <svg
+                className="h-2 w-2 text-error"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 20 20"
+                aria-hidden="true"
+              >
                 <path
-                  fillRule="evenodd"
-                  d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z"
-                  clipRule="evenodd"
+                  d="M4 13v-2a6 6 0 1112 0v2"
+                  strokeLinecap="round"
                 />
+                <rect x="2.5" y="11.5" width="3.5" height="5" rx="1" fill="currentColor" stroke="none" />
+                <rect x="14" y="11.5" width="3.5" height="5" rx="1" fill="currentColor" stroke="none" />
+                <line x1="2" y1="18" x2="18" y2="2" strokeLinecap="round" />
               </svg>
             ) : (
-              <svg className="h-2 w-2 text-error" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="h-2 w-2 text-error" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                 <path
                   fillRule="evenodd"
                   d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z"

@@ -10,6 +10,13 @@ export interface MessageSearchOptions {
   channelId?: string;
   serverId?: string;
   authorId?: string;
+  /**
+   * Authorization scope: the server IDs the caller may read messages from.
+   * When provided, results are restricted to those servers and DM messages
+   * (server_id = null) are excluded entirely. Global (unscoped) searches
+   * without this field return no results.
+   */
+  allowedServerIds?: string[];
   limit?: number;
   offset?: number;
 }
@@ -89,15 +96,41 @@ export class SearchService {
     options: MessageSearchOptions = {}
   ): Promise<SearchResponse<MessageSearchResult>> {
     const client = getMeilisearchClient();
-    const { channelId, serverId, authorId, limit = 50, offset = 0 } = options;
+    const { channelId, serverId, authorId, allowedServerIds, limit = 50, offset = 0 } = options;
 
     // Build filter array
     const filters: string[] = ['is_deleted = false'];
+
+    // Authorization scope: restrict to servers the caller can read and never
+    // return DM messages (they carry server_id = null in the index).
+    if (allowedServerIds !== undefined) {
+      if (allowedServerIds.length === 0) {
+        return {
+          hits: [],
+          estimatedTotalHits: 0,
+          processingTimeMs: 0,
+          query,
+        } as unknown as SearchResponse<MessageSearchResult>;
+      }
+      filters.push(`server_id IS NOT NULL`);
+      filters.push(
+        `server_id IN [${allowedServerIds.map((id) => JSON.stringify(id)).join(', ')}]`
+      );
+    }
 
     if (channelId) {
       filters.push(`channel_id = ${channelId}`);
     }
     if (serverId) {
+      if (allowedServerIds !== undefined && !allowedServerIds.includes(serverId)) {
+        // Requested a server outside the caller's scope: deny by empty result.
+        return {
+          hits: [],
+          estimatedTotalHits: 0,
+          processingTimeMs: 0,
+          query,
+        } as unknown as SearchResponse<MessageSearchResult>;
+      }
       filters.push(`server_id = ${serverId}`);
     }
     if (authorId) {
@@ -183,17 +216,31 @@ export class SearchService {
   async autocomplete(
     type: 'messages' | 'users' | 'servers',
     prefix: string,
-    limit: number = 10
+    limit: number = 10,
+    allowedServerIds?: string[]
   ): Promise<AutocompleteResult[]> {
     const client = getMeilisearchClient();
     const indexName = type === 'messages' ? INDICES.MESSAGES :
                       type === 'users' ? INDICES.USERS : INDICES.SERVERS;
 
+    const searchOptions: Record<string, unknown> = { limit };
+
+    // Message autocomplete must respect the same authorization scope as
+    // full-text search: only servers the caller belongs to, never DMs.
+    if (type === 'messages') {
+      if (allowedServerIds === undefined || allowedServerIds.length === 0) {
+        return [];
+      }
+      searchOptions.filter = [
+        'is_deleted = false',
+        'server_id IS NOT NULL',
+        `server_id IN [${allowedServerIds.map((id) => JSON.stringify(id)).join(', ')}]`,
+      ];
+    }
+
     const results = await client
       .index(indexName)
-      .search(prefix, {
-        limit,
-      });
+      .search(prefix, searchOptions);
 
     return results.hits.map((hit: any) => ({
       id: hit.id,

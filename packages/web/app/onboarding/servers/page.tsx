@@ -10,7 +10,7 @@ const suggestedServers = [
     id: '1',
     name: 'FreedomTalk Official',
     icon: 'FT',
-    color: 'from-accent to-secondary',
+    color: 'bg-accent',
     members: 15234,
     description: 'The official FreedomTalk community. Get help, share feedback, and connect with the team.',
     tags: ['Official', 'Community', 'Support'],
@@ -19,7 +19,7 @@ const suggestedServers = [
     id: '2',
     name: 'Gaming Hub',
     icon: 'GH',
-    color: 'from-purple-500 to-pink-500',
+    color: 'bg-[#eb459e]',
     members: 8923,
     description: 'Find gaming buddies, join tournaments, and discuss your favorite games.',
     tags: ['Gaming', 'Esports', 'Community'],
@@ -28,7 +28,7 @@ const suggestedServers = [
     id: '3',
     name: 'Developer Den',
     icon: 'DD',
-    color: 'from-green-500 to-teal-500',
+    color: 'bg-success',
     members: 12456,
     description: 'A community for developers of all skill levels. Share code, get help, and learn together.',
     tags: ['Programming', 'Tech', 'Learning'],
@@ -37,7 +37,7 @@ const suggestedServers = [
     id: '4',
     name: 'Music Lovers',
     icon: 'ML',
-    color: 'from-orange-500 to-red-500',
+    color: 'bg-warning',
     members: 6789,
     description: 'Share and discover music, discuss artists, and find people with similar taste.',
     tags: ['Music', 'Community', 'Social'],
@@ -46,7 +46,7 @@ const suggestedServers = [
     id: '5',
     name: 'Art & Creativity',
     icon: 'AC',
-    color: 'from-blue-500 to-indigo-500',
+    color: 'bg-secondary',
     members: 5432,
     description: 'Share your art, get feedback, and participate in weekly art challenges.',
     tags: ['Art', 'Creative', 'Community'],
@@ -55,7 +55,7 @@ const suggestedServers = [
     id: '6',
     name: 'Anime Central',
     icon: 'AC',
-    color: 'from-pink-500 to-rose-500',
+    color: 'bg-error',
     members: 9876,
     description: 'Discuss anime, manga, and Japanese culture with fellow fans.',
     tags: ['Anime', 'Entertainment', 'Social'],
@@ -155,7 +155,7 @@ export default function OnboardingServersPage() {
           >
             <div className="flex items-start gap-4">
               <div
-                className={`w-14 h-14 rounded-xl bg-gradient-to-br ${server.color} flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}
+                className={`w-14 h-14 rounded-xl ${server.color} flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}
               >
                 {server.icon}
               </div>

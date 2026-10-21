@@ -91,10 +91,13 @@ class JWTService {
   /**
    * Verify and decode JWT token
    * @param token - JWT token to verify
+   * @param expectedType - Required token type ('access' | 'refresh'). When
+   *   provided, a token of any other type is rejected — a stolen refresh
+   *   token must never be usable as an access token and vice versa.
    * @returns Decoded token payload
-   * @throws AuthenticationError if token is invalid, expired, or blacklisted
+   * @throws AuthenticationError if token is invalid, expired, blacklisted, or of the wrong type
    */
-  async verifyToken(token: string): Promise<JWTPayload> {
+  async verifyToken(token: string, expectedType?: 'access' | 'refresh'): Promise<JWTPayload> {
     try {
       // Check if token is blacklisted
       const isBlacklisted = await this.isBlacklisted(token);
@@ -108,8 +111,19 @@ class JWTService {
         clockTolerance: 30, // 30 second tolerance for clock skew
       }) as JWTPayload;
 
+      // Enforce the token's declared type
+      if (expectedType && decoded.type !== expectedType) {
+        throw new AuthenticationError(
+          `Invalid token type: expected ${expectedType}`,
+          ApiErrorCode.TOKEN_INVALID
+        );
+      }
+
       return decoded;
     } catch (error) {
+      if (error instanceof AuthenticationError) {
+        throw error;
+      }
       if (error instanceof jwt.TokenExpiredError) {
         throw new AuthenticationError('Token has expired', ApiErrorCode.TOKEN_EXPIRED);
       } else if (error instanceof jwt.JsonWebTokenError) {

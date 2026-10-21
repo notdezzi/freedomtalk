@@ -1,7 +1,8 @@
 'use client';
 
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 interface MarkdownContentProps {
@@ -9,16 +10,9 @@ interface MarkdownContentProps {
   className?: string;
 }
 
-/**
- * Renders message content with markdown support
- * Supports: bold, italic, strikethrough, code, code blocks, blockquotes, links
- */
-export function MarkdownContent({ content, className }: MarkdownContentProps) {
-  return (
-    <span className={cn('break-words', className)}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
+// Stable component map: ReactMarkdown re-parses when `components` changes
+// identity, so keep it out of the render path.
+const markdownComponents: Components = {
           // Paragraph - keep inline for chat messages
           p: ({ children }) => <>{children}</>,
           // Bold
@@ -100,10 +94,23 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
           hr: () => (
             <span className="block my-2 border-t border-border" />
           ),
-        }}
-      >
+};
+
+/**
+ * Renders message content with markdown support
+ * Supports: bold, italic, strikethrough, code, code blocks, blockquotes, links
+ *
+ * Memoized by `content`: skip re-parsing markdown when only the parent
+ * re-renders (the common case — typing state, hover, sibling messages).
+ */
+function MarkdownContentBase({ content, className }: MarkdownContentProps) {
+  return (
+    <span className={cn('break-words', className)}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
         {content}
       </ReactMarkdown>
     </span>
   );
 }
+
+export const MarkdownContent = memo(MarkdownContentBase);

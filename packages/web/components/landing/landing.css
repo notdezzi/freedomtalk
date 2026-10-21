@@ -1,0 +1,812 @@
+/* ============================================================
+   FreedomTalk landing — scoped Discord design-system world.
+   Namespaced under .ftl so the chat app's globals.css is untouched.
+   Source: https://gitreverse.com/designs/discord-com
+   ============================================================ */
+
+.ftl {
+  /* Ground */
+  --ftl-charcoal: #23272a;        /* base surface */
+  --ftl-charcoal-deep: #111214;   /* footer / deep bands */
+  --ftl-surface: #2c2f33;         /* elevated panels */
+  --ftl-surface-2: #36393f;       /* highest panel */
+  --ftl-line: #3d4046;            /* hairline dividers */
+
+  /* Ink */
+  --ftl-white: #ffffff;
+  --ftl-text: #f2f3f5;
+  --ftl-muted: #b5bac1;
+  --ftl-subtle: #8e9297;
+
+  /* Action */
+  --ftl-blurple: #5865f2;
+  --ftl-blurple-deep: #31368e;    /* hover depth, rings, dividers */
+
+  /* Sticker palette — lives inside artwork, never on structure */
+  --ftl-yellow: #fee75c;
+  --ftl-fuchsia: #eb459e;
+  --ftl-green: #57f287;
+  --ftl-red: #ed4245;
+
+  /* Type */
+  --ftl-display: var(--font-baloo), var(--font-nunito), system-ui, sans-serif;
+  --ftl-body: var(--font-nunito), system-ui, sans-serif;
+
+  /* Radii */
+  --ftl-r-btn: 12px;
+  --ftl-r-card: 20px;
+  --ftl-r-media: 28px;
+  --ftl-r-hero: 32px;
+
+  font-family: var(--ftl-body);
+  background: var(--ftl-charcoal);
+  color: var(--ftl-text);
+  font-size: 18px;
+  line-height: 1.55;
+  overflow-x: clip;
+  position: relative;
+}
+
+/* --- Browser surfaces, themed ------------------------------ */
+.ftl ::selection {
+  background: var(--ftl-blurple);
+  color: var(--ftl-white);
+}
+.ftl a {
+  text-underline-offset: 3px;
+  text-decoration-thickness: 2px;
+}
+.ftl :focus-visible {
+  outline: 3px solid var(--ftl-white);
+  outline-offset: 3px;
+}
+.ftl .ftl-btn:focus-visible {
+  outline: 3px solid var(--ftl-yellow);
+  outline-offset: 3px;
+}
+
+/* --- Type --------------------------------------------------- */
+.ftl-display {
+  font-family: var(--ftl-display);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+.ftl-h1 {
+  font-size: clamp(2.75rem, 6vw + 1rem, 5.25rem);
+  line-height: 1.02;
+}
+.ftl-h2 {
+  font-size: clamp(2.125rem, 2.6vw + 1rem, 3.25rem);
+  line-height: 1.06;
+}
+.ftl-h3 {
+  font-family: var(--ftl-display);
+  font-weight: 700;
+  font-size: 1.375rem;
+  line-height: 1.2;
+}
+.ftl-lede {
+  font-size: clamp(1.125rem, 0.5vw + 1rem, 1.3rem);
+  line-height: 1.55;
+  color: var(--ftl-muted);
+}
+.ftl-accent {
+  color: var(--ftl-blurple);
+}
+.ftl a.ftl-textlink {
+  color: var(--ftl-white);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--ftl-blurple);
+  transition: text-decoration-color 0.15s ease, color 0.15s ease;
+}
+.ftl a.ftl-textlink:hover {
+  text-decoration-color: var(--ftl-yellow);
+}
+
+/* --- Buttons: flat, 12px, color-swap hovers ------------------ */
+.ftl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  font-family: var(--ftl-display);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  line-height: 1;
+  border-radius: var(--ftl-r-btn);
+  padding: 1.125rem 2rem;
+  min-height: 48px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.ftl-btn:hover {
+  transform: translateY(-2px);
+}
+.ftl-btn:active {
+  transform: translateY(0);
+}
+.ftl-btn-primary {
+  background: var(--ftl-blurple);
+  color: var(--ftl-white);
+}
+.ftl-btn-primary:hover {
+  background: var(--ftl-blurple-deep);
+}
+.ftl-btn-white {
+  background: var(--ftl-white);
+  color: #23272a;
+}
+.ftl-btn-white:hover {
+  background: #e3e5e8;
+}
+.ftl-btn-outline {
+  background: transparent;
+  color: var(--ftl-white);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7);
+}
+.ftl-btn-outline:hover {
+  box-shadow: inset 0 0 0 2px var(--ftl-white);
+}
+.ftl-btn-ghost {
+  background: transparent;
+  color: var(--ftl-text);
+}
+.ftl-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.ftl-btn-sm {
+  padding: 0.625rem 1.125rem;
+  font-size: 0.9375rem;
+  min-height: 44px;
+}
+
+/* --- Layout -------------------------------------------------- */
+.ftl-container {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+@media (min-width: 768px) {
+  .ftl-container {
+    padding: 0 40px;
+  }
+}
+
+/* --- Nav ------------------------------------------------------ */
+.ftl-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--ftl-charcoal);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease;
+}
+.ftl-nav.is-scrolled {
+  border-bottom-color: var(--ftl-line);
+}
+.ftl-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 76px;
+}
+.ftl-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+.ftl-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+.ftl-nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0.625rem;
+  margin-right: -0.625rem;
+  cursor: pointer;
+  color: var(--ftl-text);
+}
+.ftl-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+.ftl-logo-word {
+  font-family: var(--ftl-display);
+  font-weight: 800;
+  font-size: 1.375rem;
+  color: var(--ftl-white);
+  letter-spacing: -0.01em;
+}
+.ftl-nav-link {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--ftl-text);
+  text-decoration: none;
+  border-radius: 6px;
+}
+.ftl-nav-link:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--ftl-yellow);
+}
+.ftl-os-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-family: var(--ftl-display);
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--ftl-yellow);
+  background: rgba(254, 231, 92, 0.1);
+  border: 1px solid rgba(254, 231, 92, 0.35);
+  border-radius: 9999px;
+  padding: 0.25rem 0.625rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ftl-os-badge:hover {
+  background: rgba(254, 231, 92, 0.18);
+}
+@media (max-width: 899px) {
+  .ftl-nav-links,
+  .ftl-nav-actions {
+    display: none;
+  }
+  .ftl-nav-toggle {
+    display: inline-flex;
+  }
+}
+
+/* Mobile menu */
+.ftl-mobile-menu {
+  display: none;
+}
+@media (max-width: 899px) {
+  .ftl-mobile-menu.is-open {
+    display: block;
+  }
+  .ftl-mobile-menu {
+    position: fixed;
+    top: 76px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 49;
+    background: var(--ftl-charcoal);
+    border-bottom: 1px solid var(--ftl-line);
+    padding: 1rem 24px 2rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .ftl-mobile-menu a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0.625rem 0;
+    font-weight: 700;
+    color: var(--ftl-text);
+    text-decoration: none;
+    font-size: 1.125rem;
+  }
+  .ftl-mobile-menu a + a {
+    border-top: 1px solid var(--ftl-line);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @media (max-width: 899px) {
+    .ftl-mobile-menu.is-open {
+      animation: ftl-menu-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+  }
+}
+@keyframes ftl-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --- Hero ------------------------------------------------------ */
+.ftl-hero {
+  position: relative;
+  padding-top: 116px;
+  text-align: center;
+  overflow: clip;
+}
+@media (min-width: 900px) {
+  .ftl-hero {
+    padding-top: 136px;
+  }
+}
+.ftl-hero .ftl-container {
+  position: relative;
+}
+.ftl-hero-copy {
+  max-width: 860px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+}
+.ftl-hero-sub {
+  max-width: 42rem;
+  margin: 1.5rem auto 0;
+}
+.ftl-hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+@media (max-width: 639px) {
+  /* Stacked CTAs read as one deliberate block, Discord-style */
+  .ftl-hero-ctas {
+    margin-top: 2rem;
+  }
+  .ftl-hero-ctas .ftl-btn {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+}
+.ftl-hero-note {
+  margin-top: 1.375rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--ftl-subtle);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.25rem;
+}
+.ftl-hero-note span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Sprinkled flat shapes around the copy — the scene's stickers,
+   echoed at copy scale so the first viewport isn't empty ground. */
+.ftl-hero-decor {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+.ftl-hero-decor svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.ftl-decor-spark {
+  top: -1.5rem;
+  left: max(2%, calc(50% - 460px));
+  width: clamp(22px, 3vw, 40px);
+}
+.ftl-decor-star {
+  top: 3.25rem;
+  right: max(3%, calc(50% - 450px));
+  width: clamp(20px, 2.6vw, 34px);
+}
+.ftl-decor-squiggle {
+  bottom: -0.5rem;
+  left: max(6%, calc(50% - 380px));
+  width: clamp(30px, 4vw, 56px);
+}
+.ftl-decor-ring {
+  top: -1.25rem;
+  right: max(8%, calc(50% - 340px));
+  width: clamp(18px, 2.4vw, 30px);
+}
+.ftl-decor-plus {
+  bottom: 2.75rem;
+  right: max(5%, calc(50% - 420px));
+  width: clamp(16px, 2.2vw, 26px);
+}
+.ftl-decor-dot {
+  bottom: 0.25rem;
+  left: max(12%, calc(50% - 300px));
+  width: clamp(12px, 1.8vw, 20px);
+}
+@media (max-width: 599px) {
+  /* On phones keep only the two edge-huggers, smaller and quieter */
+  .ftl-decor-squiggle,
+  .ftl-decor-ring,
+  .ftl-decor-plus,
+  .ftl-decor-dot {
+    display: none;
+  }
+  .ftl-decor-spark {
+    top: 0.25rem;
+    left: 4%;
+    width: 20px;
+  }
+  .ftl-decor-star {
+    top: 4.25rem;
+    right: 4%;
+    width: 18px;
+  }
+}
+
+/* The big scene under the copy */
+.ftl-hero-scene {
+  position: relative;
+  z-index: 1;
+  max-width: 1180px;
+  margin: 2.25rem auto 0;
+  padding: 0 24px;
+}
+@media (min-width: 900px) {
+  .ftl-hero-scene {
+    margin-top: 2.75rem;
+  }
+}
+.ftl-hero-scene svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* In-page anchors clear the fixed nav */
+.ftl [id] {
+  scroll-margin-top: 88px;
+}
+
+/* --- Feature sections ------------------------------------------ */
+.ftl-section {
+  position: relative;
+  padding: 5.5rem 0;
+}
+@media (min-width: 900px) {
+  .ftl-section {
+    padding: 7.5rem 0;
+  }
+}
+.ftl-feature {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+@media (min-width: 900px) {
+  .ftl-feature {
+    grid-template-columns: 1fr 1fr;
+    gap: 4.5rem;
+  }
+  .ftl-feature-art-first .ftl-feature-copy {
+    order: 2;
+  }
+  .ftl-feature-art-first .ftl-feature-art {
+    order: 1;
+  }
+}
+.ftl-feature-copy {
+  max-width: 32rem;
+}
+.ftl-feature-copy .ftl-lede {
+  margin-top: 1.25rem;
+}
+.ftl-feature-points {
+  margin-top: 1.75rem;
+  display: grid;
+  gap: 0.875rem;
+  list-style: none;
+  padding: 0;
+}
+.ftl-feature-points li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 700;
+  font-size: 1.0625rem;
+}
+.ftl-point-icon {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ftl-feature-art {
+  position: relative;
+}
+.ftl-feature-art > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.ftl-chip-beta {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--ftl-display);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--ftl-green);
+  background: rgba(87, 242, 135, 0.12);
+  border: 1px solid rgba(87, 242, 135, 0.4);
+  border-radius: 9999px;
+  padding: 0.2rem 0.625rem;
+  flex: none;
+}
+
+/* Heading that carries an inline chip — flex centers the chip on the
+   line box; vertical-align: middle anchors to the x-height and rides
+   low against display caps. */
+.ftl-h2-chiprow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 0.75rem;
+  row-gap: 0.5rem;
+}
+
+/* --- Open-source strip ------------------------------------------ */
+.ftl-oss-strip {
+  background: var(--ftl-surface);
+  border-top: 1px solid var(--ftl-line);
+  border-bottom: 1px solid var(--ftl-line);
+}
+.ftl-oss-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem 1.5rem;
+  padding: 1.75rem 0;
+  text-align: center;
+}
+.ftl-oss-text {
+  font-weight: 700;
+  font-size: 1.0625rem;
+  color: var(--ftl-muted);
+}
+.ftl-oss-text strong {
+  color: var(--ftl-text);
+}
+
+/* --- Big CTA ------------------------------------------------------ */
+.ftl-cta-wrap {
+  padding: 6rem 0 7rem;
+}
+.ftl-cta {
+  position: relative;
+  overflow: clip;
+  background: var(--ftl-blurple);
+  border-radius: var(--ftl-r-hero);
+  padding: 5rem 24px;
+  text-align: center;
+}
+@media (min-width: 768px) {
+  .ftl-cta {
+    padding: 6.5rem 48px;
+  }
+}
+.ftl-cta .ftl-display {
+  color: var(--ftl-white);
+}
+.ftl-cta-sub {
+  color: rgba(255, 255, 255, 0.88);
+  max-width: 36rem;
+  margin: 1.25rem auto 0;
+  font-size: 1.125rem;
+  line-height: 1.55;
+}
+.ftl-cta-btns {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2.25rem;
+  position: relative;
+  z-index: 2;
+}
+.ftl-cta-sticker {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1;
+}
+.ftl-cta-sticker svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+@media (max-width: 767px) {
+  .ftl-cta-sticker {
+    display: none;
+  }
+}
+
+/* --- Footer -------------------------------------------------------- */
+.ftl-footer {
+  background: var(--ftl-charcoal-deep);
+  padding: 4.5rem 0 2.5rem;
+}
+.ftl-footer-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2.5rem;
+}
+@media (min-width: 768px) {
+  .ftl-footer-grid {
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 3rem;
+  }
+}
+.ftl-footer-brand {
+  max-width: 20rem;
+}
+.ftl-footer-tag {
+  margin-top: 1rem;
+  color: var(--ftl-muted);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+.ftl-footer-col h3 {
+  font-family: var(--ftl-display);
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ftl-subtle);
+  margin-bottom: 1.125rem;
+}
+.ftl-footer-col ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.ftl-footer-col a {
+  color: var(--ftl-muted);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+.ftl-footer-col a:hover {
+  color: var(--ftl-white);
+  text-decoration: underline;
+  text-decoration-color: var(--ftl-yellow);
+}
+.ftl-footer-bottom {
+  margin-top: 3.5rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--ftl-line);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--ftl-subtle);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* --- Motion ---------------------------------------------------------
+   One ambient moment: the hero scene gently floats and the chat is
+   alive. Sections settle with a quiet fade-up on first sight.
+   Everything is disabled under prefers-reduced-motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .ftl-hero [data-pop] {
+    animation: ftl-pop 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .ftl-hero [data-pop='2'] { animation-delay: 0.08s; }
+  .ftl-hero [data-pop='3'] { animation-delay: 0.16s; }
+  .ftl-hero [data-pop='4'] { animation-delay: 0.24s; }
+  .ftl-hero [data-pop='5'] { animation-delay: 0.32s; }
+
+  .ftl-float {
+    animation: ftl-float 6s ease-in-out infinite;
+  }
+  .ftl-float-slow {
+    animation: ftl-float 9s ease-in-out infinite;
+  }
+  .ftl-float-d1 { animation-delay: -2s; }
+  .ftl-float-d2 { animation-delay: -4s; }
+  .ftl-float-d3 { animation-delay: -1s; }
+
+  .ftl-typing-dot {
+    animation: ftl-typing 1.2s ease-in-out infinite;
+  }
+  .ftl-typing-dot:nth-child(2) { animation-delay: 0.15s; }
+  .ftl-typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+  .ftl-voice-bar {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: ftl-voice 0.9s ease-in-out infinite;
+  }
+  .ftl-voice-bar:nth-child(2) { animation-delay: 0.12s; }
+  .ftl-voice-bar:nth-child(3) { animation-delay: 0.24s; }
+  .ftl-voice-bar:nth-child(4) { animation-delay: 0.36s; }
+
+  .ftl-wave-wing {
+    transform-box: fill-box;
+    transform-origin: 60% 95%;
+    animation: ftl-wave 2.6s ease-in-out infinite;
+  }
+
+  /* Scroll-settle: armed by JS, visible by default without it */
+  .ftl-armed[data-reveal] {
+    opacity: 0;
+    transform: translateY(28px);
+    transition:
+      opacity 0.65s cubic-bezier(0.22, 0.61, 0.36, 1),
+      transform 0.65s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .ftl-armed.ftl-in {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ftl-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ftl-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+@keyframes ftl-typing {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+@keyframes ftl-voice {
+  0%,
+  100% {
+    transform: scaleY(0.5);
+  }
+  50% {
+    transform: scaleY(1.5);
+  }
+}
+@keyframes ftl-wave {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-14deg);
+  }
+}

@@ -113,8 +113,8 @@ export function MembersColumn({ serverId }: MembersColumnProps) {
       <button
         onClick={toggle}
         className={cn(
-          'w-12 bg-background-elevated border-l border-border',
-          'flex flex-col items-center justify-start pt-4',
+          'hidden w-12 bg-list border-l border-border lg:flex',
+          'flex-col items-center justify-start pt-4',
           'text-foreground-muted hover:text-foreground transition-colors'
         )}
         aria-label="Show members"
@@ -131,8 +131,8 @@ export function MembersColumn({ serverId }: MembersColumnProps) {
     <>
       <aside
         className={cn(
-          'flex w-[25%] min-w-[180px] max-w-[280px] flex-col',
-          'bg-background-elevated border-l border-border'
+          'hidden w-[25%] min-w-[180px] max-w-[280px] flex-col lg:flex',
+          'bg-list border-l border-border'
         )}
       >
         {/* Header */}
@@ -224,15 +224,15 @@ export function MembersColumn({ serverId }: MembersColumnProps) {
       </aside>
 
       {/* Context Menu */}
-      <MemberContextMenu
-        open={contextMenu.open}
-        x={contextMenu.x}
-        y={contextMenu.y}
-        member={contextMenu.member}
-        serverId={serverId}
-        onClose={closeContextMenu}
-        onUserClick={handleUserClick}
-      />
+      {contextMenu.open && contextMenu.member && (
+        <MemberContextMenu
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          member={contextMenu.member}
+          serverId={serverId}
+          onClose={closeContextMenu}
+          onUserClick={handleUserClick}
+        />
+      )}
     </>
   );
 }
@@ -282,7 +282,7 @@ function MemberItem({
       </span>
       {member.isOwner && (
         <span title="Owner" className="ml-auto">
-          <Crown className="h-3 w-3 text-yellow-500" />
+          <Crown className="h-3 w-3 text-warning" />
         </span>
       )}
     </button>
@@ -290,17 +290,13 @@ function MemberItem({
 }
 
 function MemberContextMenu({
-  open,
-  x,
-  y,
+  position,
   member,
   serverId,
   onClose,
   onUserClick,
 }: {
-  open: boolean;
-  x: number;
-  y: number;
+  position: { x: number; y: number };
   member: MemberResponse | null;
   serverId: string;
   onClose: () => void;
@@ -443,7 +439,5 @@ function MemberContextMenu({
     );
   }
 
-  return (
-    <ContextMenu open={open} x={x} y={y} items={items} onClose={onClose} />
-  );
+  return <ContextMenu position={position} items={items} onClose={onClose} />;
 }

@@ -97,7 +97,9 @@ export default defineConfig({
     ? undefined
     : [
         {
-          command: 'SKIP_RATE_LIMIT=true npm run dev --workspace=@freedomtalk/api',
+          // no VAR= prefix: that syntax fails on Windows cmd; the env block below
+          // passes the same settings cross-platform
+          command: 'npm run dev --workspace=@freedomtalk/api',
           port: 3001,
           timeout: 120000,
           // Don't reuse existing server to ensure rate limiting is disabled

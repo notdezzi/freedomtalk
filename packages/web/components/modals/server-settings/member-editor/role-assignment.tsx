@@ -88,7 +88,7 @@ export function RoleAssignment({ roles, memberRoleIds, onChange, disabled }: Rol
                 )}
               >
                 {isSelected && (
-                  <Check className="h-3 w-3 text-background" />
+                  <Check className="h-3 w-3 text-white" />
                 )}
               </div>
 

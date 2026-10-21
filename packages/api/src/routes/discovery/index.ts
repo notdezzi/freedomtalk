@@ -189,6 +189,27 @@ export default async function discoveryRoutes(app: FastifyInstance) {
         return reply.status(404).send({ error: 'Server not found' });
       }
 
+      // Only discoverable servers may be previewed by non-members; the
+      // preview leaks name/description/channel names, so a private server
+      // must never be enumerable here.
+      const isDiscoverable = !!(
+        await db('server_discovery_settings')
+          .where('server_id', serverId)
+          .where('is_discoverable', true)
+          .first()
+      );
+      if (!isDiscoverable) {
+        const isMember = !!(
+          await db('server_members')
+            .where('server_id', serverId)
+            .where('user_id', request.user!.id)
+            .first()
+        );
+        if (!isMember) {
+          return reply.status(404).send({ error: 'Server not found' });
+        }
+      }
+
       // Get a preview of channels (first 5 text channels)
       const channels = await db('channels')
         .select('id', 'name', 'type')

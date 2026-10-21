@@ -156,12 +156,14 @@ export class PermissionService {
       (o) => o.target_type === 'role' && memberRoleIds.includes(o.target_id)
     );
 
-    // Sort role overwrites by role position
+    // Sort role overwrites ascending by role position: they are applied in
+    // order and each non-neutral decision overwrites the previous one, so the
+    // highest-position role must be applied last to win.
     const rolePositions = new Map(roles.map((r) => [r.id, r.position]));
     roleOverwrites.sort((a, b) => {
       const posA = rolePositions.get(a.target_id) || 0;
       const posB = rolePositions.get(b.target_id) || 0;
-      return posB - posA; // Highest first
+      return posA - posB;
     });
 
     for (const overwrite of roleOverwrites) {
@@ -466,7 +468,7 @@ export class PermissionService {
       roleOverwrites.sort((a, b) => {
         const posA = rolePositions.get(a.target_id) || 0;
         const posB = rolePositions.get(b.target_id) || 0;
-        return posB - posA;
+        return posA - posB; // Ascending: highest position is applied last and wins
       });
 
       for (const overwrite of roleOverwrites) {
@@ -534,10 +536,29 @@ export class PermissionService {
   // ==========================================
 
   /**
+   * Check if the user is a member of the server.
+   * Membership gates every permission resolution: @everyone grants must
+   * never leak to users who have not joined the server.
+   */
+  async isMember(serverId: string, userId: string): Promise<boolean> {
+    const member = await db('server_members')
+      .where('server_id', serverId)
+      .where('user_id', userId)
+      .first();
+    return !!member;
+  }
+
+  /**
    * Get member's roles sorted by position (highest first)
    * Always includes the @everyone role
+   * Returns an empty list for non-members (no implicit @everyone grants).
    */
   async getMemberRolesSorted(userId: string, serverId: string): Promise<RoleWithPermissions[]> {
+    // Non-members must not inherit @everyone permissions
+    if (!(await this.isMember(serverId, userId))) {
+      return [];
+    }
+
     // Get role IDs for member
     const memberRoleIds = await db('member_roles')
       .where('server_id', serverId)

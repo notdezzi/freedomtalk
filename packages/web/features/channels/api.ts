@@ -1,6 +1,8 @@
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-provider';
+import { useAuthStore } from '@/stores';
+import { toast } from '@/stores/toast-store';
 import type { Channel, Message } from '@/types';
 
 interface MessagesResponse {
@@ -9,8 +11,14 @@ interface MessagesResponse {
   hasMore: boolean;
 }
 
+type MessagesCache = InfiniteData<MessagesResponse>;
+
+// Temporary id prefix for optimistic messages (deduped when the socket echo arrives)
+const OPTIMISTIC_PREFIX = 'optimistic-';
+
 // Transform snake_case API response to camelCase for frontend
-function transformMessage(msg: any): Message {
+// (exported for reuse by socket cache updaters in hooks/use-socket.ts)
+export function transformMessage(msg: any): Message {
   return {
     id: msg.id,
     channelId: msg.channelId || msg.channel_id,
@@ -82,7 +90,7 @@ export function useChannelMessages(channelId: string | undefined, context: 'serv
   });
 }
 
-// Send a message
+// Send a message (with optimistic insert; the socket echo dedupes by id)
 export function useSendMessage() {
   const queryClient = useQueryClient();
 
@@ -100,13 +108,8 @@ export function useSendMessage() {
       referencedMessageId?: string;
       context: 'server' | 'dm';
     }) => {
-      // TODO: Implement attachment upload flow
-      // 1. Upload attachments via POST /api/v1/attachments
-      // 2. Get attachment IDs from response
-      // 3. Include attachment IDs in message create request
-
       if (attachments && attachments.length > 0) {
-        console.warn('Attachments are not yet implemented. Message will be sent without attachments.');
+        toast.error('Attachments are not supported yet');
       }
 
       const response = context === 'dm'
@@ -114,11 +117,83 @@ export function useSendMessage() {
         : await apiClient.createMessage({ channelId, content });
       return response.data;
     },
-    onSuccess: (_, variables) => {
+    onMutate: async (variables) => {
       const queryKey = variables.context === 'dm'
         ? queryKeys.dms.messages(variables.channelId)
         : queryKeys.channels.messages(variables.channelId);
-      queryClient.invalidateQueries({ queryKey });
+
+      // Cancel in-flight fetches for this key so they don't clobber the optimistic insert
+      await queryClient.cancelQueries({ queryKey });
+
+      // Snapshot for rollback
+      const previous = queryClient.getQueryData<MessagesCache>(queryKey);
+
+      const user = useAuthStore.getState().user;
+      const tempId = `${OPTIMISTIC_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+      const optimisticMessage: Message = {
+        id: tempId,
+        channelId: variables.channelId,
+        authorId: user?.id ?? '',
+        author: {
+          id: user?.id ?? '',
+          username: user?.username ?? 'You',
+          displayName: user?.displayName,
+          avatar: user?.avatar,
+        },
+        content: variables.content,
+        createdAt: new Date().toISOString(),
+        referencedMessage: variables.referencedMessageId
+          ? previous?.pages
+              .flatMap((page) => page.messages)
+              .find((m) => m.id === variables.referencedMessageId)
+          : undefined,
+      };
+
+      // Insert optimistically into the last page (only if the channel is open)
+      if (previous) {
+        queryClient.setQueryData<MessagesCache>(queryKey, (prev) => {
+          if (!prev || prev.pages.length === 0) return prev;
+          const pages = [...prev.pages];
+          const last = pages.length - 1;
+          pages[last] = {
+            ...pages[last],
+            messages: [...pages[last].messages, optimisticMessage],
+          };
+          return { ...prev, pages };
+        });
+      }
+
+      return { previous, queryKey, tempId };
+    },
+    onSuccess: (data, variables, context) => {
+      if (!context) return;
+
+      // Replace the optimistic entry with the real message (or drop it when
+      // no data came back — the socket echo will fill it in).
+      queryClient.setQueryData<MessagesCache>(context.queryKey, (prev) => {
+        if (!prev) return prev;
+        const realMessage = data && 'id' in (data as any) ? transformMessage(data) : null;
+        return {
+          ...prev,
+          pages: prev.pages.map((page, pageIndex) => {
+            const hasTemp = page.messages.some((m) => m.id === context.tempId);
+            if (!hasTemp) return page;
+            const messages = page.messages.filter((m) => m.id !== context.tempId);
+            if (realMessage && pageIndex === prev.pages.length - 1 && !page.messages.some((m) => m.id === realMessage.id)) {
+              messages.push(realMessage);
+            }
+            return { ...page, messages };
+          }),
+        };
+      });
+    },
+    onError: (_error, _variables, context) => {
+      // Roll back to the snapshot
+      if (context?.previous) {
+        queryClient.setQueryData(context.queryKey, context.previous);
+      }
+      console.error('[SendMessage] Failed to send message:', _error);
     },
   });
 }

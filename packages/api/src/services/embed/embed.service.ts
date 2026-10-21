@@ -190,7 +190,7 @@ class EmbedService {
         author_name: embedData.author_name || null,
         author_url: embedData.author_url || null,
         author_icon_url: embedData.author_icon_url || null,
-        fields: embedData.fields || null,
+        fields: embedData.fields ? JSON.stringify(embedData.fields) : null,
         created_at: now,
       };
 
@@ -260,7 +260,7 @@ class EmbedService {
             author_name: embedData.author_name || null,
             author_url: embedData.author_url || null,
             author_icon_url: embedData.author_icon_url || null,
-            fields: embedData.fields || null,
+            fields: embedData.fields ? JSON.stringify(embedData.fields) : null,
             created_at: now,
           };
 
@@ -268,7 +268,7 @@ class EmbedService {
 
           embedRecords.push({
             ...embed,
-            fields: embedData.fields || null,
+            fields: embedData.fields ? JSON.stringify(embedData.fields) : null,
           } as Embed);
         }
 
@@ -343,7 +343,7 @@ class EmbedService {
         author_name: embedData.author_name !== undefined ? embedData.author_name : existing.author_name,
         author_url: embedData.author_url !== undefined ? embedData.author_url : existing.author_url,
         author_icon_url: embedData.author_icon_url !== undefined ? embedData.author_icon_url : existing.author_icon_url,
-        fields: embedData.fields !== undefined ? embedData.fields : existing.fields,
+        fields: embedData.fields !== undefined ? (embedData.fields ? JSON.stringify(embedData.fields) : null) : existing.fields,
       };
 
       await db('message_embeds').where({ id: embedId }).update(updateData);

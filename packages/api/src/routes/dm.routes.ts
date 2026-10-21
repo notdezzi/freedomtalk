@@ -6,6 +6,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { dmChannelService, UpdateGroupDMRequest } from '../services/dm/dm-channel.service';
+import { dmPermissionService } from '../services/dm/dm-permission.service';
 import { toDMChannelResponse } from '../services/dm/dm-channel.types';
 import { messageService } from '../services/message/message.service';
 import { dmNotificationService, NotificationLevel } from '../services/dm/dm-notification.service';
@@ -35,8 +36,11 @@ const paginationSchema = z.object({
 });
 
 const messagePaginationSchema = z.object({
-  before: z.string().min(18).max(20).optional(),
-  after: z.string().min(18).max(20).optional(),
+  // Cursor forms accepted by messageService.getMessages: a message ID
+  // (legacy), an ISO timestamp (legacy), or the composite keyset cursor
+  // `createdAt|id` it now returns.
+  before: z.string().min(10).max(64).optional(),
+  after: z.string().min(10).max(64).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
@@ -84,6 +88,13 @@ export default async function dmRoutes(app: FastifyInstance) {
     try {
       // Single DM (recipient_id)
       if (body.recipient_id && !body.recipients) {
+        // DM privacy/block check: deny when the recipient has blocked the
+        // caller or their privacy level disallows messages from them
+        const canDM = await dmPermissionService.canSendDM(userId, body.recipient_id);
+        if (!canDM) {
+          return reply.status(403).send({ error: 'You cannot send messages to this user' });
+        }
+
         const dmChannel = await dmChannelService.createDM(userId, body.recipient_id);
         return reply.status(200).send(await toDMChannelResponse(dmChannel, dmChannel.participants, userId));
       }
@@ -311,7 +322,7 @@ export default async function dmRoutes(app: FastifyInstance) {
         id: message.id,
         content: message.content,
         authorId: message.author_id,
-        channelId: message.channel_id,
+        channelId: message.dm_channel_id,
         dmChannelId: message.dm_channel_id,
         createdAt: message.created_at.toISOString(),
         updatedAt: message.updated_at.toISOString(),
@@ -339,7 +350,7 @@ export default async function dmRoutes(app: FastifyInstance) {
         id: message.id,
         content: message.content,
         authorId: message.author_id,
-        channelId: message.channel_id,
+        channelId: message.dm_channel_id,
         createdAt: message.created_at.toISOString(),
         updatedAt: message.updated_at.toISOString(),
         isEdited: message.is_edited,
@@ -423,7 +434,8 @@ export default async function dmRoutes(app: FastifyInstance) {
       const message = await messageService.getMessage(messageId);
 
       // Verify message belongs to this DM channel
-      if (message.channel_id !== channelId) {
+      // (DM messages carry dm_channel_id; channel_id is only set on server messages)
+      if (message.dm_channel_id !== channelId) {
         return reply.status(404).send({ error: 'Message not found' });
       }
 
@@ -431,7 +443,7 @@ export default async function dmRoutes(app: FastifyInstance) {
         id: message.id,
         content: message.content,
         authorId: message.author_id,
-        channelId: message.channel_id,
+        channelId: message.dm_channel_id,
         createdAt: message.created_at.toISOString(),
         updatedAt: message.updated_at.toISOString(),
         isEdited: message.is_edited,
@@ -469,7 +481,8 @@ export default async function dmRoutes(app: FastifyInstance) {
       const message = await messageService.getMessage(messageId);
 
       // Verify message belongs to this DM channel
-      if (message.channel_id !== channelId) {
+      // (DM messages carry dm_channel_id; channel_id is only set on server messages)
+      if (message.dm_channel_id !== channelId) {
         return reply.status(404).send({ error: 'Message not found' });
       }
 
@@ -484,7 +497,7 @@ export default async function dmRoutes(app: FastifyInstance) {
         id: updatedMessage.id,
         content: updatedMessage.content,
         authorId: updatedMessage.author_id,
-        channelId: updatedMessage.channel_id,
+        channelId: updatedMessage.dm_channel_id,
         createdAt: updatedMessage.created_at.toISOString(),
         updatedAt: updatedMessage.updated_at.toISOString(),
         isEdited: updatedMessage.is_edited,
@@ -520,7 +533,8 @@ export default async function dmRoutes(app: FastifyInstance) {
       const message = await messageService.getMessage(messageId);
 
       // Verify message belongs to this DM channel
-      if (message.channel_id !== channelId) {
+      // (DM messages carry dm_channel_id; channel_id is only set on server messages)
+      if (message.dm_channel_id !== channelId) {
         return reply.status(404).send({ error: 'Message not found' });
       }
 

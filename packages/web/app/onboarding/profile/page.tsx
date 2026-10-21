@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useState, useRef } from 'react';
 import { ArrowRight, ArrowLeft, Camera, User, X, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -110,10 +111,12 @@ export default function OnboardingProfilePage() {
               className="w-28 h-28 rounded-full bg-background-surface border-2 border-border hover:border-accent transition-colors overflow-hidden flex items-center justify-center"
             >
               {avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={avatar}
                   alt="Avatar preview"
+                  width={112}
+                  height={112}
+                  loading="lazy"
                   className="w-full h-full object-cover"
                 />
               ) : (

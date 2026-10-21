@@ -1,6 +1,7 @@
 export { Navbar } from './Navbar';
 export { Hero } from './Hero';
-export { NarrativeVoice, NarrativeText, NarrativeVideo, NarrativeCommunities } from './NarrativeSections';
-export { SystemDepth } from './SystemDepth';
-export { CTA } from './CTA';
+export { Features } from './Features';
+export { OpenSourceStrip } from './OpenSourceStrip';
+export { BigCTA } from './CTA';
 export { Footer } from './Footer';
+export { LandingMotion } from './LandingMotion';

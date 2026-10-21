@@ -7,34 +7,29 @@ on:
     branches: [main]
 
 jobs:
+  unit:
+    name: Unit & Integration Tests (Vitest + Testcontainers)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit & integration tests
+        run: npm run test:unit
+
   test:
     name: Playwright Tests
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: timescale/timescaledb:latest-pg16
-        env:
-          POSTGRES_DB: freedomtalk_test
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    needs: unit
 
     steps:
       - name: Checkout code
@@ -49,16 +44,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Start infrastructure
+        run: docker compose up -d --wait postgres redis
+
       - name: Setup test environment
         run: |
           cp packages/api/.env.example packages/api/.env
-          sed -i 's/DATABASE_URL=.*/DATABASE_URL=postgresql:\/\/test:test@localhost:5432\/freedomtalk_test/' packages/api/.env
+          sed -i 's/DATABASE_URL=.*/DATABASE_URL=postgresql:\/\/postgres:postgres@localhost:5432\/freedomtalk/' packages/api/.env
           sed -i 's/REDIS_URL=.*/REDIS_URL=redis:\/\/localhost:6379/' packages/api/.env
 
       - name: Run database migrations
         run: npm run migrate:latest --workspace=@freedomtalk/api
         env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/freedomtalk_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/freedomtalk
 
       - name: Build packages
         run: npm run build
@@ -75,7 +73,7 @@ jobs:
         run: npm run start --workspace=@freedomtalk/api &
         env:
           NODE_ENV: test
-          DATABASE_URL: postgresql://test:test@localhost:5432/freedomtalk_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/freedomtalk
           REDIS_URL: redis://localhost:6379
           PORT: 3001
           # High rate limit for tests
@@ -100,7 +98,7 @@ jobs:
         env:
           CI: true
           API_BASE_URL: http://localhost:3001
-          DATABASE_URL: postgresql://test:test@localhost:5432/freedomtalk_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/freedomtalk
           REDIS_URL: redis://localhost:6379
 
       - name: Run E2E tests (Chromium)

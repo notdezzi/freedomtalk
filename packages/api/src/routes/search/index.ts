@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { requireAuth } from '../../middleware/auth.middleware.js';
 import { searchService } from '../../services/search/index.js';
+import { db } from '../../config/database.js';
 
 /**
  * Search routes
@@ -47,10 +48,19 @@ export default async function searchRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const body = request.body;
+      const userId = request.user!.id;
+
+      // Authorization scope: only search servers the caller belongs to;
+      // DM content is excluded from search entirely.
+      const allowedServerIds = await db('server_members')
+        .where('user_id', userId)
+        .pluck('server_id');
+
       const results = await searchService.searchMessages(body.query, {
         channelId: body.channel_id,
         serverId: body.server_id,
         authorId: body.author_id,
+        allowedServerIds,
         limit: body.limit,
         offset: body.offset,
       });
@@ -208,7 +218,15 @@ export default async function searchRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const { type, prefix, limit = 10 } = request.query;
-      const results = await searchService.autocomplete(type, prefix, limit);
+
+      let allowedServerIds: string[] | undefined;
+      if (type === 'messages') {
+        allowedServerIds = await db('server_members')
+          .where('user_id', request.user!.id)
+          .pluck('server_id');
+      }
+
+      const results = await searchService.autocomplete(type, prefix, limit, allowedServerIds);
       return reply.send(results);
     }
   );

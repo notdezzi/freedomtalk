@@ -8,6 +8,8 @@ import multipart from '@fastify/multipart';
 import { requireAuth } from '../middleware/auth.middleware';
 import { successResponse } from '../utils/errors';
 import { attachmentService, UploadFile } from '../services/attachment/attachment.service';
+import { messageService } from '../services/message/message.service';
+import { assertMessageReadAccess } from '../services/message/message-access';
 import { logger } from '../config/logger';
 import { VALIDATION } from '@freedomtalk/shared';
 
@@ -253,6 +255,34 @@ export default async function attachmentRoutes(app: FastifyInstance) {
         const { db } = await import('../config/database');
         const { minioService } = await import('../services/storage/minio.service');
 
+        // Visibility check: 404 if the message doesn't exist or is inaccessible
+        const message = await messageService.getMessage(messageId);
+        await assertMessageReadAccess(userId, message);
+
+        // Ownership check: only the message author may attach files to it
+        if (message.author_id !== userId) {
+          return reply.code(403).send({
+            success: false,
+            error: {
+              code: 'FORBIDDEN',
+              message: 'You can only attach files to your own messages',
+            },
+          });
+        }
+
+        // Object path check: callers may only reference objects they uploaded
+        for (const att of attachments) {
+          if (!att.objectPath || !att.objectPath.startsWith(`attachments/${userId}/`)) {
+            return reply.code(403).send({
+              success: false,
+              error: {
+                code: 'FORBIDDEN',
+                message: 'Invalid attachment path',
+              },
+            });
+          }
+        }
+
         const results = [];
 
         for (const att of attachments) {
@@ -337,6 +367,12 @@ export default async function attachmentRoutes(app: FastifyInstance) {
     },
     async (request: FastifyRequest<{ Params: { messageId: string } }>, reply: FastifyReply) => {
       const { messageId } = request.params;
+      const userId = request.user!.id;
+
+      // Visibility check: 404 if the message doesn't exist or is inaccessible
+      const message = await messageService.getMessage(messageId);
+      await assertMessageReadAccess(userId, message);
+
       const attachments = await attachmentService.getAttachmentsByMessage(messageId);
       return reply.send(successResponse(attachments));
     }

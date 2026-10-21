@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Avatar, Button } from '@/components/ui';
 import type { User, Role, Activity } from '@/types';
@@ -47,9 +48,12 @@ export function ProfilePanel({
         variant === 'modal' ? "h-24" : "h-16"
       )}>
         {user.banner && (
-          <img
+          <Image
             src={user.banner}
             alt=""
+            fill
+            loading="lazy"
+            sizes="(max-width: 768px) 100vw, 600px"
             className="h-full w-full object-cover"
           />
         )}
@@ -148,8 +152,10 @@ export function ProfilePanel({
                     key={role.id}
                     className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium"
                     style={{
-                      backgroundColor: role.color ? `${role.color.toString(16)}20` : '#99aab520',
-                      color: role.color ? `#${role.color.toString(16)}` : '#99aab5',
+                      backgroundColor: role.color
+                        ? `${role.color.toString(16)}20`
+                        : 'color-mix(in srgb, var(--foreground-subtle) 12%, transparent)',
+                      color: role.color ? `#${role.color.toString(16)}` : 'var(--foreground-subtle)',
                     }}
                   >
                     {role.name}

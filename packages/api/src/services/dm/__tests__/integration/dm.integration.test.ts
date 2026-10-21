@@ -25,8 +25,7 @@ describe('DM Channel Integration Tests', () => {
         email: 'dmtest1@example.com',
         username: 'dmtestuser1',
         password_hash: 'hash',
-        display_name: 'DM Test User 1',
-        created_at: new Date(),
+          created_at: new Date(),
         updated_at: new Date(),
       },
       {
@@ -34,8 +33,7 @@ describe('DM Channel Integration Tests', () => {
         email: 'dmtest2@example.com',
         username: 'dmtestuser2',
         password_hash: 'hash',
-        display_name: 'DM Test User 2',
-        created_at: new Date(),
+          created_at: new Date(),
         updated_at: new Date(),
       },
       {
@@ -43,8 +41,7 @@ describe('DM Channel Integration Tests', () => {
         email: 'dmtest3@example.com',
         username: 'dmtestuser3',
         password_hash: 'hash',
-        display_name: 'DM Test User 3',
-        created_at: new Date(),
+          created_at: new Date(),
         updated_at: new Date(),
       },
     ]);

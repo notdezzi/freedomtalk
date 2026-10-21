@@ -1,0 +1,3308 @@
+{
+  "config": {
+    "configFile": "C:\\Users\\notdezzi\\Desktop\\notdezzi\\github-portfolio\\freedomtalk\\playwright.config.ts",
+    "rootDir": "C:/Users/notdezzi/Desktop/notdezzi/github-portfolio/freedomtalk/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": "C:\\Users\\notdezzi\\Desktop\\notdezzi\\github-portfolio\\freedomtalk\\tests\\setup\\global-setup.ts",
+    "globalTeardown": "C:\\Users\\notdezzi\\Desktop\\notdezzi\\github-portfolio\\freedomtalk\\tests\\setup\\global-teardown.ts",
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 2
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/notdezzi/Desktop/notdezzi/github-portfolio/freedomtalk/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 2
+        },
+        "id": "api",
+        "name": "api",
+        "testDir": "C:/Users/notdezzi/Desktop/notdezzi/github-portfolio/freedomtalk/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/api\\/.*\\.spec\\.ts/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/notdezzi/Desktop/notdezzi/github-portfolio/freedomtalk/test-results/artifacts",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 2
+        },
+        "id": "e2e-chromium",
+        "name": "e2e-chromium",
+        "testDir": "C:/Users/notdezzi/Desktop/notdezzi/github-portfolio/freedomtalk/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "/e2e\\/.*\\.spec\\.ts/"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "test-results/html"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 2,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "api\\auth.spec.ts",
+      "file": "api/auth.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Auth API",
+          "file": "api/auth.spec.ts",
+          "line": 45,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "POST /api/v1/auth/register",
+              "file": "api/auth.spec.ts",
+              "line": 46,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should register a new user",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 799,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:18.435Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "6bead371ebbc451c1152-a8213d675959617269cd",
+                  "file": "api/auth.spec.ts",
+                  "line": 47,
+                  "column": 9
+                },
+                {
+                  "title": "should reject invalid email",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 195,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:19.253Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "6bead371ebbc451c1152-08591a502b7864955692",
+                  "file": "api/auth.spec.ts",
+                  "line": 66,
+                  "column": 9
+                },
+                {
+                  "title": "should reject weak password",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 10,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:19.455Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "6bead371ebbc451c1152-070125acd579e32cac0c",
+                  "file": "api/auth.spec.ts",
+                  "line": 78,
+                  "column": 9
+                },
+                {
+                  "title": "should reject duplicate email",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 261,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:19.473Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "6bead371ebbc451c1152-8208dc1177bf687a049e",
+                  "file": "api/auth.spec.ts",
+                  "line": 92,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "POST /api/v1/auth/login",
+              "file": "api/auth.spec.ts",
+              "line": 118,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should login with valid credentials",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 276,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:19.742Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "6bead371ebbc451c1152-4faa82c34c59497a6e5b",
+                  "file": "api/auth.spec.ts",
+                  "line": 137,
+                  "column": 9
+                },
+                {
+                  "title": "should reject invalid email",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 217,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:20.309Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "6bead371ebbc451c1152-0654118ba85f66f33c8c",
+                  "file": "api/auth.spec.ts",
+                  "line": 153,
+                  "column": 9
+                },
+                {
+                  "title": "should reject wrong password",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 210,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:20.533Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "6bead371ebbc451c1152-e862c972bddd61a3b049",
+                  "file": "api/auth.spec.ts",
+                  "line": 164,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "GET /api/v1/users/@me",
+              "file": "api/auth.spec.ts",
+              "line": 176,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should return current user when authenticated",
+                  "ok": true,
+                  "tags": [
+                    "me"
+                  ],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 975,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:20.749Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "6bead371ebbc451c1152-1b13cf46e8b3ae968510",
+                  "file": "api/auth.spec.ts",
+                  "line": 177,
+                  "column": 9
+                },
+                {
+                  "title": "should return 401 when not authenticated",
+                  "ok": true,
+                  "tags": [
+                    "me"
+                  ],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 4,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:21.731Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "6bead371ebbc451c1152-29a795f1e54b2f62cc94",
+                  "file": "api/auth.spec.ts",
+                  "line": 195,
+                  "column": 9
+                },
+                {
+                  "title": "should return 401 with invalid token",
+                  "ok": true,
+                  "tags": [
+                    "me"
+                  ],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 5,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:21.741Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "6bead371ebbc451c1152-577a0bbf27c61bc80d2a",
+                  "file": "api/auth.spec.ts",
+                  "line": 201,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "POST /api/v1/auth/refresh",
+              "file": "api/auth.spec.ts",
+              "line": 212,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should refresh tokens with valid refresh token",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 530,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:21.753Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "6bead371ebbc451c1152-8731a5861f734652e9ca",
+                  "file": "api/auth.spec.ts",
+                  "line": 213,
+                  "column": 9
+                },
+                {
+                  "title": "should reject invalid refresh token",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 6,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:22.292Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "6bead371ebbc451c1152-e1e6123772864de27d37",
+                  "file": "api/auth.spec.ts",
+                  "line": 233,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "POST /api/v1/auth/logout",
+              "file": "api/auth.spec.ts",
+              "line": 244,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should logout successfully",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 0,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 566,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:22.306Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "6bead371ebbc451c1152-07b3d3f0794d534758f8",
+                  "file": "api/auth.spec.ts",
+                  "line": 245,
+                  "column": 9
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "api\\messages.spec.ts",
+      "file": "api/messages.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Messages API",
+          "file": "api/messages.spec.ts",
+          "line": 45,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "GET /api/v1/channels/:channelId/messages",
+              "file": "api/messages.spec.ts",
+              "line": 110,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should return messages for channel",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 116,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:18.429Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "d00f523d01773b0893b9-a9a549f50afd2249748d",
+                  "file": "api/messages.spec.ts",
+                  "line": 111,
+                  "column": 9
+                },
+                {
+                  "title": "should return 401 when not authenticated",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 85,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:19.872Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "d00f523d01773b0893b9-a345a2a78330b2fd789f",
+                  "file": "api/messages.spec.ts",
+                  "line": 131,
+                  "column": 9
+                },
+                {
+                  "title": "should return 404 for non-existent channel",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 48,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:19.969Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "d00f523d01773b0893b9-e73aa941dfd914e00c96",
+                  "file": "api/messages.spec.ts",
+                  "line": 144,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "POST /api/v1/channels/:channelId/messages",
+              "file": "api/messages.spec.ts",
+              "line": 155,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should create a message",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 270,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:20.023Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "d00f523d01773b0893b9-c7b8fad205c92c3f9276",
+                  "file": "api/messages.spec.ts",
+                  "line": 156,
+                  "column": 9
+                },
+                {
+                  "title": "should reject empty message",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 10,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:20.302Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "d00f523d01773b0893b9-318f4cf61befc83b0e02",
+                  "file": "api/messages.spec.ts",
+                  "line": 181,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "PATCH /api/v1/channels/:channelId/messages/:messageId",
+              "file": "api/messages.spec.ts",
+              "line": 200,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should edit own message",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "location": {
+                            "file": "C:\\Users\\notdezzi\\Desktop\\notdezzi\\github-portfolio\\freedomtalk\\tests\\api\\messages.spec.ts",
+                            "line": 220,
+                            "column": 14
+                          }
+                        }
+                      ],
+                      "expectedStatus": "skipped",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "skipped",
+                          "duration": 205,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:20.319Z",
+                          "annotations": [
+                            {
+                              "type": "skip",
+                              "location": {
+                                "file": "C:\\Users\\notdezzi\\Desktop\\notdezzi\\github-portfolio\\freedomtalk\\tests\\api\\messages.spec.ts",
+                                "line": 220,
+                                "column": 14
+                              }
+                            }
+                          ],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "d00f523d01773b0893b9-f7031d78bf0e4d50c55a",
+                  "file": "api/messages.spec.ts",
+                  "line": 201,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "DELETE /api/v1/channels/:channelId/messages/:messageId",
+              "file": "api/messages.spec.ts",
+              "line": 237,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should delete own message",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "location": {
+                            "file": "C:\\Users\\notdezzi\\Desktop\\notdezzi\\github-portfolio\\freedomtalk\\tests\\api\\messages.spec.ts",
+                            "line": 257,
+                            "column": 14
+                          }
+                        }
+                      ],
+                      "expectedStatus": "skipped",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "skipped",
+                          "duration": 210,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:20.535Z",
+                          "annotations": [
+                            {
+                              "type": "skip",
+                              "location": {
+                                "file": "C:\\Users\\notdezzi\\Desktop\\notdezzi\\github-portfolio\\freedomtalk\\tests\\api\\messages.spec.ts",
+                                "line": 257,
+                                "column": 14
+                              }
+                            }
+                          ],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "d00f523d01773b0893b9-707d38a1718fa6b559f0",
+                  "file": "api/messages.spec.ts",
+                  "line": 238,
+                  "column": 9
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "api\\users.spec.ts",
+      "file": "api/users.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Users API",
+          "file": "api/users.spec.ts",
+          "line": 44,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "GET /api/v1/users/@me",
+              "file": "api/users.spec.ts",
+              "line": 56,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should return current user profile",
+                  "ok": true,
+                  "tags": [
+                    "me"
+                  ],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 9,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:20.754Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "fe1b24ca564ee32ce980-6dee3d10d3903f2fb4d1",
+                  "file": "api/users.spec.ts",
+                  "line": 57,
+                  "column": 9
+                },
+                {
+                  "title": "should return 401 when not authenticated",
+                  "ok": true,
+                  "tags": [
+                    "me"
+                  ],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 4,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:21.741Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "fe1b24ca564ee32ce980-e664374441b8a97288b8",
+                  "file": "api/users.spec.ts",
+                  "line": 70,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "PUT /api/v1/users/@me",
+              "file": "api/users.spec.ts",
+              "line": 77,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should update user profile",
+                  "ok": true,
+                  "tags": [
+                    "me"
+                  ],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 419,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:21.752Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "fe1b24ca564ee32ce980-1a7af3237d3c771f2a2a",
+                  "file": "api/users.spec.ts",
+                  "line": 78,
+                  "column": 9
+                },
+                {
+                  "title": "should reject invalid avatar URL",
+                  "ok": true,
+                  "tags": [
+                    "me"
+                  ],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 73,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:22.188Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "fe1b24ca564ee32ce980-36ebcd3aa857ad5de842",
+                  "file": "api/users.spec.ts",
+                  "line": 94,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "GET /api/v1/users/:userId",
+              "file": "api/users.spec.ts",
+              "line": 106,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should return user by ID if endpoint exists",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 13,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:22.270Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "fe1b24ca564ee32ce980-28ad5d5911a2b56c6b79",
+                  "file": "api/users.spec.ts",
+                  "line": 107,
+                  "column": 9
+                },
+                {
+                  "title": "should return 404 for non-existent user",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 9,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:22.292Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "fe1b24ca564ee32ce980-ff393be96bd6c67f0d9a",
+                  "file": "api/users.spec.ts",
+                  "line": 122,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "PUT /api/v1/users/@me/settings",
+              "file": "api/users.spec.ts",
+              "line": 131,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should handle user settings endpoint",
+                  "ok": true,
+                  "tags": [
+                    "me/settings"
+                  ],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 116,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:22.310Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "fe1b24ca564ee32ce980-e689c9b8308590b06564",
+                  "file": "api/users.spec.ts",
+                  "line": 132,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "User Presence",
+              "file": "api/users.spec.ts",
+              "line": 146,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should handle user status endpoint",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "api",
+                      "projectName": "api",
+                      "results": [
+                        {
+                          "workerIndex": 1,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 81,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:22.438Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "fe1b24ca564ee32ce980-1fc9ecaab4bcc1853d35",
+                  "file": "api/users.spec.ts",
+                  "line": 147,
+                  "column": 9
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "e2e\\auth.spec.ts",
+      "file": "e2e/auth.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Authentication",
+          "file": "e2e/auth.spec.ts",
+          "line": 8,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "Registration",
+              "file": "e2e/auth.spec.ts",
+              "line": 9,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should register a new user successfully",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 2969,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:23.970Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9563bb343517399bdb94-f1379630e6f61820bc4f",
+                  "file": "e2e/auth.spec.ts",
+                  "line": 10,
+                  "column": 9
+                },
+                {
+                  "title": "should show error for invalid email",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 1443,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:27.035Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9563bb343517399bdb94-5e45e3656175dfa32d8d",
+                  "file": "e2e/auth.spec.ts",
+                  "line": 29,
+                  "column": 9
+                },
+                {
+                  "title": "should disable submit for weak password",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 1262,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:28.487Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9563bb343517399bdb94-ba1a6d24e1c7259868cd",
+                  "file": "e2e/auth.spec.ts",
+                  "line": 44,
+                  "column": 9
+                },
+                {
+                  "title": "should show error for duplicate email",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 2994,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:29.757Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9563bb343517399bdb94-483a377036b9251524b9",
+                  "file": "e2e/auth.spec.ts",
+                  "line": 60,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Login",
+              "file": "e2e/auth.spec.ts",
+              "line": 103,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should login successfully and complete onboarding",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 2431,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:32.759Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9563bb343517399bdb94-4a5df827dff3894de99e",
+                  "file": "e2e/auth.spec.ts",
+                  "line": 104,
+                  "column": 9
+                },
+                {
+                  "title": "should show error for invalid credentials",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 1945,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:35.197Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9563bb343517399bdb94-db6c3eb12b7aeb4e8c03",
+                  "file": "e2e/auth.spec.ts",
+                  "line": 137,
+                  "column": 9
+                },
+                {
+                  "title": "should redirect to app if already logged in",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 5443,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:37.149Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9563bb343517399bdb94-55a33ef2633293515365",
+                  "file": "e2e/auth.spec.ts",
+                  "line": 158,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Logout",
+              "file": "e2e/auth.spec.ts",
+              "line": 172,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should logout successfully from user panel",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 13640,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:42.602Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9563bb343517399bdb94-11107718b32f68661213",
+                  "file": "e2e/auth.spec.ts",
+                  "line": 173,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Protected Routes",
+              "file": "e2e/auth.spec.ts",
+              "line": 187,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should redirect to login when accessing protected route without auth",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 1335,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:56.254Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9563bb343517399bdb94-2f128a49576898a1e668",
+                  "file": "e2e/auth.spec.ts",
+                  "line": 188,
+                  "column": 9
+                },
+                {
+                  "title": "should redirect to login when accessing server route without auth",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 1785,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:57.600Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "9563bb343517399bdb94-f0f45e1a77049b0d7e47",
+                  "file": "e2e/auth.spec.ts",
+                  "line": 195,
+                  "column": 9
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "e2e\\dm.spec.ts",
+      "file": "e2e/dm.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Direct Messages",
+          "file": "e2e/dm.spec.ts",
+          "line": 8,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "DM List",
+              "file": "e2e/dm.spec.ts",
+              "line": 9,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should display DM section in navigation",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 5008,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:23.968Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "abb5dfc31b097c0ca680-b32aaf0c78814a1e5b4c",
+                  "file": "e2e/dm.spec.ts",
+                  "line": 10,
+                  "column": 9
+                },
+                {
+                  "title": "should show Friends button",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 4598,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:29.075Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "abb5dfc31b097c0ca680-970e1de56106f594ff0b",
+                  "file": "e2e/dm.spec.ts",
+                  "line": 23,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "DM Navigation",
+              "file": "e2e/dm.spec.ts",
+              "line": 33,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should navigate to DM when clicking from list",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 5536,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:33.682Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "abb5dfc31b097c0ca680-18c42b03bca9d228b4e8",
+                  "file": "e2e/dm.spec.ts",
+                  "line": 34,
+                  "column": 9
+                },
+                {
+                  "title": "should show empty state when no DMs",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 4450,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:39.225Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "abb5dfc31b097c0ca680-9522551e8ba6fd14da57",
+                  "file": "e2e/dm.spec.ts",
+                  "line": 49,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "DM Messaging",
+              "file": "e2e/dm.spec.ts",
+              "line": 59,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should show message input when in DM view",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 20583,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:43.686Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "abb5dfc31b097c0ca680-de388429d8504bef554a",
+                  "file": "e2e/dm.spec.ts",
+                  "line": 60,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Home Page Friends",
+              "file": "e2e/dm.spec.ts",
+              "line": 82,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should show friends list on home page",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 4836,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:04.281Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "abb5dfc31b097c0ca680-d02e14f8c32de4e8512a",
+                  "file": "e2e/dm.spec.ts",
+                  "line": 83,
+                  "column": 9
+                },
+                {
+                  "title": "should show tabs for friends view",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 4755,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:09.131Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "abb5dfc31b097c0ca680-3d10edee22a43e4f4862",
+                  "file": "e2e/dm.spec.ts",
+                  "line": 92,
+                  "column": 9
+                },
+                {
+                  "title": "should show Add Friend tab",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 4478,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:13.896Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "abb5dfc31b097c0ca680-c06ea02c3f5f2288225d",
+                  "file": "e2e/dm.spec.ts",
+                  "line": 104,
+                  "column": 9
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "e2e\\friends.spec.ts",
+      "file": "e2e/friends.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Friends System",
+          "file": "e2e/friends.spec.ts",
+          "line": 8,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "Friends Page",
+              "file": "e2e/friends.spec.ts",
+              "line": 9,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should display friends page on home",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 4446,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:12:59.397Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "b33ecf21222c0e86d272-ab574d6ac10ad4983f5c",
+                  "file": "e2e/friends.spec.ts",
+                  "line": 10,
+                  "column": 9
+                },
+                {
+                  "title": "should show tab navigation",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 4854,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:03.852Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "b33ecf21222c0e86d272-dfeb496058c92b56be9b",
+                  "file": "e2e/friends.spec.ts",
+                  "line": 19,
+                  "column": 9
+                },
+                {
+                  "title": "should show empty state when no friends",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 4839,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:08.714Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "b33ecf21222c0e86d272-c9819ffe4a4e31d07988",
+                  "file": "e2e/friends.spec.ts",
+                  "line": 31,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Add Friend",
+              "file": "e2e/friends.spec.ts",
+              "line": 44,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should show Add Friend form",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 4549,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:13.562Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "b33ecf21222c0e86d272-3047ec5ec06a377981a2",
+                  "file": "e2e/friends.spec.ts",
+                  "line": 45,
+                  "column": 9
+                },
+                {
+                  "title": "should show Send Friend Request button",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 4438,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:18.119Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "b33ecf21222c0e86d272-146c906a8234c8875675",
+                  "file": "e2e/friends.spec.ts",
+                  "line": 57,
+                  "column": 9
+                },
+                {
+                  "title": "should show error for non-existent user",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "passed",
+                          "duration": 4680,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:22.574Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "b33ecf21222c0e86d272-e9905fe08709f8d6b8bc",
+                  "file": "e2e/friends.spec.ts",
+                  "line": 68,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Pending Requests",
+              "file": "e2e/friends.spec.ts",
+              "line": 84,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should show pending tab",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 2,
+                          "parallelIndex": 0,
+                          "status": "timedOut",
+                          "duration": 30049,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"authenticatedPage\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"authenticatedPage\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"authenticatedPage\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "C:\\Users\\notdezzi\\Desktop\\notdezzi\\github-portfolio\\freedomtalk\\tests\\fixtures\\index.ts",
+                                "column": 36,
+                                "line": 155
+                              },
+                              "message": "Error: browserContext.newPage: Target page, context or browser has been closed\n\n   at fixtures\\index.ts:155\n\n  153 |   // Authenticated page\n  154 |   authenticatedPage: async ({ authContext }, use) => {\n> 155 |     const page = await authContext.newPage();\n      |                                    ^\n  156 |     await page.goto('/app');\n  157 |\n  158 |     // Wait for app to load\n    at Object.authenticatedPage (C:\\Users\\notdezzi\\Desktop\\notdezzi\\github-portfolio\\freedomtalk\\tests\\fixtures\\index.ts:155:36)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:27.262Z",
+                          "annotations": [],
+                          "attachments": [
+                            {
+                              "name": "screenshot",
+                              "contentType": "image/png",
+                              "path": "C:\\Users\\notdezzi\\Desktop\\notdezzi\\github-portfolio\\freedomtalk\\test-results\\artifacts\\e2e-friends-Friends-System-259f3-sts-should-show-pending-tab-e2e-chromium\\test-failed-1.png"
+                            },
+                            {
+                              "name": "error-context",
+                              "contentType": "text/markdown",
+                              "path": "C:\\Users\\notdezzi\\Desktop\\notdezzi\\github-portfolio\\freedomtalk\\test-results\\artifacts\\e2e-friends-Friends-System-259f3-sts-should-show-pending-tab-e2e-chromium\\error-context.md"
+                            }
+                          ]
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "b33ecf21222c0e86d272-b683f91b3f02ad11bdea",
+                  "file": "e2e/friends.spec.ts",
+                  "line": 85,
+                  "column": 9
+                },
+                {
+                  "title": "should show empty state when no pending requests",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "failed",
+                          "duration": 0,
+                          "error": {
+                            "message": "Error: worker process exited unexpectedly (code=3221225794, signal=null)"
+                          },
+                          "errors": [
+                            {
+                              "message": "Error: worker process exited unexpectedly (code=3221225794, signal=null)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "b33ecf21222c0e86d272-d70225d394e18c6295a5",
+                  "file": "e2e/friends.spec.ts",
+                  "line": 96,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Blocked Users",
+              "file": "e2e/friends.spec.ts",
+              "line": 108,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should show blocked tab",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "b33ecf21222c0e86d272-43dab7df76c69316c782",
+                  "file": "e2e/friends.spec.ts",
+                  "line": 109,
+                  "column": 9
+                },
+                {
+                  "title": "should show empty state when no blocked users",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "b33ecf21222c0e86d272-8baf57daa3e72cb3a72c",
+                  "file": "e2e/friends.spec.ts",
+                  "line": 119,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Navigation",
+              "file": "e2e/friends.spec.ts",
+              "line": 131,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should show Friends button in sidebar",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "b33ecf21222c0e86d272-9bb390ef1511743c7454",
+                  "file": "e2e/friends.spec.ts",
+                  "line": 132,
+                  "column": 9
+                },
+                {
+                  "title": "should navigate to friends when clicking Friends button",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "b33ecf21222c0e86d272-175d3711de661ae35bc3",
+                  "file": "e2e/friends.spec.ts",
+                  "line": 141,
+                  "column": 9
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "e2e\\messaging.spec.ts",
+      "file": "e2e/messaging.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Messaging",
+          "file": "e2e/messaging.spec.ts",
+          "line": 8,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "Message Input",
+              "file": "e2e/messaging.spec.ts",
+              "line": 9,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should display message input in channel view",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 4432,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:18.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "51bd743adb70113aadec-2e25e5bee657cc065648",
+                  "file": "e2e/messaging.spec.ts",
+                  "line": 10,
+                  "column": 9
+                },
+                {
+                  "title": "should send a message with Enter key",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 1,
+                          "status": "passed",
+                          "duration": 5189,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:22.828Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "expected"
+                    }
+                  ],
+                  "id": "51bd743adb70113aadec-30afd4c90a9d72b921a4",
+                  "file": "e2e/messaging.spec.ts",
+                  "line": 20,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Message Display",
+              "file": "e2e/messaging.spec.ts",
+              "line": 39,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should show message author",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": 3,
+                          "parallelIndex": 1,
+                          "status": "timedOut",
+                          "duration": 30013,
+                          "error": {
+                            "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"authContext\".\u001b[39m",
+                            "stack": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"authContext\".\u001b[39m"
+                          },
+                          "errors": [
+                            {
+                              "message": "\u001b[31mTest timeout of 30000ms exceeded while setting up \"authContext\".\u001b[39m"
+                            },
+                            {
+                              "location": {
+                                "file": "C:\\Users\\notdezzi\\Desktop\\notdezzi\\github-portfolio\\freedomtalk\\tests\\fixtures\\index.ts",
+                                "column": 32,
+                                "line": 146
+                              },
+                              "message": "Error: browserContext.newPage: Test ended.\n\n   at fixtures\\index.ts:146\n\n  144 |\n  145 |     // Complete the full auth flow\n> 146 |     const page = await context.newPage();\n      |                                ^\n  147 |     await completeAuthFlow(page, testUser);\n  148 |\n  149 |     await use(context);\n    at Object.authContext (C:\\Users\\notdezzi\\Desktop\\notdezzi\\github-portfolio\\freedomtalk\\tests\\fixtures\\index.ts:146:32)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:28.026Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "51bd743adb70113aadec-b7f8954e9a0d79c06368",
+                  "file": "e2e/messaging.spec.ts",
+                  "line": 40,
+                  "column": 9
+                },
+                {
+                  "title": "should show message timestamp",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "failed",
+                          "duration": 0,
+                          "error": {
+                            "message": "Error: worker process exited unexpectedly (code=3221225794, signal=null)"
+                          },
+                          "errors": [
+                            {
+                              "message": "Error: worker process exited unexpectedly (code=3221225794, signal=null)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:58.096Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "51bd743adb70113aadec-b7deaa25b35692f3da6d",
+                  "file": "e2e/messaging.spec.ts",
+                  "line": 56,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Message Grouping",
+              "file": "e2e/messaging.spec.ts",
+              "line": 73,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should group consecutive messages from same user",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:58.097Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "51bd743adb70113aadec-e3aaa944cce014607ca5",
+                  "file": "e2e/messaging.spec.ts",
+                  "line": 74,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Typing Indicators",
+              "file": "e2e/messaging.spec.ts",
+              "line": 100,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should show typing indicator area",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:58.097Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "51bd743adb70113aadec-f0f21dfe87e390cfa0ac",
+                  "file": "e2e/messaging.spec.ts",
+                  "line": 101,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Channel Header",
+              "file": "e2e/messaging.spec.ts",
+              "line": 112,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should show channel name in header",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:58.097Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "51bd743adb70113aadec-f4eeab312d9062f27190",
+                  "file": "e2e/messaging.spec.ts",
+                  "line": 113,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Auto-scroll",
+              "file": "e2e/messaging.spec.ts",
+              "line": 125,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should scroll to bottom when sending message",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:58.097Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "51bd743adb70113aadec-b2cd7cd2a602b5e078c2",
+                  "file": "e2e/messaging.spec.ts",
+                  "line": 126,
+                  "column": 9
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "e2e\\servers.spec.ts",
+      "file": "e2e/servers.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Server Management",
+          "file": "e2e/servers.spec.ts",
+          "line": 8,
+          "column": 6,
+          "specs": [],
+          "suites": [
+            {
+              "title": "Server List",
+              "file": "e2e/servers.spec.ts",
+              "line": 9,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should display server list in navigation",
+                  "ok": false,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "failed",
+                          "duration": 0,
+                          "error": {
+                            "message": "Error: worker process exited unexpectedly (code=3221225794, signal=null)"
+                          },
+                          "errors": [
+                            {
+                              "message": "Error: worker process exited unexpectedly (code=3221225794, signal=null)"
+                            }
+                          ],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "unexpected"
+                    }
+                  ],
+                  "id": "ba31bae47abe26b46826-f8282480c32bc588d2b3",
+                  "file": "e2e/servers.spec.ts",
+                  "line": 10,
+                  "column": 9
+                },
+                {
+                  "title": "should show add server button",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "ba31bae47abe26b46826-397faab9c356ebdaff22",
+                  "file": "e2e/servers.spec.ts",
+                  "line": 23,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Server Creation",
+              "file": "e2e/servers.spec.ts",
+              "line": 35,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should open create server modal",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "ba31bae47abe26b46826-fdf6ae7ccd6946ef02d8",
+                  "file": "e2e/servers.spec.ts",
+                  "line": 36,
+                  "column": 9
+                },
+                {
+                  "title": "should create a new server successfully",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "ba31bae47abe26b46826-188f2a9f4824402478f9",
+                  "file": "e2e/servers.spec.ts",
+                  "line": 51,
+                  "column": 9
+                },
+                {
+                  "title": "should navigate to server after creation",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "ba31bae47abe26b46826-2ff624831b3009088763",
+                  "file": "e2e/servers.spec.ts",
+                  "line": 56,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Server Navigation",
+              "file": "e2e/servers.spec.ts",
+              "line": 65,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should navigate to existing server from sidebar",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "ba31bae47abe26b46826-e487198b8737ce78619e",
+                  "file": "e2e/servers.spec.ts",
+                  "line": 66,
+                  "column": 9
+                },
+                {
+                  "title": "should show channel list when server is selected",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "ba31bae47abe26b46826-b125b9a97ab16872c00e",
+                  "file": "e2e/servers.spec.ts",
+                  "line": 81,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Channel Management",
+              "file": "e2e/servers.spec.ts",
+              "line": 91,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should show create channel button",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "ba31bae47abe26b46826-d2b273bfbcb1092c293b",
+                  "file": "e2e/servers.spec.ts",
+                  "line": 92,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Member List",
+              "file": "e2e/servers.spec.ts",
+              "line": 110,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should display member list when viewing channel",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "ba31bae47abe26b46826-08dfe14b3d74f816297b",
+                  "file": "e2e/servers.spec.ts",
+                  "line": 111,
+                  "column": 9
+                }
+              ]
+            },
+            {
+              "title": "Home Navigation",
+              "file": "e2e/servers.spec.ts",
+              "line": 121,
+              "column": 8,
+              "specs": [
+                {
+                  "title": "should navigate to home when clicking home button",
+                  "ok": true,
+                  "tags": [],
+                  "tests": [
+                    {
+                      "timeout": 30000,
+                      "annotations": [],
+                      "expectedStatus": "passed",
+                      "projectId": "e2e-chromium",
+                      "projectName": "e2e-chromium",
+                      "results": [
+                        {
+                          "workerIndex": -1,
+                          "parallelIndex": -1,
+                          "status": "skipped",
+                          "duration": 0,
+                          "errors": [],
+                          "stdout": [],
+                          "stderr": [],
+                          "retry": 0,
+                          "startTime": "2026-10-07T18:13:57.388Z",
+                          "annotations": [],
+                          "attachments": []
+                        }
+                      ],
+                      "status": "skipped"
+                    }
+                  ],
+                  "id": "ba31bae47abe26b46826-7098d48ceb8e5270c34f",
+                  "file": "e2e/servers.spec.ts",
+                  "line": 122,
+                  "column": 9
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "e2e\\voice.spec.ts",
+      "file": "e2e/voice.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Voice channel",
+          "file": "e2e/voice.spec.ts",
+          "line": 38,
+          "column": 6,
+          "specs": [
+            {
+              "title": "two users join a voice channel, see each other, and one leaves",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "e2e-chromium",
+                  "projectName": "e2e-chromium",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "failed",
+                      "duration": 0,
+                      "error": {
+                        "message": "Error: worker process exited unexpectedly (code=3221225794, signal=null)"
+                      },
+                      "errors": [
+                        {
+                          "message": "Error: worker process exited unexpectedly (code=3221225794, signal=null)"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-07T18:13:57.393Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "f0c4ab5e8a7a70cce3be-47cce8cf6efa9f085248",
+              "file": "e2e/voice.spec.ts",
+              "line": 44,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-07T18:12:11.066Z",
+    "duration": 68874519.043,
+    "expected": 52,
+    "skipped": 19,
+    "unexpected": 6,
+    "flaky": 0
+  }
+}

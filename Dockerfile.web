@@ -1,0 +1,54 @@
+# Web client image (Next.js app in an npm workspaces monorepo).
+# next.config.ts does NOT use `output: 'standalone'`, so the runtime is a
+# classic `next build` + `next start`: .next + public + next.config + node_modules.
+
+FROM node:20-alpine AS build
+WORKDIR /app
+
+# NEXT_PUBLIC_* vars are inlined into the client bundle at BUILD time.
+# Pass them when building the image (docker-compose.prod.yml does this from DOMAIN):
+#   docker build -f Dockerfile.web --build-arg NEXT_PUBLIC_API_URL=https://chat.example.com ...
+ARG NEXT_PUBLIC_API_URL=http://localhost:3000
+ARG NEXT_PUBLIC_WS_URL=http://localhost:3000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+
+# Install all workspaces (dev deps needed for the TypeScript/Next build)
+COPY package.json package-lock.json ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/web/package.json packages/web/
+RUN npm ci
+
+# Copy sources. The web app imports @freedomtalk/shared, so build shared first.
+# NOTE: there is no root .dockerignore yet — drop any host node_modules / .next
+# that got copied in before building.
+COPY packages/shared packages/shared
+COPY packages/web packages/web
+RUN rm -rf packages/web/node_modules packages/web/.next packages/shared/dist packages/shared/node_modules
+
+RUN npm run build --workspace=@freedomtalk/shared \
+  && npm run build --workspace=@freedomtalk/web
+
+# Prune to production dependencies for the runtime layer
+RUN npm prune --omit=dev
+
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist
+COPY --from=build /app/packages/shared/package.json ./packages/shared/package.json
+COPY --from=build /app/packages/web/.next ./packages/web/.next
+COPY --from=build /app/packages/web/public ./packages/web/public
+COPY --from=build /app/packages/web/next.config.ts ./packages/web/next.config.ts
+COPY --from=build /app/packages/web/package.json ./packages/web/package.json
+
+WORKDIR /app/packages/web
+EXPOSE 3000
+
+# `next start` binds 0.0.0.0:3000 by default
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
+  CMD wget -qO- http://127.0.0.1:3000/ >/dev/null || exit 1
+
+CMD ["npm", "run", "start"]

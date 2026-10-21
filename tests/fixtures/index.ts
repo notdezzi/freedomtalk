@@ -3,7 +3,7 @@
  * Combines auth and API tracking capabilities
  */
 
-import { test as base, Page, BrowserContext, Request as PlaywrightRequest } from '@playwright/test';
+import { test as base, expect, Page, BrowserContext, Request as PlaywrightRequest } from '@playwright/test';
 import { APIMonitor, getAPIMonitor, resetAPIMonitor } from '../utils/api-monitor';
 import { createTestUser, TestUser } from '../utils/test-data';
 
@@ -39,16 +39,51 @@ async function fillRegistrationForm(page: Page, user: TestUser) {
 }
 
 /**
+ * Helper to create a server through the UI (from any authenticated page).
+ * Uses the real selectors: the rail button is aria-labelled "Add a Server"
+ * (older specs used "Add server", which silently no-ops), and the modal flow
+ * is Create My Own -> name -> Create.
+ */
+export async function createServerViaUI(page: Page, serverName: string): Promise<void> {
+  await page.goto('/app');
+  const addServer = page
+    .locator('button[aria-label="Add a Server"], button[aria-label="Add server"]')
+    .first();
+  await expect(addServer).toBeVisible({ timeout: 15_000 });
+  await addServer.click();
+  await page.getByRole('button', { name: 'Create My Own' }).click();
+  await page.locator('input[placeholder="My Awesome Server"]').fill(serverName);
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  // Navigates to /app/servers/<id>/channels/first -> auto-redirects to general
+  await expect(page).toHaveURL(/\/app\/servers\/\d+\/channels\/(first|\d+)/, {
+    timeout: 20_000,
+  });
+}
+
+/**
  * Helper to complete the full auth flow including onboarding
  */
 async function completeAuthFlow(page: Page, user: TestUser) {
-  // Step 1: Register
-  await page.goto('/auth/register');
-  await page.waitForLoadState('domcontentloaded');
-  await fillRegistrationForm(page, user);
+  // Step 1: Register.
+  // On a cold Next.js dev server the first compile of /auth/register can
+  // trigger a full reload right after domcontentloaded, wiping form state
+  // that was filled before React hydrated — so fill + wait is retried.
+  let registered = false;
+  for (let attempt = 0; attempt < 3 && !registered; attempt++) {
+    await page.goto('/auth/register');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle').catch(() => { /* HMR ws keeps this pending on some setups */ });
+    await fillRegistrationForm(page, user);
 
-  // Wait for redirect to login page
-  await page.waitForURL(/\/auth\/login/, { timeout: 15000 });
+    // Wait for redirect to login page
+    registered = await page
+      .waitForURL(/\/auth\/login/, { timeout: 8000 })
+      .then(() => true)
+      .catch(() => false);
+  }
+  if (!registered) {
+    await page.waitForURL(/\/auth\/login/, { timeout: 15000 });
+  }
 
   // Step 2: Login
   await page.waitForLoadState('domcontentloaded');
@@ -150,4 +185,4 @@ export const test = base.extend<FreedomTalkFixtures>({
 export { expect } from '@playwright/test';
 export { createTestUser, createTestServer, createTestChannel, createTestMessage } from '../utils/test-data';
 export { expectNoDuplicateCalls, expectMaxCallCount, getAnalysisReport } from './api-tracker.fixture';
-export { fillRegistrationForm, completeAuthFlow };
+export { fillRegistrationForm, completeAuthFlow, createServerViaUI };

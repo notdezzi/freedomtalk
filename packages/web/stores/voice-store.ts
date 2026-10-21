@@ -152,8 +152,14 @@ export const useVoiceStore = create<VoiceStore>((set, get) => ({
 
   setUsers: (users) => set({ users }),
 
+  // Upsert by sessionId: duplicate deliveries of voice:user_joined (e.g. a
+  // client in both the voice and server rooms) must not duplicate tiles
   addUser: (user) =>
-    set((state) => ({ users: [...state.users, user] })),
+    set((state) => ({
+      users: state.users.some((u) => u.sessionId === user.sessionId)
+        ? state.users.map((u) => (u.sessionId === user.sessionId ? { ...u, ...user } : u))
+        : [...state.users, user],
+    })),
 
   removeUser: (sessionId) =>
     set((state) => ({
@@ -188,13 +194,19 @@ export const useVoiceStore = create<VoiceStore>((set, get) => ({
       channelStates: { ...state.channelStates, [channelId]: users },
     })),
 
+  // Upsert by sessionId (see addUser)
   addUserToChannelState: (channelId, user) =>
-    set((state) => ({
-      channelStates: {
-        ...state.channelStates,
-        [channelId]: [...(state.channelStates[channelId] || []), user],
-      },
-    })),
+    set((state) => {
+      const existing = state.channelStates[channelId] || [];
+      return {
+        channelStates: {
+          ...state.channelStates,
+          [channelId]: existing.some((u) => u.sessionId === user.sessionId)
+            ? existing.map((u) => (u.sessionId === user.sessionId ? { ...u, ...user } : u))
+            : [...existing, user],
+        },
+      };
+    }),
 
   removeUserFromChannelState: (channelId, sessionId) =>
     set((state) => ({

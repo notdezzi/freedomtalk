@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Eye, EyeOff, MessageCircle, ArrowLeft, Check, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { BrandLockup } from '@/components/brand/brand';
 
 const passwordRequirements = [
   { label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
@@ -37,8 +38,7 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
-    password: '',
-  });
+    password: '' });
 
   const allRequirementsMet = passwordRequirements.every((req) =>
     req.test(formData.password)
@@ -58,10 +58,13 @@ export default function RegisterPage() {
     try {
       const result = await register(formData.username, formData.email, formData.password);
 
-      if (!result.success) {
-        setError(result.error || 'Registration failed');
+      if (result.success) {
+        // Register succeeds with "verify your email" — the account exists but
+        // has no session yet, so continue to the login page
+        router.push('/auth/login?registered=1');
+        return;
       }
-      // On success, the useAuth hook handles the redirect to login page
+      setError(result.error || 'Registration failed');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
@@ -82,12 +85,7 @@ export default function RegisterPage() {
 
       {/* Logo */}
       <div className="flex items-center gap-2 mb-8">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-secondary flex items-center justify-center">
-          <MessageCircle className="w-5 h-5 text-background" />
-        </div>
-        <span className="text-xl font-bold">
-          Freedom<span className="gradient-text">Talk</span>
-        </span>
+        <BrandLockup size={40} wordmarkClassName="text-xl" />
       </div>
 
       {/* Header */}

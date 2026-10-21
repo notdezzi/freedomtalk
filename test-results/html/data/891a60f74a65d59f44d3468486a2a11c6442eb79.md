@@ -1,0 +1,60 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e7] [cursor=pointer]:
+    - img [ref=e8]
+  - alert [ref=e11]
+  - generic [ref=e12]:
+    - link "Skip to main content" [ref=e13] [cursor=pointer]:
+      - /url: "#main-content"
+    - banner [ref=e14]:
+      - heading "Friends" [level=1] [ref=e15]
+    - generic [ref=e16]:
+      - navigation [ref=e17]:
+        - generic [ref=e18]:
+          - generic [ref=e19]:
+            - button "Home" [ref=e20]:
+              - img [ref=e21]
+            - generic [ref=e25]:
+              - status [ref=e26]
+              - button "Add a Server" [ref=e28]:
+                - img [ref=e29]
+          - generic [ref=e31]:
+            - button "Friends" [ref=e33]:
+              - img [ref=e34]
+              - generic [ref=e39]: Friends
+            - generic [ref=e40]:
+              - generic [ref=e41]:
+                - generic [ref=e42]: Direct Messages
+                - button "Add friend" [ref=e43]:
+                  - img [ref=e44]
+              - generic [ref=e47]: Nothing here yet — it's quiet for now.
+        - generic [ref=e48]:
+          - button "TE testuser_9zwgxuch Online" [ref=e49] [cursor=pointer]:
+            - generic [ref=e52]: TE
+            - generic [ref=e54]:
+              - paragraph [ref=e55]: testuser_9zwgxuch
+              - paragraph [ref=e56]: Online
+          - generic [ref=e57]:
+            - button "Mute" [disabled] [ref=e58]:
+              - img [ref=e59]
+            - button "Deafen" [disabled] [ref=e62]:
+              - img [ref=e63]
+            - button "User settings" [ref=e67]:
+              - img [ref=e68]
+      - main [ref=e71]:
+        - generic [ref=e72]:
+          - generic [ref=e74]:
+            - button "All" [ref=e75]
+            - button "Online" [ref=e76]
+            - button "Pending" [ref=e77]
+            - button "Blocked" [ref=e78]
+            - button "Add Friend" [ref=e79]
+          - generic [ref=e81]:
+            - generic [ref=e82]:
+              - img [ref=e83]
+              - textbox "Search friends" [ref=e86]
+            - generic [ref=e87]: No friends yet. Add some friends to get started!
+  - generic "Notifications"
+```

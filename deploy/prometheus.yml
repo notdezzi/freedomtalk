@@ -1,0 +1,24 @@
+# Prometheus scrape configuration for FreedomTalk observability.
+# Mounted by the `prometheus` service in docker-compose.yml.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # FreedomTalk API - /metrics is exposed by metrics.routes.ts (prom-client).
+  # The API itself does not run in this compose file (infra only); it runs on
+  # the host with PORT=3000 so Prometheus reaches it via host.docker.internal.
+  # On Linux, the prometheus service sets extra_hosts: host-gateway so this
+  # DNS name resolves to the host bridge.
+  - job_name: 'freedomtalk-api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['host.docker.internal:3000']
+
+  # RabbitMQ Prometheus plugin endpoint (rabbitmq:3-management image).
+  # NOTE: the plugin is not enabled by default. Enable it once by running:
+  #   docker exec freedomtalk-rabbitmq rabbitmq-plugins enable rabbitmq_prometheus
+  - job_name: 'rabbitmq'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['freedomtalk-rabbitmq:15692']

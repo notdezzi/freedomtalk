@@ -22,10 +22,51 @@ interface TypingState {
 // Auto-remove typing indicator after 5 seconds of no updates
 const TYPING_TIMEOUT = 5000;
 
+// Stable empty array so selectors return a constant reference
+const EMPTY: TypingUser[] = [];
+
+// Pending auto-removal timers keyed by `${channelId}:${userId}`
+const typingTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function getTimerKey(channelId: string, userId: string) {
+  return `${channelId}:${userId}`;
+}
+
+function scheduleTypingRemoval(channelId: string, userId: string) {
+  const key = getTimerKey(channelId, userId);
+  const existing = typingTimers.get(key);
+  if (existing) {
+    clearTimeout(existing);
+  }
+  typingTimers.set(
+    key,
+    setTimeout(() => {
+      typingTimers.delete(key);
+      useTypingStore.getState().setTyping(channelId, userId, '', false);
+    }, TYPING_TIMEOUT)
+  );
+}
+
+function clearTypingTimer(channelId: string, userId: string) {
+  const key = getTimerKey(channelId, userId);
+  const existing = typingTimers.get(key);
+  if (existing) {
+    clearTimeout(existing);
+    typingTimers.delete(key);
+  }
+}
+
 export const useTypingStore = create<TypingState>((set, get) => ({
   typingUsers: new Map(),
 
   setTyping: (channelId, userId, username, isTyping, avatar) => {
+    if (isTyping) {
+      // (Re)schedule auto-removal after the timeout
+      scheduleTypingRemoval(channelId, userId);
+    } else {
+      clearTypingTimer(channelId, userId);
+    }
+
     set((state) => {
       const newMap = new Map(state.typingUsers);
       const channelTyping = newMap.get(channelId) || [];
@@ -61,10 +102,19 @@ export const useTypingStore = create<TypingState>((set, get) => ({
   },
 
   getTypingUsers: (channelId) => {
-    return get().typingUsers.get(channelId) || [];
+    return get().typingUsers.get(channelId) || EMPTY;
   },
 
   clearChannel: (channelId) => {
+    // Cancel any pending timers for this channel
+    for (const key of typingTimers.keys()) {
+      if (key.startsWith(`${channelId}:`)) {
+        const timer = typingTimers.get(key);
+        if (timer) clearTimeout(timer);
+        typingTimers.delete(key);
+      }
+    }
+
     set((state) => {
       const newMap = new Map(state.typingUsers);
       newMap.delete(channelId);
@@ -73,11 +123,13 @@ export const useTypingStore = create<TypingState>((set, get) => ({
   },
 
   clearAll: () => {
+    typingTimers.forEach((timer) => clearTimeout(timer));
+    typingTimers.clear();
     set({ typingUsers: new Map() });
   },
 }));
 
 // Hook to get typing users for a specific channel with auto-refresh
 export function useTypingUsers(channelId: string): TypingUser[] {
-  return useTypingStore((state) => state.typingUsers.get(channelId) || []);
+  return useTypingStore((state) => state.typingUsers.get(channelId) || EMPTY);
 }

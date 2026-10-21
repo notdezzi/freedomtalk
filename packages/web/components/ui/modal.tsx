@@ -67,7 +67,7 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-black/70 transition-opacity"
         onClick={closeOnOverlayClick ? onClose : undefined}
         aria-hidden="true"
       />
@@ -79,7 +79,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
         className={cn(
-          'relative z-50 w-full rounded-xl bg-background-elevated shadow-xl',
+          'relative z-50 w-full rounded-2xl bg-background-elevated',
           !noBorder && 'border border-border',
           'transform transition-all',
           sizeClasses[size],

@@ -237,7 +237,12 @@ export interface PermissionBreakdownResponse {
   };
 }
 
-// Token storage helpers (client-side only)
+// Token storage helpers (client-side only).
+// NOTE: tokens live in localStorage by design for now — JS-accessible so the
+// client can attach Bearer headers, at the cost of XSS exposure. Moving the
+// refresh token to an httpOnly cookie (the API's cookie utilities already
+// exist) is a planned follow-up PR; until then any successful XSS can read
+// these values.
 const TOKEN_KEY = 'freedomtalk_access_token';
 const REFRESH_TOKEN_KEY = 'freedomtalk_refresh_token';
 
@@ -271,6 +276,8 @@ export function setStoredRefreshToken(token: string | null): void {
 
 class ApiClient {
   private baseUrl: string;
+  // Single-flight refresh: concurrent 401s share one /auth/refresh call
+  private refreshPromise: Promise<boolean> | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -284,9 +291,33 @@ class ApiClient {
     setStoredAccessToken(token);
   }
 
+  // Refresh once and let every queued 401 wait on the same attempt
+  private refreshTokensSingleFlight(): Promise<boolean> {
+    if (!this.refreshPromise) {
+      this.refreshPromise = this.refreshTokens()
+        .then((response) => response.success)
+        .catch(() => false)
+        .finally(() => {
+          this.refreshPromise = null;
+        });
+    }
+    return this.refreshPromise;
+  }
+
+  private handleSessionExpired(): void {
+    // Refresh failed (or no refresh token) — the session is gone. Clear
+    // tokens and land on the login screen.
+    this.setAccessToken(null);
+    setStoredRefreshToken(null);
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
+      window.location.href = '/auth/login';
+    }
+  }
+
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    isRetry = false
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
 
@@ -339,6 +370,22 @@ class ApiClient {
       }
 
       if (!response.ok) {
+        // Access token expired: single-flight refresh, then retry the
+        // original request exactly once. The refresh endpoint itself is
+        // excluded so a failed refresh can't recurse.
+        if (
+          response.status === 401 &&
+          !isRetry &&
+          endpoint !== '/api/v1/auth/refresh' &&
+          getStoredRefreshToken()
+        ) {
+          const refreshed = await this.refreshTokensSingleFlight();
+          if (refreshed) {
+            return this.request<T>(endpoint, options, true);
+          }
+          this.handleSessionExpired();
+        }
+
         return {
           success: false,
           error: data.error || {

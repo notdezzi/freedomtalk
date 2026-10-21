@@ -84,7 +84,7 @@ export function MessageView({
   }, [groupedMessages.length]);
 
   // Scroll to bottom when new messages arrive (if already at bottom)
-  useMemo(() => {
+  useEffect(() => {
     if (messages.length > prevMessageCountRef.current && isAtBottom) {
       // New message added and we were at bottom, scroll to bottom
       setTimeout(() => {

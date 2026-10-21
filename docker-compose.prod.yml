@@ -1,0 +1,275 @@
+# FreedomTalk production stack.
+#
+# Usage (from the repo root):
+#   cp .env.example .env   # then fill in the REQUIRED secrets (see docs/deploy.md)
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Topology:
+#   caddy :80/:443 (HTTPS, automatic certs) -> web:3000 (Next.js UI)
+#                                           -> api:3000 (REST /api, Socket.IO)
+#   api also publishes UDP 40000-49999 for mediasoup WebRTC media.
+#   worker shares the api image but runs the background job pipeline.
+#   Infra services (postgres/redis/rabbitmq/minio/meilisearch) are internal-only:
+#   no host ports are exposed — reach them with `docker compose exec`.
+#
+# Required env vars (repo-root .env): JWT_PRIVATE_KEY, JWT_PUBLIC_KEY,
+# SESSION_ENCRYPTION_KEY, COOKIE_ENCRYPTION_KEY, COOKIE_SECRET, MEILI_MASTER_KEY,
+# MINIO_ROOT_PASSWORD, MEDIASOUP_ANNOUNCED_IP. Strongly recommended to override:
+# POSTGRES_PASSWORD, RABBITMQ_PASSWORD, DOMAIN. See docs/deploy.md.
+
+name: freedomtalk
+
+x-api-environment: &api-environment
+  NODE_ENV: production
+  PORT: '3000'
+  HOST: 0.0.0.0
+  LOG_LEVEL: info
+
+  # Database
+  DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/freedomtalk
+  DB_POOL_MAX: '20'
+
+  # Cache / broker
+  REDIS_URL: redis://redis:6379
+  RABBITMQ_URL: amqp://rabbitmq:${RABBITMQ_PASSWORD:-rabbitmq}@rabbitmq:5672
+
+  # Auth (RSA keys use literal \n between PEM lines — jwt.service unescapes them)
+  JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:?JWT_PRIVATE_KEY is required (see docs/deploy.md)}
+  JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:?JWT_PUBLIC_KEY is required (see docs/deploy.md)}
+  JWT_EXPIRES_IN: 15m
+  JWT_REFRESH_EXPIRES_IN: 7d
+  SESSION_ENCRYPTION_KEY: ${SESSION_ENCRYPTION_KEY:?SESSION_ENCRYPTION_KEY is required (64-char hex)}
+  COOKIE_ENCRYPTION_KEY: ${COOKIE_ENCRYPTION_KEY:?COOKIE_ENCRYPTION_KEY is required (64-char hex)}
+  COOKIE_SECRET: ${COOKIE_SECRET:?COOKIE_SECRET is required}
+
+  # URLs / CORS (browser reaches the API through Caddy on the same origin)
+  CORS_ORIGIN: ${CORS_ORIGIN:-https://${DOMAIN:-localhost}}
+  FRONTEND_URL: ${FRONTEND_URL:-https://${DOMAIN:-localhost}}
+  WEB_URL: ${WEB_URL:-https://${DOMAIN:-localhost}}
+
+  # Object storage (MinIO)
+  MINIO_ENDPOINT: minio
+  MINIO_PORT: '9000'
+  MINIO_USE_SSL: 'false'
+  MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+  MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+  MINIO_BUCKET: attachments
+
+  # Search
+  MEILISEARCH_HOST: http://meilisearch:7700
+  MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY is required (min 16 chars)}
+
+  # Voice / mediasoup (see docs/deploy.md — announced IP must be the host's
+  # public IP; the UDP port range must be open in the firewall and is mapped
+  # below. Default 40000-40100 is plenty for voice; widen via env if needed)
+  MEDIASOUP_WORKERS: '2'
+  MEDIASOUP_ANNOUNCED_IP: ${MEDIASOUP_ANNOUNCED_IP:?MEDIASOUP_ANNOUNCED_IP is required (server public IP)}
+  MEDIASOUP_RTC_MIN_PORT: ${MEDIASOUP_RTC_MIN_PORT:-40000}
+  MEDIASOUP_RTC_MAX_PORT: ${MEDIASOUP_RTC_MAX_PORT:-40100}
+
+  # Misc
+  SWAGGER_ENABLED: 'false'
+  EMAIL_SERVICE: ${EMAIL_SERVICE:-console}
+  WORKER_ID: '1'
+
+services:
+  # ---------------------------------------------------------------- app tier
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: freedomtalk-api:latest
+    container_name: freedomtalk-api
+    restart: unless-stopped
+    environment: *api-environment
+    ports:
+      # mediasoup WebRTC media (ICE/DTLS/SRTP) — direct UDP, not proxied by Caddy.
+      # Kept small by default: Compose creates one docker-proxy mapping PER port.
+      # Widen MEDIASOUP_RTC_MIN/MAX_PORT env vars together with the firewall.
+      - '${MEDIASOUP_RTC_MIN_PORT:-40000}-${MEDIASOUP_RTC_MAX_PORT:-40100}:${MEDIASOUP_RTC_MIN_PORT:-40000}-${MEDIASOUP_RTC_MAX_PORT:-40100}/udp'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    networks:
+      - default
+
+  worker:
+    image: freedomtalk-api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: freedomtalk-worker
+    restart: unless-stopped
+    # Same image as api; different entrypoint (embed/mention/search-index workers)
+    command: ['node', 'dist/workers/index.js']
+    environment:
+      <<: *api-environment
+      WORKER_ID: '2'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    networks:
+      - default
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        # Baked into the client bundle: the browser talks to Caddy on one origin
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://${DOMAIN:-localhost}}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-https://${DOMAIN:-localhost}}
+    image: freedomtalk-web:latest
+    container_name: freedomtalk-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - default
+
+  # ------------------------------------------------------------ entry point
+  caddy:
+    image: caddy:2-alpine
+    container_name: freedomtalk-caddy
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    networks:
+      - default
+
+  # ------------------------------------------------------- infra (internal)
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: freedomtalk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: freedomtalk
+    command: postgres -c shared_preload_libraries=timescaledb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - default
+
+  redis:
+    image: redis:7-alpine
+    container_name: freedomtalk-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - default
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: freedomtalk-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbitmq
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-rabbitmq}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - default
+
+  minio:
+    image: minio/minio:latest
+    container_name: freedomtalk-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - default
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.10
+    container_name: freedomtalk-meilisearch
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY is required (min 16 chars)}
+      MEILI_ENV: production
+    volumes:
+      - meilisearch_data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:7700/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - default
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  minio_data:
+    driver: local
+  meilisearch_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+
+networks:
+  default:
+    name: freedomtalk-network

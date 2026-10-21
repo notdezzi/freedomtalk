@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-07",
+  "title": "Design System: FreedomTalk Landing",
+  "extensions": {
+    "colorMeta": {
+      "charcoal": { "role": "neutral", "displayName": "Charcoal Base", "canonical": "#23272a", "tonalRamp": ["oklch(15% 0.012 245)", "oklch(20% 0.014 245)", "oklch(25% 0.015 245)", "oklch(32% 0.014 245)", "oklch(42% 0.012 245)", "oklch(56% 0.01 245)", "oklch(72% 0.008 245)", "oklch(90% 0.005 245)"] },
+      "charcoal-deep": { "role": "neutral", "displayName": "Deep Charcoal", "canonical": "#111214", "tonalRamp": ["oklch(15% 0.012 245)", "oklch(20% 0.014 245)", "oklch(25% 0.015 245)", "oklch(32% 0.014 245)", "oklch(42% 0.012 245)", "oklch(56% 0.01 245)", "oklch(72% 0.008 245)", "oklch(90% 0.005 245)"] },
+      "surface": { "role": "neutral", "displayName": "Elevated Charcoal", "canonical": "#2c2f33", "tonalRamp": ["oklch(15% 0.012 245)", "oklch(20% 0.014 245)", "oklch(25% 0.015 245)", "oklch(32% 0.014 245)", "oklch(42% 0.012 245)", "oklch(56% 0.01 245)", "oklch(72% 0.008 245)", "oklch(90% 0.005 245)"] },
+      "surface-2": { "role": "neutral", "displayName": "Panel Charcoal", "canonical": "#36393f", "tonalRamp": ["oklch(15% 0.012 245)", "oklch(20% 0.014 245)", "oklch(25% 0.015 245)", "oklch(32% 0.014 245)", "oklch(42% 0.012 245)", "oklch(56% 0.01 245)", "oklch(72% 0.008 245)", "oklch(90% 0.005 245)"] },
+      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "#3d4046", "tonalRamp": ["oklch(15% 0.012 245)", "oklch(20% 0.014 245)", "oklch(25% 0.015 245)", "oklch(32% 0.014 245)", "oklch(42% 0.012 245)", "oklch(56% 0.01 245)", "oklch(72% 0.008 245)", "oklch(90% 0.005 245)"] },
+      "white": { "role": "neutral", "displayName": "White", "canonical": "#ffffff", "tonalRamp": ["oklch(20% 0.008 255)", "oklch(35% 0.008 255)", "oklch(50% 0.008 255)", "oklch(62% 0.008 255)", "oklch(74% 0.008 255)", "oklch(84% 0.006 255)", "oklch(92% 0.005 255)", "oklch(98% 0.003 255)"] },
+      "text": { "role": "neutral", "displayName": "Cloud Ink", "canonical": "#f2f3f5", "tonalRamp": ["oklch(20% 0.008 255)", "oklch(35% 0.008 255)", "oklch(50% 0.008 255)", "oklch(62% 0.008 255)", "oklch(74% 0.008 255)", "oklch(84% 0.006 255)", "oklch(92% 0.005 255)", "oklch(98% 0.003 255)"] },
+      "muted": { "role": "neutral", "displayName": "Silver Muted", "canonical": "#b5bac1", "tonalRamp": ["oklch(20% 0.008 255)", "oklch(35% 0.008 255)", "oklch(50% 0.008 255)", "oklch(62% 0.008 255)", "oklch(74% 0.008 255)", "oklch(84% 0.006 255)", "oklch(92% 0.005 255)", "oklch(98% 0.003 255)"] },
+      "subtle": { "role": "neutral", "displayName": "Dim Gray", "canonical": "#8e9297", "tonalRamp": ["oklch(20% 0.008 255)", "oklch(35% 0.008 255)", "oklch(50% 0.008 255)", "oklch(62% 0.008 255)", "oklch(74% 0.008 255)", "oklch(84% 0.006 255)", "oklch(92% 0.005 255)", "oklch(98% 0.003 255)"] },
+      "blurple": { "role": "primary", "displayName": "Blurple", "canonical": "#5865f2", "tonalRamp": ["oklch(18% 0.08 277)", "oklch(28% 0.13 277)", "oklch(38% 0.17 277)", "oklch(48% 0.2 277)", "oklch(58% 0.2 277)", "oklch(69% 0.17 277)", "oklch(80% 0.12 277)", "oklch(92% 0.06 277)"] },
+      "blurple-deep": { "role": "primary", "displayName": "Deep Indigo", "canonical": "#31368e", "tonalRamp": ["oklch(18% 0.08 277)", "oklch(28% 0.13 277)", "oklch(38% 0.17 277)", "oklch(48% 0.2 277)", "oklch(58% 0.2 277)", "oklch(69% 0.17 277)", "oklch(80% 0.12 277)", "oklch(92% 0.06 277)"] },
+      "blurple-art-deep": { "role": "primary", "displayName": "Blurple Art Shade", "canonical": "#4550c4", "tonalRamp": ["oklch(18% 0.08 277)", "oklch(28% 0.13 277)", "oklch(38% 0.17 277)", "oklch(48% 0.2 277)", "oklch(58% 0.2 277)", "oklch(69% 0.17 277)", "oklch(80% 0.12 277)", "oklch(92% 0.06 277)"] },
+      "sticker-yellow": { "role": "accent", "displayName": "Sticker Yellow", "canonical": "#fee75c", "tonalRamp": ["oklch(25% 0.06 100)", "oklch(38% 0.09 100)", "oklch(52% 0.12 100)", "oklch(64% 0.14 100)", "oklch(75% 0.16 100)", "oklch(84% 0.17 100)", "oklch(92% 0.17 100)", "oklch(97% 0.09 100)"] },
+      "sticker-yellow-deep": { "role": "accent", "displayName": "Sticker Yellow Deep", "canonical": "#e3c93f", "tonalRamp": ["oklch(25% 0.06 100)", "oklch(38% 0.09 100)", "oklch(52% 0.12 100)", "oklch(64% 0.14 100)", "oklch(75% 0.16 100)", "oklch(84% 0.17 100)", "oklch(92% 0.17 100)", "oklch(97% 0.09 100)"] },
+      "sticker-fuchsia": { "role": "accent", "displayName": "Sticker Fuchsia", "canonical": "#eb459e", "tonalRamp": ["oklch(20% 0.08 355)", "oklch(30% 0.13 355)", "oklch(41% 0.17 355)", "oklch(52% 0.2 355)", "oklch(62% 0.22 355)", "oklch(73% 0.18 355)", "oklch(83% 0.13 355)", "oklch(94% 0.06 355)"] },
+      "sticker-fuchsia-deep": { "role": "accent", "displayName": "Sticker Fuchsia Deep", "canonical": "#c22e7e", "tonalRamp": ["oklch(20% 0.08 355)", "oklch(30% 0.13 355)", "oklch(41% 0.17 355)", "oklch(52% 0.2 355)", "oklch(62% 0.22 355)", "oklch(73% 0.18 355)", "oklch(83% 0.13 355)", "oklch(94% 0.06 355)"] },
+      "sticker-green": { "role": "accent", "displayName": "Sticker Green", "canonical": "#57f287", "tonalRamp": ["oklch(25% 0.06 152)", "oklch(36% 0.1 152)", "oklch(48% 0.13 152)", "oklch(60% 0.16 152)", "oklch(72% 0.18 152)", "oklch(84% 0.19 152)", "oklch(91% 0.14 152)", "oklch(96% 0.07 152)"] },
+      "sticker-green-deep": { "role": "accent", "displayName": "Sticker Green Deep", "canonical": "#2fbf68", "tonalRamp": ["oklch(25% 0.06 152)", "oklch(36% 0.1 152)", "oklch(48% 0.13 152)", "oklch(60% 0.16 152)", "oklch(72% 0.18 152)", "oklch(84% 0.19 152)", "oklch(91% 0.14 152)", "oklch(96% 0.07 152)"] },
+      "alert-red": { "role": "accent", "displayName": "Alert Red (window-chrome art only)", "canonical": "#ed4245", "tonalRamp": ["oklch(20% 0.08 25)", "oklch(30% 0.13 25)", "oklch(41% 0.17 25)", "oklch(52% 0.2 25)", "oklch(63% 0.21 25)", "oklch(74% 0.17 25)", "oklch(84% 0.12 25)", "oklch(94% 0.05 25)"] },
+      "window-rail": { "role": "neutral", "displayName": "Window Rail (art)", "canonical": "#1e1f22" },
+      "window-list": { "role": "neutral", "displayName": "Window Channel List (art)", "canonical": "#2b2d31" },
+      "window-raised": { "role": "neutral", "displayName": "Window Raised Item (art)", "canonical": "#393c41" },
+      "chat-ink": { "role": "neutral", "displayName": "Chat Body Ink (art)", "canonical": "#dbdee1" },
+      "ink-shade": { "role": "neutral", "displayName": "Ink Shade (art volume)", "canonical": "rgba(0, 0, 0, 0.10)" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The H1, once per page. Baloo 2 800, tight leading, balance-wrapped; exactly one blurple phrase." },
+      "headline": { "displayName": "Headline", "purpose": "Section H2s and the CTA headline (all-white on the blurple panel)." },
+      "title": { "displayName": "Title", "purpose": "H3s, wordmark, in-artwork card titles and avatar initials." },
+      "body": { "displayName": "Body", "purpose": "Ledes and prose; base 18px/1.55, ledes in Silver Muted." },
+      "label": { "displayName": "Label", "purpose": "Badges and chips (Baloo 2 600-700, 0.75rem, tracked); footer column heads add uppercase." }
+    },
+    "shadows": [
+      { "name": "ring-inset-white", "value": "inset 0 0 0 2px rgba(255,255,255,0.7)", "purpose": "Border substitute for the on-blurple Download button. The only box-shadow in the system; drop shadows do not exist in this flat world." }
+    ],
+    "motion": [
+      { "name": "ease-pop", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Hero entrance pops (0.7s, 0.08s stagger steps via data-pop)." },
+      { "name": "ease-reveal", "value": "cubic-bezier(0.22, 0.61, 0.36, 1)", "purpose": "Section fade-up settle (0.65s, 28px rise), armed by IntersectionObserver; visible without JS." },
+      { "name": "float-ambient", "value": "6s ease-in-out infinite (9s slow variant), translateY(-12px)", "purpose": "The one ambient moment: hero-scene window, voice card, mascots, stickers. No looping motion outside the hero." },
+      { "name": "micro-loop-typing", "value": "1.2s ease-in-out infinite, 0.15s dot stagger", "purpose": "Animated typing dots inside the drawn chat." },
+      { "name": "micro-loop-voice", "value": "0.9s ease-in-out infinite, scaleY(0.5-1.5), transform-box: fill-box", "purpose": "Speaking-indicator bars in voice tiles." },
+      { "name": "micro-loop-wave", "value": "2.6s ease-in-out infinite, rotate(-14deg), transform-box: fill-box", "purpose": "Waving wing on the blurple mascot." },
+      { "name": "hover-lift", "value": "translateY(-2px), 0.15s ease", "purpose": "Button hover lift; returns to 0 on press. Pairs with color-swap hovers." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "900px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one action color: blurple fill, white Baloo 2 label, 12px radius, 48px min-height; deepens to indigo on hover.",
+      "html": "<a class=\"ds-btn ds-btn-primary\" href=\"#\">Open in your browser</a>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.625rem; font-family: 'Baloo 2', 'Nunito', system-ui, sans-serif; font-weight: 600; font-size: 1.0625rem; line-height: 1; border-radius: 12px; padding: 1.125rem 2rem; min-height: 48px; border: none; cursor: pointer; text-decoration: none; transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease; } .ds-btn:hover { transform: translateY(-2px); } .ds-btn:active { transform: translateY(0); } .ds-btn:focus-visible { outline: 3px solid #fee75c; outline-offset: 3px; } .ds-btn-primary { background: #5865f2; color: #ffffff; } .ds-btn-primary:hover { background: #31368e; }"
+    },
+    {
+      "name": "White Button",
+      "kind": "button",
+      "refersTo": "button-white",
+      "description": "Flat secondary: white fill, charcoal text, gray swap on hover.",
+      "html": "<a class=\"ds-btn ds-btn-white\" href=\"#\">Download</a>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.625rem; font-family: 'Baloo 2', 'Nunito', system-ui, sans-serif; font-weight: 600; font-size: 1.0625rem; line-height: 1; border-radius: 12px; padding: 1.125rem 2rem; min-height: 48px; border: none; cursor: pointer; text-decoration: none; transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease; } .ds-btn:hover { transform: translateY(-2px); } .ds-btn:active { transform: translateY(0); } .ds-btn:focus-visible { outline: 3px solid #fee75c; outline-offset: 3px; } .ds-btn-white { background: #ffffff; color: #23272a; } .ds-btn-white:hover { background: #e3e5e8; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Transparent on charcoal; an 8% white veil appears on hover.",
+      "html": "<a class=\"ds-btn ds-btn-ghost\" href=\"#\">Learn more</a>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.625rem; font-family: 'Baloo 2', 'Nunito', system-ui, sans-serif; font-weight: 600; font-size: 1.0625rem; line-height: 1; border-radius: 12px; padding: 1.125rem 2rem; min-height: 48px; border: none; cursor: pointer; text-decoration: none; transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease; } .ds-btn:hover { transform: translateY(-2px); } .ds-btn:active { transform: translateY(0); } .ds-btn:focus-visible { outline: 3px solid #fee75c; outline-offset: 3px; } .ds-btn-ghost { background: transparent; color: #f2f3f5; } .ds-btn-ghost:hover { background: rgba(255, 255, 255, 0.08); }"
+    },
+    {
+      "name": "On-Blurple Download Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ghost-on-blurple variant inside the CTA panel: transparent fill, white text, 2px inset white ring as its border (shipped inline in CTA.tsx).",
+      "html": "<a class=\"ds-btn ds-btn-onblurple\" href=\"#\">Download</a>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.625rem; font-family: 'Baloo 2', 'Nunito', system-ui, sans-serif; font-weight: 600; font-size: 1.0625rem; line-height: 1; border-radius: 12px; padding: 1.125rem 2rem; min-height: 48px; border: none; cursor: pointer; text-decoration: none; transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease; } .ds-btn:hover { transform: translateY(-2px); } .ds-btn:focus-visible { outline: 3px solid #fee75c; outline-offset: 3px; } .ds-btn-onblurple { background: transparent; color: #ffffff; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7); }"
+    },
+    {
+      "name": "Text Link",
+      "kind": "custom",
+      "refersTo": "text-link",
+      "description": "White Nunito 700 link underlined in blurple; the underline turns yellow on hover.",
+      "html": "<a class=\"ds-textlink\" href=\"#\">Take me to the code &rarr;</a>",
+      "css": ".ds-textlink { color: #ffffff; font-family: 'Nunito', system-ui, sans-serif; font-weight: 700; font-size: 1.0625rem; text-decoration: underline; text-decoration-color: #5865f2; text-underline-offset: 3px; text-decoration-thickness: 2px; transition: text-decoration-color 0.15s ease, color 0.15s ease; } .ds-textlink:hover { text-decoration-color: #fee75c; } .ds-textlink:focus-visible { outline: 3px solid #ffffff; outline-offset: 3px; }"
+    },
+    {
+      "name": "Open-Source Badge",
+      "kind": "chip",
+      "refersTo": "os-badge",
+      "description": "Yellow pill in the nav marking the open-source trace; star icon plus Baloo 2 label.",
+      "html": "<a class=\"ds-os-badge\" href=\"#\"><svg width=\"11\" height=\"11\" viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z\"/></svg>Open source</a>",
+      "css": ".ds-os-badge { display: inline-flex; align-items: center; gap: 0.375rem; font-family: 'Baloo 2', 'Nunito', system-ui, sans-serif; font-weight: 600; font-size: 0.75rem; color: #fee75c; background: rgba(254, 231, 92, 0.1); border: 1px solid rgba(254, 231, 92, 0.35); border-radius: 9999px; padding: 0.25rem 0.625rem; text-decoration: none; white-space: nowrap; transition: background-color 0.15s ease; } .ds-os-badge:hover { background: rgba(254, 231, 92, 0.18); } .ds-os-badge:focus-visible { outline: 3px solid #ffffff; outline-offset: 3px; }"
+    },
+    {
+      "name": "BETA Chip",
+      "kind": "chip",
+      "refersTo": "chip-beta",
+      "description": "Green pill centered on the H2 line via a flex chip row (vertical-align: middle rides low against display caps).",
+      "html": "<span class=\"ds-chip-beta\">BETA</span>",
+      "css": ".ds-chip-beta { display: inline-flex; align-items: center; font-family: 'Baloo 2', 'Nunito', system-ui, sans-serif; font-weight: 700; font-size: 0.75rem; letter-spacing: 0.04em; color: #57f287; background: rgba(87, 242, 135, 0.12); border: 1px solid rgba(87, 242, 135, 0.4); border-radius: 9999px; padding: 0.2rem 0.625rem; flex: none; } .ftl-h2-chiprow { display: flex; align-items: center; flex-wrap: wrap; column-gap: 0.75rem; row-gap: 0.5rem; }"
+    },
+    {
+      "name": "Feature Point Icon",
+      "kind": "custom",
+      "refersTo": "button-ghost",
+      "description": "30px rounded square washed with a sticker-color tint, holding a 16px lucide icon; label beside it in Nunito 700.",
+      "html": "<span class=\"ds-point-row\"><span class=\"ds-point-icon\" style=\"background: rgba(235, 69, 158, 0.14); color: #ff7ac2;\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 3L7 21M17 3l-2 18M4 8h17M3 15h17\"/></svg></span><span class=\"ds-point-label\">Channels for every obsession</span></span>",
+      "css": ".ds-point-row { display: flex; align-items: center; gap: 0.75rem; font-family: 'Nunito', system-ui, sans-serif; font-weight: 700; font-size: 1.0625rem; color: #f2f3f5; } .ds-point-icon { flex: none; width: 30px; height: 30px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The group chat, grown to page scale.",
+    "overview": "FreedomTalk's landing is a flat, playful charcoal world pinned to the Discord design language: a dark ground ramp that steps brighter as panels stack, one blurple that owns every action, and a loud sticker palette that lives only inside artwork. Chunky rounded display type (Baloo 2) shouts the message; a clean rounded body face (Nunito) carries the prose. Bird-mascot characters and flat mockups of the actual app — chat windows, friends lists, voice rooms — are drawn as authored vector scenes, so the page feels like the product rather than a screenshot of it.\n\nThis system exists only inside the .ftl namespace in landing.css. Every token is prefixed --ftl-* and every rule is nested under .ftl. The shared app/globals.css (warm-charcoal/amber world) still serves the auth and chat pages and must stay untouched — do not unify the two worlds, promote .ftl tokens to :root, or style other surfaces with them.\n\nThe system is flat-first, confirmed by the shipped code: zero box-shadow drop shadows, zero gradients, zero backdrop-filter glass, zero photography. Depth is tonal (surface color steps), closeness is corner radius, and liveliness is motion plus artwork. Under prefers-reduced-motion: reduce every animation is off and all content is visible.",
+    "keyCharacteristics": [
+      "Charcoal ground ramp (#23272a → #2c2f33 → #36393f, hairlines #3d4046, footer band #111214) with near-white ink in four steps.",
+      "One action color: blurple #5865f2 for fills, selection, and accent words; deep indigo #31368e as its hover depth.",
+      "Sticker palette (yellow/fuchsia/green/red) confined to artwork and micro-accents, never structural fills.",
+      "Flat everywhere: color-swap button hovers with a 2px lift, no shadow vocabulary.",
+      "Rounded, capsule-driven shapes: 12px controls up to 32px hero panels, 9999px pills.",
+      "One ambient motion moment (the hero scene); sections settle once and only when JS can reveal them."
+    ],
+    "rules": [
+      { "name": "The Scoped World Rule", "body": "This system exists only inside the `.ftl` namespace in `packages/web/components/landing/landing.css`. Every token is prefixed `--ftl-*` and every rule is nested under `.ftl`. The shared `app/globals.css` (warm-charcoal/amber world) still serves the auth and chat pages and must stay untouched — do not \"unify\" the two worlds, promote `.ftl` tokens to `:root`, or style other surfaces with them.", "section": "colors" },
+      { "name": "The Sticker Containment Rule", "body": "Sticker colors never fill structure. No yellow buttons, no fuchsia panels, no green sections. Outside artwork they surface only as micro-accents: the yellow hover-underline, the yellow \"Open source\" badge and button focus ring, the green BETA chip. If a proposed element puts a sticker color on a background larger than a chip, it's breaking the world.", "section": "colors" },
+      { "name": "The Red Rule", "body": "#ed4245 is window-chrome art material, not UI. It must not appear on buttons, text, badges, or state colors outside a drawn app window.", "section": "colors" },
+      { "name": "The One Blurple Phrase Rule", "body": "On a charcoal ground, exactly one phrase inside a display headline takes blurple (\"fun & games\" in the H1); everything else stays near-white. On the blurple CTA panel the headline is entirely white — no accent word.", "section": "typography" },
+      { "name": "The Flat Ground Rule", "body": "Surfaces never cast shadows. If a design needs separation, step the surface color up the ramp or add a hairline; if it needs emphasis, use blurple, radius, or motion. Inset rings may impersonate borders; drop shadows and glass may not enter.", "section": "elevation" },
+      { "name": "The Wrapper Rule", "body": "An animation class never shares an SVG element with a `transform` attribute; animated art is wrapped in a class-bearing `<g>` around the transformed child. Voice/typing elements that do animate directly set `transform-box: fill-box` and skip transform attributes.", "section": "components" }
+    ],
+    "dos": [
+      "Do keep all landing styling inside the `.ftl` namespace with `--ftl-*` tokens; load `landing.css` only from the landing page.",
+      "Do make every interactive target at least 48px tall (44px for the compact nav variant) and give buttons color-swap hovers plus the 2px lift.",
+      "Do mark decorative SVGs `aria-hidden` and give meaningful scenes a `role=\"img\"` + label (the hero scene is labeled; sprinkles are hidden).",
+      "Do keep stickers bare — flat solid fills with no outlines, filled or line-art alike (`stroke=\"#ffffff\"` outlines are banned on artwork; partial strokes read as glitches).",
+      "Do optically center artwork contents: an initial's baseline sits at circle-center + 0.35 × font-size; icons in pills center on the pill midline with a clear gap before their label.",
+      "Do write real product microcopy into drawn UI — real channel names, messages, presence states from the shipped feature set.",
+      "Do draw depth with the tonal ramp and hairlines, and reserve blurple for actions and one accent phrase."
+    ],
+    "donts": [
+      "Don't apply sticker colors (yellow/fuchsia/green/red) as fills on structural UI — they belong in artwork and chip-scale accents only.",
+      "Don't introduce drop shadows, glass/backdrop-filter, gradients, or stock photography; this world is flat by audit and by doctrine.",
+      "Don't use red anywhere except inside drawn window chrome, and don't let sticker colors touch buttons, text fills, or section backgrounds.",
+      "Don't merge `.ftl` tokens into `globals.css`, restyle the auth/chat pages with them, or \"upgrade\" the old world — the split is deliberate.",
+      "Don't put an animation class on the same SVG element that carries a `transform` attribute, and don't add new looping animation outside the hero scene.",
+      "Don't hide content behind scroll reveals without the JS-armed pattern — unrevealed sections must be visible with JavaScript disabled."
+    ]
+  }
+}

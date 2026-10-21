@@ -94,18 +94,20 @@ export function getAcronym(name: string): string {
     .toUpperCase();
 }
 
+// Status colors go through design tokens — see --success/--warning/--error
+// in app/globals.css
 export function getStatusColor(status?: string): string {
   switch (status) {
     case 'online':
-      return 'bg-green-500';
+      return 'bg-success';
     case 'idle':
-      return 'bg-yellow-500';
+      return 'bg-warning';
     case 'dnd':
-      return 'bg-red-500';
+      return 'bg-error';
     case 'offline':
     case 'invisible':
     default:
-      return 'bg-gray-500';
+      return 'bg-foreground-subtle';
   }
 }
 
